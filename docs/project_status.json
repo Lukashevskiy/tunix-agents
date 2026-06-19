@@ -23,7 +23,7 @@
     {
       "name": "Delivery gate",
       "status": "ready",
-      "description": "Единый verify-контур выполняет audit, тесты и строгую сборку сайта; для hot path требует отдельного benchmark evidence."
+      "description": "Единый verify-контур выполняет audit, тесты и строгую сборку сайта; Delivery DoD требует typed docstrings, status/docs updates и benchmark evidence для hot path."
     },
     {
       "name": "PPO/GRPO, Tunix bridge, Orbax resume",

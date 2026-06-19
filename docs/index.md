@@ -22,4 +22,5 @@ LLM/RL-обучения.
 
 После `pip install -e '.[docs]'` выполните `make serve`. Команда сперва обновит Dashboard
 текущим Git commit, прогрессом плана и benchmark artifacts, затем запустит MkDocs. Для статичной
-сборки используйте `make docs`.
+сборки используйте `make docs`. API reference с автоматически отображаемыми type hints собирается
+строго командой `make api-docs` в `site/api/`; он также входит в `make verify`.

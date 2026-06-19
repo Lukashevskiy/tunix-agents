@@ -1,4 +1,4 @@
-.PHONY: audit test integration perf docs serve provenance verify
+.PHONY: audit test integration perf docs api-docs serve provenance verify
 
 audit:
 	python .codex/skills/repository-audit/scripts/audit_repo.py
@@ -16,6 +16,9 @@ docs:
 	python scripts/generate_dashboard.py
 	mkdocs build --strict
 
+api-docs:
+	sphinx-build -W --keep-going sphinx site/api
+
 serve:
 	python scripts/generate_dashboard.py
 	mkdocs serve
@@ -23,6 +26,6 @@ serve:
 provenance:
 	python scripts/export_provenance.py
 
-verify: audit test integration docs
-	@echo "Verified audit, unit/integration tests and generated documentation."
+verify: audit test integration docs api-docs
+	@echo "Verified audit, unit/integration tests, MkDocs and Sphinx API documentation."
 	@echo "For any hot-path change, also run 'make perf' and save or explicitly waive benchmark evidence."

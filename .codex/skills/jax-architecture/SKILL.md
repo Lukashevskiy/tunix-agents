@@ -23,6 +23,9 @@ Design a small vertical slice before adding implementation. Read `docs/architect
 6. Produce an ADR when the decision is costly to reverse, changes a public contract, or adds a
    dependency. Update `docs/architecture.md`, `docs/plan.md`, and `docs/project_status.json`
    when the implementation status changes.
+7. Treat types and docstrings as the public contract: name shapes/axes/dtypes, PRNG ownership,
+   mutation and failures. Use generic types or protocols for extensible PyTrees; do not use `Any`
+   beyond a validated external adapter boundary.
 
 ## Exit criteria
 

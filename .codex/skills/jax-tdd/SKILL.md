@@ -22,6 +22,9 @@ Turn the desired property into a failing test before changing production code. R
    it cleanly when the optional dependency is missing.
 6. Add a performance test after correctness. Separate compilation/warmup from steady-state and
    save benchmark JSON under `artifacts/benchmarks/`.
+7. Add public annotations and Sphinx-compatible docstrings alongside the test. Use `:param:`,
+   `:returns:` and `:raises:` fields, let Sphinx render types from signatures, document array
+   shape/axes/dtype, and replace contract `Any` with a generic, protocol or explicit data type.
 
 ## Required verification
 

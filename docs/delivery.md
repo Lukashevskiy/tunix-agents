@@ -16,7 +16,9 @@
    контракт или проектное решение изменилось.
 5. **Статус:** обновить checkbox в `docs/plan.md` и capability в `docs/project_status.json`.
    `ready` означает: есть реализация и проходящий тест.
-6. **Commit и сайт:** сделать осмысленный commit и запустить `make docs`; dashboard прочитает
+6. **Контракты:** добавить типы и docstrings для public API; не допускать `Any` за внешнюю
+   boundary без немедленной validation/normalization. Для JAX указать shape/оси/dtype/PRNG.
+7. **Commit и сайт:** сделать осмысленный commit и запустить `make docs`; dashboard прочитает
    новый Git revision, roadmap и benchmark artifacts.
 
 ## Стандартные команды
