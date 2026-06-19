@@ -21,6 +21,7 @@ dependencies = [
 [project.optional-dependencies]
 tunix = ["tunix"]
 envs = ["craftax>=1.4.3", "gymnasium>=0.29.1"]
+interop = ["safetensors>=0.4.5"]
 dev = ["pytest>=8.3", "pytest-benchmark>=5.1", "ruff>=0.6", "mypy>=1.11"]
 docs = ["mkdocs-material>=9.5"]
 

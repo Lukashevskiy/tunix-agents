@@ -55,6 +55,13 @@
 
 **Gate:** prompt→sample→environment→loss интеграционный тест, стабильно записываемый replay.
 
+## 4a. Model interoperability
+
+- [x] Базовый versionable template для state_dict → JAX/Flax PyTree и безопасный LoRA merge.
+- [ ] Добавить архитектурные templates для выбранных Tunix-compatible моделей с output parity fixtures.
+- [ ] Добавить QLoRA/dequantization adapter с numerical tolerance tests.
+- [ ] Добавить Orbax import/export и round-trip test model + optimizer + adapter metadata.
+
 ## 5. Масштабирование, отчётность и release
 
 - [ ] Добавить multi-device tests с порогами масштабирования и явной degradation report.

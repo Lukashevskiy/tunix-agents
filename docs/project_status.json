@@ -16,6 +16,11 @@
       "description": "Экспортирует commit, dirty flag, Python и platform в JSON artifact."
     },
     {
+      "name": "Конвертация весов и LoRA",
+      "status": "ready",
+      "description": "Преобразует декларативно описанный state_dict в JAX/Flax PyTree, валидирует формы и merge-ит стандартные LoRA adapters."
+    },
+    {
       "name": "PPO/GRPO, Tunix bridge, Orbax resume",
       "status": "planned",
       "description": "Спроектировано и покрыто quality gates, но ещё не реализовано."

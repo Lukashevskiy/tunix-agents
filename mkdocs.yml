@@ -18,6 +18,7 @@ nav:
   - Dashboard: _generated/dashboard.md
   - Обзор: index.md
   - Архитектура: architecture.md
+  - Model interoperability: interop.md
   - План реализации: plan.md
   - Качество и perf: quality.md
   - Эксперименты: experiments.md
