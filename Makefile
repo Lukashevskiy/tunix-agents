@@ -1,30 +1,32 @@
+PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
+
 .PHONY: audit test integration perf docs api-docs serve provenance verify
 
 audit:
-	python .codex/skills/repository-audit/scripts/audit_repo.py
+	$(PYTHON) .codex/skills/repository-audit/scripts/audit_repo.py
 
 test:
-	PYTHONPATH=src pytest tests/unit
+	PYTHONPATH=src $(PYTHON) -m pytest tests/unit
 
 integration:
-	PYTHONPATH=src pytest -m integration
+	PYTHONPATH=src $(PYTHON) -m pytest -m integration
 
 perf:
-	pytest -m performance --benchmark-only
+	$(PYTHON) -m pytest -m performance --benchmark-only
 
 docs:
-	python scripts/generate_dashboard.py
-	mkdocs build --strict
+	$(PYTHON) scripts/generate_dashboard.py
+	$(PYTHON) -m mkdocs build --strict
 
 api-docs:
-	sphinx-build -W --keep-going sphinx site/api
+	$(PYTHON) -m sphinx -W --keep-going sphinx site/api
 
 serve:
-	python scripts/generate_dashboard.py
-	mkdocs serve
+	$(PYTHON) scripts/generate_dashboard.py
+	$(PYTHON) -m mkdocs serve
 
 provenance:
-	python scripts/export_provenance.py
+	$(PYTHON) scripts/export_provenance.py
 
 verify: audit test integration docs api-docs
 	@echo "Verified audit, unit/integration tests, MkDocs and Sphinx API documentation."

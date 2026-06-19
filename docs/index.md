@@ -20,7 +20,9 @@ LLM/RL-обучения.
 
 ## Локальный запуск сайта
 
-После `pip install -e '.[docs]'` выполните `make serve`. Команда сперва обновит Dashboard
-текущим Git commit, прогрессом плана и benchmark artifacts, затем запустит MkDocs. Для статичной
-сборки используйте `make docs`. API reference с автоматически отображаемыми type hints собирается
-строго командой `make api-docs` в `site/api/`; он также входит в `make verify`.
+После установки `mkdocs-material` в `.venv` выполните `make serve`. Makefile предпочитает
+`.venv/bin/python`, поэтому Material и MkDocs гарантированно берутся из одного interpreter.
+Команда сперва обновит Dashboard текущим Git commit, прогрессом плана и benchmark artifacts,
+затем запустит MkDocs. Для статичной сборки используйте `make docs`. API reference с
+автоматически отображаемыми type hints собирается строго командой `make api-docs` в `site/api/`;
+он также входит в `make verify`.

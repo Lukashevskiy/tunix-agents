@@ -28,10 +28,12 @@ pip install -e '.[envs,tunix,dev]'
 
 ## Local project site
 
-Install the docs extra once, then use the repository command rather than running MkDocs directly:
+Create the local documentation environment once, then use the repository command rather than
+running a globally installed MkDocs:
 
 ```bash
-pip install -e '.[docs]'
+python3 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip mkdocs-material sphinx sphinx-autodoc-typehints
 make serve
 ```
 
@@ -41,8 +43,9 @@ to make the same fully populated static `site/` directory without a server. Benc
 artifacts placed under `artifacts/benchmarks/` appear automatically on the next build. The GitHub
 Pages workflow does the same on each push to `main`, weekly, or via manual dispatch.
 
-Without Make, run `python scripts/generate_dashboard.py && mkdocs serve` after activating the
-environment. Do not use bare `mkdocs serve`: it will not refresh the generated dashboard pages.
+Without Make, run `.venv/bin/python scripts/generate_dashboard.py && .venv/bin/python -m mkdocs
+serve`. Do not use bare `mkdocs serve`: it can select a global interpreter without Material and
+will not refresh the generated dashboard pages.
 
 Every change follows the repository [Definition of Done](docs/delivery.md): audit, applicable
 tests and performance evidence, documentation/status updates, intentional commit and site build.
