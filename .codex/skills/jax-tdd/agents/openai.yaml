@@ -1,0 +1,4 @@
+interface:
+  display_name: "JAX TDD"
+  short_description: "Build JAX features test-first"
+  default_prompt: "Implement this JAX feature using TDD."

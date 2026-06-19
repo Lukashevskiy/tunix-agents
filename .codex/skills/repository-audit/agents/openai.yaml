@@ -1,0 +1,4 @@
+interface:
+  display_name: "Repository Audit"
+  short_description: "Audit Tunix CrafText health"
+  default_prompt: "Audit this repository and report actionable findings."

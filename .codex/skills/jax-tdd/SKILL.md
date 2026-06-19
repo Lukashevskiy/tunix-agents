@@ -1,0 +1,30 @@
+---
+name: jax-tdd
+description: Implement or modify Tunix CrafText Python/JAX code with test-driven development. Use when adding algorithms, rollout collection, adapters, model conversion, checkpointing, or fixing a bug where shape, randomness, numerical behaviour, or JIT parity must be proven.
+---
+
+# JAX TDD
+
+Turn the desired property into a failing test before changing production code. Read
+`docs/quality.md` and follow the repository's test layout.
+
+## Workflow
+
+1. Add a smallest hand-computed unit test in `tests/unit/`; include a negative case for invalid
+   shapes, masks or checkpoint metadata where relevant.
+2. Implement the pure reference version first. Keep it deterministic and expose PRNG keys
+   explicitly instead of relying on global randomness.
+3. Add property coverage for PyTree structure, `[T, B, ...]` axes, dtypes, terminal vs
+   truncation, and no mutation of supplied parameters.
+4. Add JIT/vectorized code only after reference correctness. Compare every leaf with the
+   reference using exact equality for discrete values and stated tolerances for floats.
+5. Add an integration smoke test only when real CrafText/Tunix/Orbax is involved; mark and skip
+   it cleanly when the optional dependency is missing.
+6. Add a performance test after correctness. Separate compilation/warmup from steady-state and
+   save benchmark JSON under `artifacts/benchmarks/`.
+
+## Required verification
+
+Run the narrow tests first, then `pytest tests/unit tests/integration`. Report skips as missing
+environment evidence, not successful integration. Update the quality docs and dashboard status
+only for verified behaviour.

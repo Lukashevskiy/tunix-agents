@@ -1,0 +1,4 @@
+interface:
+  display_name: "JAX Architecture"
+  short_description: "Design Tunix CrafText components"
+  default_prompt: "Design a JAX-native component for this repository."
