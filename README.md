@@ -26,11 +26,23 @@ compatible accelerator-specific JAX build:
 pip install -e '.[envs,tunix,dev]'
 ```
 
-Build the local documentation site with `mkdocs serve` (after `pip install -e '.[docs]'`).
-Use `make docs` instead for the full dashboard build: it refreshes Git status, plan progress,
-capability inventory and benchmark tables before running MkDocs. Benchmark JSON artifacts placed
-under `artifacts/benchmarks/` appear automatically on the next build. The GitHub Pages workflow
-does the same on each push to `main`, weekly, or via manual dispatch.
+## Local project site
+
+Install the docs extra once, then use the repository command rather than running MkDocs directly:
+
+```bash
+pip install -e '.[docs]'
+make serve
+```
+
+`make serve` first regenerates the Dashboard from the current Git commit, roadmap, capability
+inventory and `artifacts/benchmarks/*.json`, then opens the local MkDocs server. Use `make docs`
+to make the same fully populated static `site/` directory without a server. Benchmark JSON
+artifacts placed under `artifacts/benchmarks/` appear automatically on the next build. The GitHub
+Pages workflow does the same on each push to `main`, weekly, or via manual dispatch.
+
+Without Make, run `python scripts/generate_dashboard.py && mkdocs serve` after activating the
+environment. Do not use bare `mkdocs serve`: it will not refresh the generated dashboard pages.
 
 Every change follows the repository [Definition of Done](docs/delivery.md): audit, applicable
 tests and performance evidence, documentation/status updates, intentional commit and site build.
