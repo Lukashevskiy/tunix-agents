@@ -1,0 +1,4 @@
+dataset_key: conditional_achievements
+subset_key: medium
+base_environment: Craftax-Pixels-v1-Text
+use_parafrases: true

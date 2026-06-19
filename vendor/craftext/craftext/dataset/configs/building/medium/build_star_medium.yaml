@@ -1,0 +1,4 @@
+dataset_key: building_star
+subset_key: medium
+base_environment: Craftax-Classic-Pixels-v1-Text
+use_parafrases: true

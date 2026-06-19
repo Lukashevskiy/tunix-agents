@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "caged_craftext"
+version = "0.1.0"
+description = "Constraint-aware environment extension built on top of CrafText."
+readme = "./README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "craftax>=1.4.3",
+  "jax>=0.4.30",
+  "jaxlib>=0.4.30",
+  "flax>=0.8.5",
+  "gymnasium>=0.29.1",
+  "numpy>=1.24.4",
+  "transformers>=4.44.2",
+  "tqdm>=4.66.0",
+  "PyYAML>=6.0.0",
+]
+
+[project.scripts]
+caged_craftext_play = "caged_craftext.environment.caged_craftext_play:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["caged_craftext*"]
+
+[tool.setuptools.package-data]
+"caged_craftext" = [
+  "dataset/configs/**/*.yaml",
+  "dataset/scenarious/**/*.py",
+  "world_presets/**/*.yaml",
+  "world_presets/**/*.md",
+]

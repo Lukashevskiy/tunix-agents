@@ -1,0 +1,11 @@
+{
+  "purpose": "Immutable local baseline; modify only through an explicit upstream-sync change.",
+  "source_repository": "../verl-agent-craftext",
+  "source_revision": "2191ad373f922bb5ddd678152d220e222745332a",
+  "copied_components": {
+    "craftext": "agent_system/external/CrafText",
+    "caged-craftext": "agent_system/external/CagedCraftext",
+    "megaprompts": "MegaPrompts"
+  },
+  "notes": "The source worktree had unrelated uncommitted ResearchOS integration files at copy time; no source files were altered by this snapshot. Licenses and attribution live with each component."
+}

@@ -1,0 +1,3 @@
+extends: ring_random
+env:
+  seed: 1

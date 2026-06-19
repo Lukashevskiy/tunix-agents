@@ -1,0 +1,43 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tunix-craftext"
+version = "0.0.1"
+description = "JAX-native training stack for CrafText and CagedCrafText."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+dependencies = [
+  "jax>=0.4.30",
+  "flax>=0.8.5",
+  "optax>=0.2.3",
+  "orbax-checkpoint>=0.6.4",
+  "numpy>=1.26",
+  "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+tunix = ["tunix"]
+envs = ["craftax>=1.4.3", "gymnasium>=0.29.1"]
+dev = ["pytest>=8.3", "pytest-benchmark>=5.1", "ruff>=0.6", "mypy>=1.11"]
+docs = ["mkdocs-material>=9.5"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tunix_craftext"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+  "integration: requires real CrafText/CagedCrafText dependencies",
+  "performance: benchmark; excluded from the default test suite",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]

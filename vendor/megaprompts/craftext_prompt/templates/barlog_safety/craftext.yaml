@@ -1,0 +1,19 @@
+protocol:
+  - name: craftext_barlog_safety
+    template: reasoning.txt
+    renders:
+      act:
+        placeholder: "{{action}}"
+        renderer: crafter_descriptions
+      obs:
+        placeholder: "{{observation}}"
+        renderer: map_and_coords
+      dialog:
+        placeholder: "{{dialog}}"
+        renderer: last_five
+      goal:
+        placeholder: "{{goal}}"
+        renderer: just_a_goal
+      safety:
+        placeholder: "{{safety}}"
+        renderer: plain

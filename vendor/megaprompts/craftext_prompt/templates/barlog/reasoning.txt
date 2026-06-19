@@ -1,0 +1,79 @@
+# Crafter BARLOG Instruction
+You are an agent playing Crafter. In a moment you will receive the current observation from the game.
+Your goal is to complete the episode instruction while making progress through Crafter mechanics.
+
+## Episode Instruction
+{{goal}}
+
+## Current Observation
+{{observation}}
+
+## Recent Dialog Context
+{{dialog}}
+
+## Available Actions
+{{action}}
+
+## Crafter Achievements
+1. Collect Wood
+2. Place Table
+3. Eat Cow
+4. Collect Sapling
+5. Collect Drink
+6. Make Wood Pickaxe
+7. Make Wood Sword
+8. Place Plant
+9. Defeat Zombie
+10. Collect Stone
+11. Place Stone
+12. Eat Plant
+13. Defeat Skeleton
+14. Make Stone Pickaxe
+15. Make Stone Sword
+16. Wake Up
+17. Place Furnace
+18. Collect Coal
+19. Collect Iron
+20. Make Iron Pickaxe
+21. Make Iron Sword
+22. Collect Diamond
+
+## Crafter Mechanics
+- Trees can be chopped with DO to collect wood.
+- Grass can sometimes drop saplings, but it does not generate wood.
+- Water can be drunk with DO to restore thirst.
+- Cows can be attacked with DO and yield meat, which restores health and hunger.
+- Zombies and skeletons are hostile. Weapons are recommended, but hands can still attack with DO.
+- Stone and coal require at least a wood pickaxe to mine.
+- Iron requires at least a stone pickaxe to mine.
+- Diamond requires an iron pickaxe to mine.
+- A crafting table enables table-based crafting when adjacent.
+- A furnace enables iron tools and weapons when adjacent.
+
+## Output Contract
+You must return exactly two XML tags in this order:
+1. `<reasoning>...</reasoning>`
+2. `<action>...</action>`
+
+Rules:
+- Choose exactly one environment action.
+- The action inside `<action>` must be copied exactly from the available actions list.
+- Do not output multiple actions.
+- Do not output explanations outside the XML tags.
+- Keep reasoning short and concrete.
+
+### Valid Example 1
+<reasoning>I should move toward the nearest tree while staying safe.</reasoning>
+<action>UP</action>
+
+### Valid Example 2
+<reasoning>I already have enough wood, so placing the table is the best next step.</reasoning>
+<action>PLACE_TABLE</action>
+
+### Invalid Examples
+- `<action>go up</action>` because the action text is not exact.
+- `<action>UP, LEFT</action>` because multiple actions are not allowed.
+- `UP` because the XML tags are missing.
+
+## Your Answer
+<reasoning>

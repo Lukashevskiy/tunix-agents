@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "craftext"
+version = "0.1.0"
+description = "Goal-oriented text instruction extension for Craftax."
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+  { name = "ZoyaV" },
+  { name = "Dmitriy" },
+  { name = "Georgy" },
+]
+dependencies = [
+  "craftax>=1.4.3",
+  "jax>=0.4.30",
+  "jaxlib>=0.4.30",
+  "flax>=0.8.5",
+  "gymnasium>=0.29.1",
+  "numpy>=1.24.4",
+  "transformers>=4.44.2",
+  "tqdm>=4.66.0",
+  "PyYAML>=6.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/ZoyaV/CrafText"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["craftext*"]
+
+[tool.setuptools.package-data]
+"craftext" = [
+  "dataset/configs/**/*.yaml",
+  "dataset/scenarious/**/*.py",
+  "world_presets/**/*.yaml",
+  "world_presets/**/*.md",
+]

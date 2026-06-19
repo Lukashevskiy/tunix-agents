@@ -1,0 +1,11 @@
+env:
+  env_name: Craftax-Classic-Pixels-v1
+map:
+  generator:
+    name: ring
+    config:
+      inner_radius: 0
+      outer_radius: 12
+systems:
+  static_env:
+    map_size: 64

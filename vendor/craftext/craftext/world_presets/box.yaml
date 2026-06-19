@@ -1,0 +1,10 @@
+env: {}
+map:
+  generator:
+    name: box
+    config:
+      inner_size: 3
+      perimeter_tree_prob: 0.7
+systems:
+  spawn:
+    disable_mob_spawns: true

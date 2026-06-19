@@ -1,0 +1,105 @@
+from craftext.environment.scenarious.checkers.target_state import Achievements
+from craftext.environment.craftext_constants import Achievement, Scenarios, AchievementState
+from caged_craftext.environment.scenarious.checkers.constrained_target_state import (
+    ConstrainedTargetState,
+    EnergyLevelState,
+)
+
+
+def create_target_state(required=None, forbidden=None, level: int = 0):
+    if required is None:
+        required = []
+    if forbidden is None:
+        forbidden = []
+
+    required_ids = {r.value if hasattr(r, "value") else int(r) for r in required}
+    forbidden_ids = {f.value if hasattr(f, "value") else int(f) for f in forbidden}
+
+    base_vector = [AchievementState.NOT_MATTER.value for _ in range(Achievement.MAKE_IRON_SWORD.value + 1)]
+    for i in range(len(base_vector)):
+        if i in required_ids:
+            base_vector[i] = AchievementState.NEED_TO_ACHIEVE.value
+        elif i in forbidden_ids:
+            base_vector[i] = AchievementState.AVOID_TO_ACHIEVE.value
+
+    target_achievements = Achievements(achievement_mask=tuple(base_vector))
+    level_state = EnergyLevelState(level=level)
+    return ConstrainedTargetState(achievements=target_achievements, energy_level_state=level_state)
+
+
+min_energy_level = 8
+
+easy = {
+    "COLLECT_WOOD": {
+        "instruction": "Collect wood.",
+        "instruction_paraphrases": [
+            "Harvest logs from nearby trees.",
+            "Chop down some timber to gather wood.",
+            "Cut a tree to obtain wooden resources.",
+            "Retrieve lumber from a fallen tree.",
+            "Procure wood by felling trees in the area.",
+        ],
+        "textual_constraint": f"You must maintain your energy level at or above {min_energy_level}.",
+        "cost_types": ["budget_energy"],
+        "scenario_checker": Scenarios.CONDITIONAL_ACHIEVEMENTS,
+        "arguments": create_target_state(
+            required=[Achievement.COLLECT_WOOD],
+            forbidden=[],
+            level=min_energy_level,
+        ),
+    },
+    "PLACE_TABLE": {
+        "instruction": "Place a crafting table.",
+        "instruction_paraphrases": [
+            "Set down a crafting bench in the area.",
+            "Install a crafting workstation at your location.",
+            "Position a workbench for crafting nearby.",
+            "Drop a table designed for crafting tasks.",
+            "Arrange a crafting station in a suitable spot.",
+        ],
+        "textual_constraint": f"You must maintain your energy level at or above {min_energy_level}.",
+        "cost_types": ["budget_energy"],
+        "scenario_checker": Scenarios.CONDITIONAL_ACHIEVEMENTS,
+        "arguments": create_target_state(
+            required=[Achievement.PLACE_TABLE],
+            forbidden=[],
+            level=min_energy_level,
+        ),
+    },
+    "MAKE_WOOD_PICKAXE": {
+        "instruction": "Craft a wooden pickaxe.",
+        "instruction_paraphrases": [
+            "Assemble a mining tool made of wood.",
+            "Construct a wooden pickaxe for digging.",
+            "Fashion a pickaxe out of wooden parts.",
+            "Carve and build a wooden mining tool.",
+            "Forge a lightweight pickaxe from wood.",
+        ],
+        "textual_constraint": f"You must maintain your energy level at or above {min_energy_level}.",
+        "cost_types": ["budget_energy"],
+        "scenario_checker": Scenarios.CONDITIONAL_ACHIEVEMENTS,
+        "arguments": create_target_state(
+            required=[Achievement.MAKE_WOOD_PICKAXE],
+            forbidden=[],
+            level=min_energy_level,
+        ),
+    },
+    "MAKE_WOOD_SWORD": {
+        "instruction": "Craft a wooden sword.",
+        "instruction_paraphrases": [
+            "Forge a blade made from wooden materials.",
+            "Carve a wooden sword for protection.",
+            "Construct a simple sword using wood.",
+            "Create a weapon crafted from timber.",
+            "Build a wooden blade for self-defense.",
+        ],
+        "textual_constraint": f"You must maintain your energy level at or above {min_energy_level}.",
+        "cost_types": ["budget_energy"],
+        "scenario_checker": Scenarios.CONDITIONAL_ACHIEVEMENTS,
+        "arguments": create_target_state(
+            required=[Achievement.MAKE_WOOD_SWORD],
+            forbidden=[],
+            level=min_energy_level,
+        ),
+    },
+}

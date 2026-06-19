@@ -1,0 +1,4 @@
+dataset_key: sleep_at_night
+subset_key: easy
+base_environment: Craftax-Classic-Pixels-v1-Text
+use_parafrases: false

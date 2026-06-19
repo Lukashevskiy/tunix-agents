@@ -1,0 +1,24 @@
+site_name: Tunix CrafText
+site_description: JAX-native CrafText training stack
+repo_name: local/tunix-craftext
+theme:
+  name: material
+  language: ru
+  features:
+    - navigation.tabs
+    - content.code.copy
+plugins:
+  - search
+markdown_extensions:
+  - admonition
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+nav:
+  - Обзор: index.md
+  - Архитектура: architecture.md
+  - План реализации: plan.md
+  - Качество и perf: quality.md
+  - Эксперименты: experiments.md
+  - ADR:
+      - Границы системы: adr/0001-system-boundaries.md
