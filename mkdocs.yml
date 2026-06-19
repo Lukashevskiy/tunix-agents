@@ -10,6 +10,8 @@ theme:
 extra_javascript:
   - https://unpkg.com/mermaid@10.9.1/dist/mermaid.min.js
   - javascripts/mermaid.js
+  - https://unpkg.com/cytoscape@3.30.2/dist/cytoscape.min.js
+  - javascripts/task-graph.js
 extra_css:
   - stylesheets/kanban.css
 plugins:

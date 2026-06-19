@@ -30,5 +30,5 @@ def test_dashboard_generation_writes_current_project_pages() -> None:
     assert "action-mask" in kanban
 
     graph = (ROOT / "docs" / "_generated" / "task-graph.md").read_text(encoding="utf-8")
-    assert "flowchart LR" in graph
-    assert "classDef active" in graph
+    assert 'id="task-graph-data"' in graph
+    assert '"type": "task"' in graph

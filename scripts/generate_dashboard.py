@@ -245,22 +245,43 @@ _Автогенерация: `{built_at}` из `docs/plan.md`. Меняйте с
     )
 
     status_counts = {status: sum(1 for _, item_status, _ in cards if item_status == status) for status, _ in lane_names}
-    graph_lines = ["flowchart LR"]
-    status_classes = {"done": "done", "active": "active", "planned": "planned"}
+    palette = {
+        "done": {"color": "#238636", "border": "#3fb950", "label": "Сделано"},
+        "active": {"color": "#9e6a03", "border": "#d29922", "label": "В текущей реализации"},
+        "planned": {"color": "#1f6feb", "border": "#58a6ff", "label": "Запланировано"},
+    }
+    graph_elements = []
+    previous_task = None
     for phase_index, phase in enumerate(phases):
         phase_id = f"phase{phase_index}"
-        graph_lines.extend([f'  subgraph {phase_id}["{mermaid_label(phase, 50)}"]', "    direction TB"])
+        graph_elements.append({"data": {"id": phase_id, "label": phase, "type": "module"}})
         for task_index, (_, status, task) in enumerate(card for card in cards if card[0] == phase):
             task_id = f"task{phase_index}_{task_index}"
-            graph_lines.append(f'    {task_id}["{mermaid_label(task)}"]:::{status_classes[status]}')
-        graph_lines.append("  end")
-    graph_lines.extend(
-        [
-            "  classDef done fill:#238636,stroke:#3fb950,color:#fff;",
-            "  classDef active fill:#9e6a03,stroke:#d29922,color:#fff;",
-            "  classDef planned fill:#1f6feb,stroke:#58a6ff,color:#fff;",
-        ]
-    )
+            graph_elements.append(
+                {
+                    "data": {
+                        "id": task_id,
+                        "parent": phase_id,
+                        "type": "task",
+                        "label": mermaid_label(task, 56),
+                        "title": task,
+                        "description": task,
+                        "module": phase,
+                        "statusLabel": palette[status]["label"],
+                        "color": palette[status]["color"],
+                        "border": palette[status]["border"],
+                        "previous": previous_task["title"] if previous_task else "",
+                    }
+                }
+            )
+            if previous_task:
+                graph_elements.append(
+                    {"data": {"id": f"order-{previous_task['id']}-{task_id}", "source": previous_task["id"], "target": task_id}}
+                )
+            previous_task = {"id": task_id, "title": task}
+    graph_json = json.dumps({"elements": graph_elements}, ensure_ascii=False).replace("<", "\\u003c").replace(
+        ">", "\\u003e"
+    ).replace("&", "\\u0026")
     write_page(
         "task-graph.md",
         f"""
@@ -274,14 +295,18 @@ _Автогенерация: `{built_at}` из `docs/plan.md`._
 | В текущей реализации | {status_counts['active']} |
 | Запланировано | {status_counts['planned']} |
 
-```mermaid
-{chr(10).join(graph_lines)}
-```
+<div class="task-graph-toolbar">
+  <button id="task-graph-fit" type="button">Показать весь граф</button>
+  <button id="task-graph-layout" type="button">Переложить узлы</button>
+  <span>Колесо — zoom · drag background — pan · drag task — переместить · click — карточка задачи</span>
+</div>
+<div id="task-graph"></div>
+<div id="task-graph-detail" class="task-graph-detail">Выберите задачу, чтобы увидеть её описание и связь.</div>
+<script id="task-graph-data" type="application/json">{graph_json}</script>
 
-Каждый кластер — тематический модуль/этап, каждый узел — отдельная задача. Цвета совпадают с
-Kanban: зелёный — готово, янтарный — в текущей реализации, синий — запланировано. Сейчас граф
-показывает объём и принадлежность задач к модулям; dependency-стрелки появятся из
-`docs/tasks.json`, когда будет добавлен интерактивный редактор.
+Каждый узел — конкретная задача, а стрелки показывают текущий **выведенный порядок исполнения**
+из roadmap, включая переход между модулями. Это позволяет увидеть критический «хвост» уже сейчас;
+после появления `docs/tasks.json` стрелки будут заменены на явно заданные зависимости.
 """,
     )
 

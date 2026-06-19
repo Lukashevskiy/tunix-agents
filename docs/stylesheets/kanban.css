@@ -35,6 +35,48 @@
 
 .kanban-empty { color: var(--md-default-fg-color--lighter); font-size: .8rem; }
 
+.task-graph-toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin: 1rem 0;
+}
+
+.task-graph-toolbar button {
+  background: var(--md-primary-fg-color);
+  border: 0;
+  border-radius: .2rem;
+  color: var(--md-primary-bg-color);
+  cursor: pointer;
+  padding: .45rem .8rem;
+}
+
+.task-graph-toolbar span { font-size: .8rem; }
+
+#task-graph {
+  background: radial-gradient(circle at top, var(--md-code-bg-color), var(--md-default-bg-color));
+  border: 1px solid var(--md-default-fg-color--lighter);
+  border-radius: .4rem;
+  height: 46rem;
+  width: 100%;
+}
+
+.task-graph-detail {
+  background: var(--md-code-bg-color);
+  border-left: .25rem solid var(--md-primary-fg-color);
+  margin-top: 1rem;
+  min-height: 4rem;
+  padding: .8rem 1rem;
+}
+
+.task-graph-detail h2 { font-size: 1rem; margin: 0 0 .35rem; }
+.task-graph-detail p { font-size: .85rem; margin: .35rem 0; }
+
+@media screen and (max-width: 44.9375em) {
+  #task-graph { height: 34rem; }
+}
+
 @media screen and (max-width: 76.1875em) {
   .kanban-board { grid-template-columns: 1fr; }
 }
