@@ -1,0 +1,4 @@
+interface:
+  display_name: "Task Board Sync"
+  short_description: "Synchronize roadmap and Kanban"
+  default_prompt: "Synchronize the task board after this change."

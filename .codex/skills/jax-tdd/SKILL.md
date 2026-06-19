@@ -31,4 +31,5 @@ Turn the desired property into a failing test before changing production code. R
 Run the narrow tests first, then `make verify`. For a hot-path change, also run `make perf` and
 save benchmark evidence or explicitly record why profiling is inapplicable. Report skips as
 missing environment evidence, not successful integration. Before committing, update the relevant
-documentation, roadmap checkbox and capability status; only verified behaviour may be `ready`.
+documentation, roadmap checkbox and capability status, then run `$task-board-sync` / `make
+sync-tasks`; only verified behaviour may be `ready`.

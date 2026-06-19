@@ -1,6 +1,6 @@
 PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 
-.PHONY: audit test integration perf docs api-docs serve provenance verify
+.PHONY: audit test integration perf docs api-docs serve provenance sync-tasks verify
 
 audit:
 	$(PYTHON) .codex/skills/repository-audit/scripts/audit_repo.py
@@ -28,6 +28,9 @@ serve:
 provenance:
 	$(PYTHON) scripts/export_provenance.py
 
-verify: audit test integration docs api-docs
-	@echo "Verified audit, unit/integration tests, MkDocs and Sphinx API documentation."
+sync-tasks:
+	$(PYTHON) .codex/skills/task-board-sync/scripts/sync_task_views.py
+
+verify: audit test integration sync-tasks api-docs
+	@echo "Verified audit, unit/integration tests, task-board sync, MkDocs and Sphinx API documentation."
 	@echo "For any hot-path change, also run 'make perf' and save or explicitly waive benchmark evidence."
