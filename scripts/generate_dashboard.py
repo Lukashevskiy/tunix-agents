@@ -144,6 +144,12 @@ def write_page(name: str, body: str) -> None:
     (GENERATED / name).write_text(body.strip() + "\n", encoding="utf-8")
 
 
+def mermaid_label(value: str, limit: int = 86) -> str:
+    """Return a concise Mermaid-safe node label while retaining the task's meaning."""
+    normalized = " ".join(value.replace('"', "'").split())
+    return normalized if len(normalized) <= limit else f"{normalized[: limit - 1]}…"
+
+
 def generate() -> None:
     done, total, phases = plan_progress()
     percent = 0 if not total else round(100 * done / total, 1)
@@ -235,6 +241,47 @@ _Автогенерация: `{built_at}` из `docs/plan.md`. Меняйте с
 `[x]` — сделано, `[~]` — текущая реализация, `[ ]` — запланировано.
 
 {chr(10).join(boards)}
+""",
+    )
+
+    status_counts = {status: sum(1 for _, item_status, _ in cards if item_status == status) for status, _ in lane_names}
+    graph_lines = ["flowchart LR"]
+    status_classes = {"done": "done", "active": "active", "planned": "planned"}
+    for phase_index, phase in enumerate(phases):
+        phase_id = f"phase{phase_index}"
+        graph_lines.extend([f'  subgraph {phase_id}["{mermaid_label(phase, 50)}"]', "    direction TB"])
+        for task_index, (_, status, task) in enumerate(card for card in cards if card[0] == phase):
+            task_id = f"task{phase_index}_{task_index}"
+            graph_lines.append(f'    {task_id}["{mermaid_label(task)}"]:::{status_classes[status]}')
+        graph_lines.append("  end")
+    graph_lines.extend(
+        [
+            "  classDef done fill:#238636,stroke:#3fb950,color:#fff;",
+            "  classDef active fill:#9e6a03,stroke:#d29922,color:#fff;",
+            "  classDef planned fill:#1f6feb,stroke:#58a6ff,color:#fff;",
+        ]
+    )
+    write_page(
+        "task-graph.md",
+        f"""
+# Граф задач и объёма работы
+
+_Автогенерация: `{built_at}` из `docs/plan.md`._
+
+| Статус | Задач |
+| --- | ---: |
+| Сделано | {status_counts['done']} |
+| В текущей реализации | {status_counts['active']} |
+| Запланировано | {status_counts['planned']} |
+
+```mermaid
+{chr(10).join(graph_lines)}
+```
+
+Каждый кластер — тематический модуль/этап, каждый узел — отдельная задача. Цвета совпадают с
+Kanban: зелёный — готово, янтарный — в текущей реализации, синий — запланировано. Сейчас граф
+показывает объём и принадлежность задач к модулям; dependency-стрелки появятся из
+`docs/tasks.json`, когда будет добавлен интерактивный редактор.
 """,
     )
 

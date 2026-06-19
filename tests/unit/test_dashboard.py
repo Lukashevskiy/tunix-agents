@@ -28,3 +28,7 @@ def test_dashboard_generation_writes_current_project_pages() -> None:
     assert "kanban-lane--active" in kanban
     assert "CrafTextAdapter.reset/step" in kanban
     assert "action-mask" in kanban
+
+    graph = (ROOT / "docs" / "_generated" / "task-graph.md").read_text(encoding="utf-8")
+    assert "flowchart LR" in graph
+    assert "classDef active" in graph

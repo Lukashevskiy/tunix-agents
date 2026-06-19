@@ -26,6 +26,7 @@ markdown_extensions:
 nav:
   - Dashboard: _generated/dashboard.md
   - Kanban: _generated/kanban.md
+  - Граф задач: _generated/task-graph.md
   - Обзор: index.md
   - Архитектура: architecture.md
   - Model interoperability: interop.md
