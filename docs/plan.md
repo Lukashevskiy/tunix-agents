@@ -12,7 +12,7 @@
 - [ ] Зафиксировать Python/JAX/JAXLIB/Tunix/Flax/Optax/Orbax в lockfile для CPU и целевого
    accelerator, с отдельной таблицей compatibility.
 - [ ] Вынести exact source revision и SHA256 vendor-снимков в `vendor/manifest.json`.
-- [ ] Написать `CrafTextAdapter.reset/step`, который возвращает статические pytree и
+- [~] Написать `CrafTextAdapter.reset/step`, который возвращает статические pytree и
    action-mask; сделать Caged-вариант тем же протоколом.
 - [ ] Создать deterministic tiny-world fixture: seed, 2 env, 8 steps, золотая
    последовательность reward/done/allowed actions.

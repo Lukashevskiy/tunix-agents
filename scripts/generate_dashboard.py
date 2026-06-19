@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+from html import escape
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
@@ -22,7 +23,7 @@ GENERATED = DOCS / "_generated"
 PLAN = DOCS / "plan.md"
 STATUS = DOCS / "project_status.json"
 BENCHMARKS = ROOT / "artifacts" / "benchmarks"
-CHECKBOX = re.compile(r"^\s*- \[([ xX])\]\s+(.*)$", re.MULTILINE)
+CHECKBOX = re.compile(r"^\s*- \[([ xX~])\]\s+(.*)$", re.MULTILINE)
 
 
 def command(*args: str) -> str:
@@ -52,6 +53,31 @@ def plan_progress() -> tuple[int, int, list[tuple[str, int, int]]]:
             completed += done
             total += count
     return completed, total, breakdown
+
+
+def plan_cards() -> list[tuple[str, str, str]]:
+    """Return roadmap cards as ``(phase, status, title)`` for the generated Kanban."""
+    text = PLAN.read_text(encoding="utf-8")
+    sections = re.split(r"^##\s+", text, flags=re.MULTILINE)
+    cards: list[tuple[str, str, str]] = []
+    markers = {"x": "done", "~": "active", " ": "planned"}
+    for section in sections[1:]:
+        title, _, body = section.partition("\n")
+        lines = body.splitlines()
+        index = 0
+        while index < len(lines):
+            match = re.match(r"^\s*- \[([ xX~])\]\s+(.*)$", lines[index])
+            if match is None:
+                index += 1
+                continue
+            mark, task = match.groups()
+            continuation = [task.strip()]
+            index += 1
+            while index < len(lines) and lines[index].startswith(("  ", "\t")):
+                continuation.append(lines[index].strip())
+                index += 1
+            cards.append((title.strip(), markers[mark.lower()], " ".join(continuation)))
+    return cards
 
 
 def git_metadata() -> dict[str, Any]:
@@ -177,6 +203,40 @@ _Сгенерировано автоматически: `{built_at}`. Источ
 Смотрите [историю улучшений](changelog.md) и [результаты benchmark](benchmarks.md).
 """
     write_page("dashboard.md", dashboard)
+
+    cards = plan_cards()
+    phases = []
+    for phase, _, _ in cards:
+        if phase not in phases:
+            phases.append(phase)
+    lane_names = (("done", "Сделано"), ("active", "В текущей реализации"), ("planned", "Запланировано"))
+    boards = []
+    for phase in phases:
+        phase_cards = [card for card in cards if card[0] == phase]
+        lanes = []
+        for status, label in lane_names:
+            card_html = "".join(
+                f'<article class="kanban-card">{escape(task)}</article>'
+                for _, item_status, task in phase_cards
+                if item_status == status
+            )
+            lane_contents = card_html or '<p class="kanban-empty">Нет карточек</p>'
+            lanes.append(
+                f'<section class="kanban-lane kanban-lane--{status}"><h3>{label}</h3>'
+                f"{lane_contents}</section>"
+            )
+        boards.append(f"## {escape(phase)}\n\n<div class=\"kanban-board\">{''.join(lanes)}</div>")
+    write_page(
+        "kanban.md",
+        f"""
+# Тематический Kanban
+
+_Автогенерация: `{built_at}` из `docs/plan.md`. Меняйте статус задачи в roadmap:_
+`[x]` — сделано, `[~]` — текущая реализация, `[ ]` — запланировано.
+
+{chr(10).join(boards)}
+""",
+    )
 
     commit_rows = "\n".join(
         f"| `{sha}` | {markdown_escape(subject)} | {markdown_escape(author)} | `{date}` |"

@@ -26,6 +26,11 @@
       "description": "Единый verify-контур выполняет audit, тесты и строгую сборку сайта; Delivery DoD требует typed docstrings, status/docs updates и benchmark evidence для hot path."
     },
     {
+      "name": "Тематический Kanban",
+      "status": "ready",
+      "description": "Генерирует тематические доски «сделано / текущая реализация / запланировано» из единственного roadmap-источника."
+    },
+    {
       "name": "PPO/GRPO, Tunix bridge, Orbax resume",
       "status": "planned",
       "description": "Спроектировано и покрыто quality gates, но ещё не реализовано."

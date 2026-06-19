@@ -23,3 +23,8 @@ def test_dashboard_generation_writes_current_project_pages() -> None:
     rendered = (ROOT / "docs" / "_generated" / "dashboard.md").read_text(encoding="utf-8")
     assert "Прогресс roadmap" in rendered
     assert "Что уже можно делать" in rendered
+
+    kanban = (ROOT / "docs" / "_generated" / "kanban.md").read_text(encoding="utf-8")
+    assert "kanban-lane--active" in kanban
+    assert "CrafTextAdapter.reset/step" in kanban
+    assert "action-mask" in kanban
