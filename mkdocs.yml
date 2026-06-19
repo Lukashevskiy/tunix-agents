@@ -21,6 +21,7 @@ nav:
   - Model interoperability: interop.md
   - План реализации: plan.md
   - Качество и perf: quality.md
+  - Поставка изменений: delivery.md
   - Эксперименты: experiments.md
   - История изменений: _generated/changelog.md
   - Бенчмарки: _generated/benchmarks.md

@@ -25,6 +25,7 @@ Turn the desired property into a failing test before changing production code. R
 
 ## Required verification
 
-Run the narrow tests first, then `pytest tests/unit tests/integration`. Report skips as missing
-environment evidence, not successful integration. Update the quality docs and dashboard status
-only for verified behaviour.
+Run the narrow tests first, then `make verify`. For a hot-path change, also run `make perf` and
+save benchmark evidence or explicitly record why profiling is inapplicable. Report skips as
+missing environment evidence, not successful integration. Before committing, update the relevant
+documentation, roadmap checkbox and capability status; only verified behaviour may be `ready`.

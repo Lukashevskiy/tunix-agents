@@ -21,6 +21,11 @@
       "description": "Преобразует декларативно описанный state_dict в JAX/Flax PyTree, валидирует формы и merge-ит стандартные LoRA adapters."
     },
     {
+      "name": "Delivery gate",
+      "status": "ready",
+      "description": "Единый verify-контур выполняет audit, тесты и строгую сборку сайта; для hot path требует отдельного benchmark evidence."
+    },
+    {
       "name": "PPO/GRPO, Tunix bridge, Orbax resume",
       "status": "planned",
       "description": "Спроектировано и покрыто quality gates, но ещё не реализовано."

@@ -20,6 +20,8 @@ first. It is read-only and emits structured findings.
    passing test; every benchmark claim must have commit, hardware and config/seed metadata.
 5. Inspect dependency boundaries: no training logic in `vendor/`; no optional Tunix/HF/Torch
    import in the core import path; no pickle checkpoint loader.
+6. Enforce `docs/delivery.md`: ensure the change has test evidence, applicable benchmark evidence,
+   updated documentation/status, an intentional commit and a regenerated site.
 
 ## Report format
 

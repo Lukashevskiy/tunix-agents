@@ -1,10 +1,13 @@
-.PHONY: test integration perf docs serve provenance
+.PHONY: audit test integration perf docs serve provenance verify
+
+audit:
+	python .codex/skills/repository-audit/scripts/audit_repo.py
 
 test:
-	pytest tests/unit
+	PYTHONPATH=src pytest tests/unit
 
 integration:
-	pytest -m integration
+	PYTHONPATH=src pytest -m integration
 
 perf:
 	pytest -m performance --benchmark-only
@@ -19,3 +22,7 @@ serve:
 
 provenance:
 	python scripts/export_provenance.py
+
+verify: audit test integration docs
+	@echo "Verified audit, unit/integration tests and generated documentation."
+	@echo "For any hot-path change, also run 'make perf' and save or explicitly waive benchmark evidence."

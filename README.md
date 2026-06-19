@@ -32,5 +32,8 @@ capability inventory and benchmark tables before running MkDocs. Benchmark JSON 
 under `artifacts/benchmarks/` appear automatically on the next build. The GitHub Pages workflow
 does the same on each push to `main`, weekly, or via manual dispatch.
 
+Every change follows the repository [Definition of Done](docs/delivery.md): audit, applicable
+tests and performance evidence, documentation/status updates, intentional commit and site build.
+
 Read [the execution plan](docs/plan.md), [architecture](docs/architecture.md), and
 [test/benchmark strategy](docs/quality.md) before extending the trainer.
