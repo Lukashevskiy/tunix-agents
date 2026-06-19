@@ -27,6 +27,10 @@ pip install -e '.[envs,tunix,dev]'
 ```
 
 Build the local documentation site with `mkdocs serve` (after `pip install -e '.[docs]'`).
+Use `make docs` instead for the full dashboard build: it refreshes Git status, plan progress,
+capability inventory and benchmark tables before running MkDocs. Benchmark JSON artifacts placed
+under `artifacts/benchmarks/` appear automatically on the next build. The GitHub Pages workflow
+does the same on each push to `main`, weekly, or via manual dispatch.
 
 Read [the execution plan](docs/plan.md), [architecture](docs/architecture.md), and
 [test/benchmark strategy](docs/quality.md) before extending the trainer.

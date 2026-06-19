@@ -1,4 +1,4 @@
-.PHONY: test integration perf docs provenance
+.PHONY: test integration perf docs serve provenance
 
 test:
 	pytest tests/unit
@@ -10,7 +10,12 @@ perf:
 	pytest -m performance --benchmark-only
 
 docs:
+	python scripts/generate_dashboard.py
 	mkdocs build --strict
+
+serve:
+	python scripts/generate_dashboard.py
+	mkdocs serve
 
 provenance:
 	python scripts/export_provenance.py

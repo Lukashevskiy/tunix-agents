@@ -1,0 +1,24 @@
+{
+  "capabilities": [
+    {
+      "name": "Контракт траектории",
+      "status": "ready",
+      "description": "Проверяет time-major формы [T, B, ...], terminal/truncation и bootstrap value до запуска learner."
+    },
+    {
+      "name": "Reference rollout collector",
+      "status": "ready",
+      "description": "Собирает детерминированные batched trajectories через явные policy/step contracts; служит эталоном для будущего JAX scan."
+    },
+    {
+      "name": "Происхождение эксперимента",
+      "status": "ready",
+      "description": "Экспортирует commit, dirty flag, Python и platform в JSON artifact."
+    },
+    {
+      "name": "PPO/GRPO, Tunix bridge, Orbax resume",
+      "status": "planned",
+      "description": "Спроектировано и покрыто quality gates, но ещё не реализовано."
+    }
+  ]
+}

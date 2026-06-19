@@ -5,4 +5,5 @@ __pycache__/
 .benchmarks/
 site/
 artifacts/
+docs/_generated/
 .DS_Store

@@ -15,10 +15,13 @@ markdown_extensions:
   - pymdownx.tabbed:
       alternate_style: true
 nav:
+  - Dashboard: _generated/dashboard.md
   - Обзор: index.md
   - Архитектура: architecture.md
   - План реализации: plan.md
   - Качество и perf: quality.md
   - Эксперименты: experiments.md
+  - История изменений: _generated/changelog.md
+  - Бенчмарки: _generated/benchmarks.md
   - ADR:
       - Границы системы: adr/0001-system-boundaries.md
