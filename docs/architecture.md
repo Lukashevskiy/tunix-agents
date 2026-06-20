@@ -63,6 +63,12 @@ host-side boundary-проверкой: она читает только static `
 `contracts.py`, а не у конкретного collector-а, поэтому контракт одинаково безопасен для
 reference, scan и будущих learner-модулей.
 
+Численные поля публичных `Transition` и `RolloutBatch` аннотированы как `jax.Array`:
+после boundary они уже нормализованы и пригодны для JIT. Reference policy/step могут вернуть
+`jax.typing.ArrayLike`, но collector сразу приводит такие значения в `jax.Array`. Небыстрый,
+не-JIT reference collector намеренно stack-ает на host и нормализует один раз; compiled path
+остаётся целиком JAX. Это допускает NumPy fixture в тесте, не размывая runtime-контракт trainer-а.
+
 ## Tunix как расширяемая граница
 
 Tunix не должен становиться скрытой внутренней зависимостью. `TunixPolicyAdapter`

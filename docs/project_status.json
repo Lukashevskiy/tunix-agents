@@ -3,7 +3,7 @@
     {
       "name": "Контракт траектории",
       "status": "ready",
-      "description": "JAX PyTree-контракт проверяет time-major формы [T, B, ...] всех вложенных leaves, terminal/truncation и bootstrap value до запуска learner."
+      "description": "JAX PyTree-контракт нормализует ArrayLike boundary inputs в jax.Array, проверяет time-major формы [T, B, ...] всех вложенных leaves, terminal/truncation и bootstrap value до запуска learner."
     },
     {
       "name": "Reference rollout collector",

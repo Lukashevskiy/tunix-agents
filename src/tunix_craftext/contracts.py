@@ -3,18 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Generic, TypeVar, cast
+from typing import Generic, TypeVar
 
 import jax
 import jax.numpy as jnp
 
 ObservationT = TypeVar("ObservationT")
 ActionT = TypeVar("ActionT")
-ArrayT = TypeVar("ArrayT")
-
-
 @dataclass(frozen=True)
-class Transition(Generic[ObservationT, ActionT, ArrayT]):
+class Transition(Generic[ObservationT, ActionT]):
     """Represent one synchronous environment step with a leading batch axis.
 
     :ivar observation: Batched observation PyTree.
@@ -28,24 +25,24 @@ class Transition(Generic[ObservationT, ActionT, ArrayT]):
 
     observation: ObservationT
     action: ActionT
-    reward: ArrayT
-    terminated: ArrayT
-    truncated: ArrayT
-    log_prob: ArrayT
-    value: ArrayT
+    reward: jax.Array
+    terminated: jax.Array
+    truncated: jax.Array
+    log_prob: jax.Array
+    value: jax.Array
 
     @property
-    def done(self) -> ArrayT:
+    def done(self) -> jax.Array:
         """Return the JAX-compatible terminal-or-truncated mask with shape ``[T, B]``."""
-        return cast(ArrayT, jnp.logical_or(self.terminated, self.truncated))
+        return jnp.logical_or(self.terminated, self.truncated)
 
 
 @dataclass(frozen=True)
-class RolloutBatch(Generic[ObservationT, ActionT, ArrayT]):
+class RolloutBatch(Generic[ObservationT, ActionT]):
     """A time-major `[T, B, ...]` rollout plus bootstrap values `[B]`."""
 
-    transitions: Transition[ObservationT, ActionT, ArrayT]
-    bootstrap_value: ArrayT
+    transitions: Transition[ObservationT, ActionT]
+    bootstrap_value: jax.Array
 
     def validate(self) -> None:
         """Validate the mandatory time-major rollout axes without host array conversion.

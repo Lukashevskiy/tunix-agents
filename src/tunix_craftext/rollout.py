@@ -7,33 +7,39 @@ from typing import Protocol, TypeVar, cast
 import jax
 import jax.numpy as jnp
 import numpy as np
+from jax.typing import ArrayLike
 
-from .contracts import ActionT, ArrayT, ObservationT, RolloutBatch, Transition
+from .contracts import ActionT, ObservationT, RolloutBatch, Transition
 
 StateT = TypeVar("StateT")
+TreeT = TypeVar("TreeT")
+PolicyObservationT = TypeVar("PolicyObservationT", contravariant=True)
+PolicyActionT = TypeVar("PolicyActionT", covariant=True)
+StepActionT = TypeVar("StepActionT", contravariant=True)
+StepObservationT = TypeVar("StepObservationT", covariant=True)
 
 
-class PolicyFn(Protocol[ObservationT, ActionT, ArrayT]):
+class PolicyFn(Protocol[PolicyObservationT, PolicyActionT]):
     """Policy signature used by the framework-neutral reference collector."""
 
-    def __call__(self, observation: ObservationT) -> tuple[ActionT, ArrayT, ArrayT]: ...
+    def __call__(self, observation: PolicyObservationT) -> tuple[PolicyActionT, ArrayLike, ArrayLike]: ...
 
 
-class StepFn(Protocol[StateT, ActionT, ObservationT, ArrayT]):
+class StepFn(Protocol[StateT, StepActionT, StepObservationT]):
     """Synchronous environment signature used by the reference collector."""
 
     def __call__(
-        self, state: StateT, action: ActionT
-    ) -> tuple[StateT, ObservationT, ArrayT, ArrayT, ArrayT]: ...
+        self, state: StateT, action: StepActionT
+    ) -> tuple[StateT, StepObservationT, ArrayLike, ArrayLike, ArrayLike]: ...
 
 
 def collect_rollout(
     initial_state: StateT,
     initial_observation: ObservationT,
     horizon: int,
-    policy: PolicyFn[ObservationT, ActionT, ArrayT],
-    step: StepFn[StateT, ActionT, ObservationT, ArrayT],
-) -> tuple[StateT, ObservationT, RolloutBatch[ObservationT, ActionT, ArrayT]]:
+    policy: PolicyFn[ObservationT, ActionT],
+    step: StepFn[StateT, ActionT, ObservationT],
+) -> tuple[StateT, ObservationT, RolloutBatch[ObservationT, ActionT]]:
     """Collect a deterministic, time-major rollout.
 
     The production version will be `jax.lax.scan`; this reference implementation is the
@@ -50,14 +56,26 @@ def collect_rollout(
     if horizon <= 0:
         raise ValueError("horizon must be positive")
     state, observation = initial_state, initial_observation
-    records: list[tuple[ObservationT, ActionT, ArrayT, ArrayT, ArrayT, ArrayT, ArrayT]] = []
+    records: list[tuple[ObservationT, ActionT, ArrayLike, ArrayLike, ArrayLike, ArrayLike, ArrayLike]] = []
     for _ in range(horizon):
         action, log_prob, value = policy(observation)
         next_state, next_observation, reward, terminated, truncated = step(state, action)
         records.append((observation, action, reward, terminated, truncated, log_prob, value))
         state, observation = next_state, next_observation
-    fields = tuple(cast(ArrayT, np.stack([record[index] for record in records])) for index in range(7))
-    batch = RolloutBatch(Transition(*fields), policy(observation)[2])
+    observations = _stack_pytree([record[0] for record in records])
+    actions = _stack_pytree([record[1] for record in records])
+    batch = RolloutBatch(
+        Transition(
+            observation=observations,
+            action=actions,
+            reward=_stack_arraylike([record[2] for record in records]),
+            terminated=_stack_arraylike([record[3] for record in records]),
+            truncated=_stack_arraylike([record[4] for record in records]),
+            log_prob=_stack_arraylike([record[5] for record in records]),
+            value=_stack_arraylike([record[6] for record in records]),
+        ),
+        bootstrap_value=jnp.asarray(policy(observation)[2]),
+    )
     batch.validate()
     return state, observation, batch
 
@@ -66,9 +84,9 @@ def collect_rollout_scan(
     initial_state: StateT,
     initial_observation: ObservationT,
     horizon: int,
-    policy: PolicyFn[ObservationT, ActionT, ArrayT],
-    step: StepFn[StateT, ActionT, ObservationT, ArrayT],
-) -> tuple[StateT, ObservationT, RolloutBatch[ObservationT, ActionT, ArrayT]]:
+    policy: PolicyFn[ObservationT, ActionT],
+    step: StepFn[StateT, ActionT, ObservationT],
+) -> tuple[StateT, ObservationT, RolloutBatch[ObservationT, ActionT]]:
     """Collect a fixed-horizon rollout using ``jax.lax.scan``.
 
     The function is pure and JIT-safe when ``policy`` and ``step`` are pure JAX functions and
@@ -88,14 +106,42 @@ def collect_rollout_scan(
 
     def scan_step(
         carry: tuple[StateT, ObservationT], _: jax.Array
-    ) -> tuple[tuple[StateT, ObservationT], tuple[ObservationT, ActionT, ArrayT, ArrayT, ArrayT, ArrayT, ArrayT]]:
+    ) -> tuple[
+        tuple[StateT, ObservationT],
+        tuple[ObservationT, ActionT, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array],
+    ]:
         state, observation = carry
         action, log_prob, value = policy(observation)
         next_state, next_observation, reward, terminated, truncated = step(state, action)
-        return (next_state, next_observation), (observation, action, reward, terminated, truncated, log_prob, value)
+        return (next_state, next_observation), (
+            observation,
+            action,
+            jnp.asarray(reward),
+            jnp.asarray(terminated),
+            jnp.asarray(truncated),
+            jnp.asarray(log_prob),
+            jnp.asarray(value),
+        )
 
     (final_state, final_observation), fields = jax.lax.scan(
         scan_step, (initial_state, initial_observation), xs=jnp.arange(horizon)
     )
-    bootstrap_value = policy(final_observation)[2]
-    return final_state, final_observation, RolloutBatch(Transition(*fields), bootstrap_value)
+    bootstrap_value = jnp.asarray(policy(final_observation)[2])
+    observation, action, reward, terminated, truncated, log_prob, value = fields
+    return final_state, final_observation, RolloutBatch(
+        Transition(observation, action, reward, terminated, truncated, log_prob, value), bootstrap_value
+    )
+
+
+def _stack_pytree(values: list[TreeT]) -> TreeT:
+    """Stack reference PyTrees on host, then normalize leaves to ``jax.Array`` once."""
+    return cast(TreeT, jax.tree.map(lambda *leaves: _stack_arraylike(list(leaves)), *values))
+
+
+def _stack_arraylike(values: list[ArrayLike]) -> jax.Array:
+    """Stack a host reference field and return its normalized JAX contract array.
+
+    ``collect_rollout`` is deliberately the non-jitted oracle. Host stacking avoids a series of
+    eager JAX dispatches while preserving the ``jax.Array`` output contract used for parity.
+    """
+    return jnp.asarray(np.stack(values))

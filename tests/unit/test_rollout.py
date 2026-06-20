@@ -16,6 +16,8 @@ def test_collect_rollout_is_time_major_and_preserves_terminal_flags() -> None:
     _, _, batch = collect_rollout(np.array([0, 0]), np.array([0, 0]), 3, policy, step)
 
     assert batch.transitions.reward.shape == (3, 2)
+    assert isinstance(batch.transitions.reward, jax.Array)
+    assert isinstance(batch.bootstrap_value, jax.Array)
     np.testing.assert_array_equal(batch.transitions.action[:, 0], [1, 2, 4])
     np.testing.assert_array_equal(batch.transitions.terminated[:, 0], [False, False, True])
     np.testing.assert_array_equal(batch.bootstrap_value, [0.25, 0.25])
