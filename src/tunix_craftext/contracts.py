@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Generic, TypeVar, cast
 
-import numpy as np
-
+import jax
+import jax.numpy as jnp
 
 ObservationT = TypeVar("ObservationT")
 ActionT = TypeVar("ActionT")
@@ -36,7 +36,8 @@ class Transition(Generic[ObservationT, ActionT, ArrayT]):
 
     @property
     def done(self) -> ArrayT:
-        return cast(ArrayT, np.logical_or(self.terminated, self.truncated))
+        """Return the JAX-compatible terminal-or-truncated mask with shape ``[T, B]``."""
+        return cast(ArrayT, jnp.logical_or(self.terminated, self.truncated))
 
 
 @dataclass(frozen=True)
@@ -47,17 +48,50 @@ class RolloutBatch(Generic[ObservationT, ActionT, ArrayT]):
     bootstrap_value: ArrayT
 
     def validate(self) -> None:
-        """Validate the mandatory time-major rollout axes.
+        """Validate the mandatory time-major rollout axes without host array conversion.
 
-        :raises ValueError: If a required field does not begin with the reward's ``[T, B]``
-            axes or bootstrap value is not ``[B]``.
+        This is a host-side boundary check; do not call it within ``jax.jit``. Every leaf in the
+        observation/action/value PyTrees must begin with the same ``[T, B]`` axes as reward.
+
+        :raises ValueError: If a field leaf lacks shape metadata, has incompatible leading axes,
+            or bootstrap value is not batch-major ``[B, ...]``.
         """
-        leaves = self.transitions
-        reward = np.asarray(leaves.reward)
-        if reward.ndim != 2:
+        reward_shape = _shape_of(self.transitions.reward, "reward")
+        if len(reward_shape) != 2:
             raise ValueError("reward must be time-major with shape [T, B]")
-        for name in ("terminated", "truncated", "log_prob", "value"):
-            if np.asarray(getattr(leaves, name)).shape[:2] != reward.shape:
-                raise ValueError(f"{name} must begin with rollout shape {reward.shape}")
-        if np.asarray(self.bootstrap_value).shape != reward.shape[1:]:
-            raise ValueError("bootstrap_value must have shape [B]")
+        expected_rollout_axes = reward_shape
+        for name in ("observation", "action", "terminated", "truncated", "log_prob", "value"):
+            _validate_tree_axes(getattr(self.transitions, name), name, expected_rollout_axes)
+        _validate_tree_axes(self.bootstrap_value, "bootstrap_value", expected_rollout_axes[1:])
+
+
+def _shape_of(value: object, field_name: str) -> tuple[int, ...]:
+    """Read static shape metadata from one NumPy/JAX leaf without materializing it on host."""
+    shape = getattr(value, "shape", None)
+    if shape is None:
+        raise ValueError(f"{field_name} leaf must expose static shape metadata")
+    return tuple(shape)
+
+
+def _validate_tree_axes(value: object, field_name: str, expected_axes: tuple[int, ...]) -> None:
+    """Ensure every JAX PyTree leaf begins with the contract's declared axes."""
+    leaves = jax.tree_util.tree_leaves(value)
+    if not leaves:
+        raise ValueError(f"{field_name} must contain at least one array leaf")
+    for index, leaf in enumerate(leaves):
+        shape = _shape_of(leaf, field_name)
+        if tuple(shape[: len(expected_axes)]) != expected_axes:
+            raise ValueError(f"{field_name} leaf {index} must begin with axes {expected_axes}, got {shape}")
+
+
+def _register_contract_pytrees() -> None:
+    """Register public contract dataclasses at their definition boundary for JIT returns."""
+    jax.tree_util.register_dataclass(
+        Transition,
+        data_fields=["observation", "action", "reward", "terminated", "truncated", "log_prob", "value"],
+        meta_fields=[],
+    )
+    jax.tree_util.register_dataclass(RolloutBatch, data_fields=["transitions", "bootstrap_value"], meta_fields=[])
+
+
+_register_contract_pytrees()

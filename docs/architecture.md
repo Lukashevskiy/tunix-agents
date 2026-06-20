@@ -57,6 +57,12 @@ Contract golden fixture запускает два детерминированн
 JAX PyTrees, поэтому collector можно оборачивать в `jax.jit`. Любой новый policy/env сначала
 сверяется leaf-by-leaf с `collect_rollout`; compilation/warmup измеряется отдельно от steady state.
 
+`Transition.done` использует `jax.numpy`, а `RolloutBatch.validate()` намеренно остаётся
+host-side boundary-проверкой: она читает только static `shape` metadata и валидирует ведущие
+оси каждой leaf во вложенных observation/action PyTrees. Регистрация PyTree находится в
+`contracts.py`, а не у конкретного collector-а, поэтому контракт одинаково безопасен для
+reference, scan и будущих learner-модулей.
+
 ## Tunix как расширяемая граница
 
 Tunix не должен становиться скрытой внутренней зависимостью. `TunixPolicyAdapter`

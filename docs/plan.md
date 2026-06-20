@@ -5,6 +5,8 @@
 - [x] Отдельный git-репозиторий и vendor snapshot CrafText, CagedCrafText, MegaPrompts.
 - [x] Лицензии исходных пакетов сохранены внутри vendor.
 - [x] Нейтральный контракт trajectory и тестируемый reference collector.
+- [x] JAX-native trajectory contracts: PyTree registration рядом с типами, JIT-safe terminal mask
+  и полная shape-проверка вложенных observation/action leaves на host boundary.
 - [x] Unit, integration и performance test lanes; MkDocs site и ADR.
 
 ## 1. Совместимость и измеримая baseline

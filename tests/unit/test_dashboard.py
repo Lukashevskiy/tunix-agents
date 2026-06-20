@@ -12,8 +12,8 @@ SPEC.loader.exec_module(dashboard)
 def test_plan_progress_counts_completed_and_pending_items() -> None:
     completed, total, phases = dashboard.plan_progress()
 
-    assert completed == 6
-    assert total == 33
+    assert completed == 7
+    assert total == 34
     assert phases[0][0].startswith("0.")
 
 

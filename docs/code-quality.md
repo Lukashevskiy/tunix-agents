@@ -24,6 +24,10 @@
 sharding axis, dtype, допустимые shapes и numerical tolerance. Pure/JIT functions не должны
 полагаться на скрытый host state или неявный global RNG.
 
+JAX contracts сами регистрируют свои immutable dataclasses как PyTrees в module of definition.
+Не выполнять registration в consumer module и не использовать NumPy host conversion внутри
+JIT-visible methods: shape validation — отдельная host-side boundary операция.
+
 ## Review checklist
 
 Перед commit проверить: добавлены ли annotations и docstrings; может ли вызывающий понять shape

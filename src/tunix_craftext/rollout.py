@@ -13,26 +13,6 @@ from .contracts import ActionT, ArrayT, ObservationT, RolloutBatch, Transition
 StateT = TypeVar("StateT")
 
 
-def _register_rollout_pytrees() -> None:
-    """Register immutable public contracts once so a jitted collector can return them.
-
-    :returns: None. Registration is process-global and idempotent across normal module imports.
-    """
-    try:
-        jax.tree_util.register_dataclass(
-            Transition,
-            data_fields=["observation", "action", "reward", "terminated", "truncated", "log_prob", "value"],
-            meta_fields=[],
-        )
-        jax.tree_util.register_dataclass(RolloutBatch, data_fields=["transitions", "bootstrap_value"], meta_fields=[])
-    except ValueError:
-        # A notebook reload may register the same public dataclass before this import.
-        pass
-
-
-_register_rollout_pytrees()
-
-
 class PolicyFn(Protocol[ObservationT, ActionT, ArrayT]):
     """Policy signature used by the framework-neutral reference collector."""
 
