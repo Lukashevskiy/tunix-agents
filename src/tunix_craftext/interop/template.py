@@ -8,9 +8,16 @@ can appear to load while producing nonsense.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Mapping, Optional, Sequence, Tuple
+from collections.abc import Mapping, Sequence
+from typing import Optional, TypeAlias
 
-import numpy as np
+import jax
+import jax.numpy as jnp
+from jax.typing import ArrayLike
+
+
+ParameterTree: TypeAlias = "dict[str, jax.Array | ParameterTree]"
+ParameterTreeLike: TypeAlias = "Mapping[str, ArrayLike | ParameterTreeLike]"
 
 
 class ConversionError(ValueError):
@@ -22,9 +29,9 @@ class TensorRule:
     """One explicit source tensor → JAX PyTree leaf transformation."""
 
     source: str
-    target: Tuple[str, ...]
+    target: tuple[str, ...]
     transform: str = "identity"
-    expected_shape: Optional[Tuple[int, ...]] = None
+    expected_shape: Optional[tuple[int, ...]] = None
 
     def __post_init__(self) -> None:
         if self.transform not in {"identity", "transpose_2d"}:
@@ -38,7 +45,7 @@ class ModelTemplate:
     """Architecture label and a complete, versionable mapping of its tensors."""
 
     name: str
-    rules: Tuple[TensorRule, ...]
+    rules: tuple[TensorRule, ...]
     source_format: str = "generic-state-dict"
 
     def __post_init__(self) -> None:
@@ -48,8 +55,9 @@ class ModelTemplate:
             raise ConversionError("template source and target paths must be unique")
 
 
-def _set_path(tree: dict[str, Any], path: Sequence[str], value: Any) -> None:
-    current = tree
+def _set_path(tree: ParameterTree, path: Sequence[str], value: jax.Array) -> None:
+    """Set one JAX parameter leaf at a validated nested string path."""
+    current: ParameterTree = tree
     for name in path[:-1]:
         child = current.setdefault(name, {})
         if not isinstance(child, dict):
@@ -58,31 +66,37 @@ def _set_path(tree: dict[str, Any], path: Sequence[str], value: Any) -> None:
     current[path[-1]] = value
 
 
-def _as_jax_compatible(value: np.ndarray) -> Any:
-    """Use JAX arrays when available without making converter unit tests require JAX."""
-    try:
-        import jax.numpy as jnp
+def _as_jax_array(value: ArrayLike) -> jax.Array:
+    """Normalize one accepted external tensor into an immutable JAX array leaf."""
+    return jnp.asarray(value)
 
-        return jnp.asarray(value)
-    except ImportError:
-        return value
+
+def normalize_parameter_tree(tree: ParameterTreeLike) -> ParameterTree:
+    """Recursively normalize external parameter leaves into a JAX-only parameter tree."""
+    normalized: ParameterTree = {}
+    for name, value in tree.items():
+        if isinstance(value, Mapping):
+            normalized[name] = normalize_parameter_tree(value)
+        else:
+            normalized[name] = _as_jax_array(value)
+    return normalized
 
 
 def convert_state_dict(
-    state_dict: Mapping[str, Any], template: ModelTemplate, *, strict: bool = True
-) -> dict[str, Any]:
+    state_dict: Mapping[str, ArrayLike], template: ModelTemplate, *, strict: bool = True
+) -> ParameterTree:
     """Convert named external tensors into a nested Flax/JAX-compatible parameter PyTree.
 
     Linear kernels need an explicit `transpose_2d` rule for the common PyTorch `[out, in]`
     to Flax `[in, out]` conversion. Extra checkpoint tensors fail in strict mode, preventing
     a partial or mismatched model from masquerading as a successful conversion.
     """
-    result: dict[str, Any] = {}
+    result: ParameterTree = {}
     used: set[str] = set()
     for rule in template.rules:
         if rule.source not in state_dict:
             raise ConversionError(f"missing required source tensor: {rule.source}")
-        value = np.asarray(state_dict[rule.source])
+        value = jnp.asarray(state_dict[rule.source])
         if rule.transform == "transpose_2d":
             if value.ndim != 2:
                 raise ConversionError(f"{rule.source} must be rank 2 for transpose_2d")
@@ -92,7 +106,7 @@ def convert_state_dict(
                 f"{rule.source} maps to {'.'.join(rule.target)} with shape {value.shape}; "
                 f"expected {rule.expected_shape}"
             )
-        _set_path(result, rule.target, _as_jax_compatible(value))
+        _set_path(result, rule.target, _as_jax_array(value))
         used.add(rule.source)
     if strict:
         unexpected = sorted(set(state_dict) - used)

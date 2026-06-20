@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+import jax
 
 from tunix_craftext.adapters import AdapterContractError, CagedCrafTextAdapter, CrafTextAdapter
 from tests.fixtures.tiny_craftext import TinyCrafText
@@ -13,6 +14,9 @@ def test_reset_and_step_normalize_craftext_done_and_static_action_mask() -> None
     second = adapter.step(key=9, state=first.state, action=1)
 
     np.testing.assert_array_equal(reset.observation, [7, 0])
+    assert isinstance(reset.action_mask, jax.Array)
+    assert isinstance(first.reward, jax.Array)
+    assert isinstance(first.terminated, jax.Array)
     np.testing.assert_array_equal(reset.action_mask, [True, True, True])
     np.testing.assert_array_equal(first.terminated, False)
     np.testing.assert_array_equal(first.truncated, False)

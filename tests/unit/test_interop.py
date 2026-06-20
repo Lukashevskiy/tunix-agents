@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+import jax
 
 from tunix_craftext.interop import (
     ConversionError,
@@ -26,6 +27,7 @@ def test_template_converts_pytorch_linear_layout_to_flax_kernel() -> None:
 
     np.testing.assert_array_equal(params["Dense_0"]["kernel"], [[0, 2, 4], [1, 3, 5]])
     np.testing.assert_array_equal(params["Dense_0"]["bias"], [1, 2, 3])
+    assert isinstance(params["Dense_0"]["kernel"], jax.Array)
 
 
 def test_template_rejects_unmapped_tensor_in_strict_mode() -> None:
@@ -47,4 +49,5 @@ def test_lora_merge_uses_flax_kernel_orientation_without_mutating_base() -> None
     merged = merge_lora_adapters(params, [adapter])
 
     np.testing.assert_array_equal(merged["Dense_0"]["kernel"], [[3, 4, 5], [6, 8, 10]])
+    assert isinstance(merged["Dense_0"]["kernel"], jax.Array)
     np.testing.assert_array_equal(params["Dense_0"]["kernel"], np.zeros((2, 3)))

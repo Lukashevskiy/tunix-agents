@@ -18,7 +18,7 @@
     {
       "name": "Конвертация весов и LoRA",
       "status": "ready",
-      "description": "Преобразует декларативно описанный state_dict в JAX/Flax PyTree, валидирует формы и merge-ит стандартные LoRA adapters."
+      "description": "Нормализует внешние ArrayLike state_dict/LoRA leaves в typed JAX/Flax parameter tree, валидирует формы и merge-ит стандартные adapters."
     },
     {
       "name": "Delivery gate",

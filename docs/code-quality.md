@@ -32,6 +32,11 @@ JIT-visible methods: shape validation — отдельная host-side boundary 
 принимающем boundary и `jax.Array` в нормализованных публичных контрактах. Не вводить общий
 `ArrayT` ради совместимости с массивами, которые не переживут `jax.jit`.
 
+В зафиксированной версии JAX нет публичного type alias для значения PyTree: `PyTreeDef` описывает
+структуру runtime, а не тип данных. Поэтому opaque observation/state остаются честными generics,
+а известное дерево параметров описывается рекурсивно (`ParameterTreeLike` → `ParameterTree`),
+где каждая нормализованная leaf — `jax.Array`.
+
 ## Review checklist
 
 Перед commit проверить: добавлены ли annotations и docstrings; может ли вызывающий понять shape

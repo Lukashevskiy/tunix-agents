@@ -20,6 +20,10 @@ flowchart LR
 - Безопасная optional-загрузка HuggingFace `safetensors`; pickle checkpoints намеренно не
   читаются.
 
+Внешний `state_dict`, safetensors и LoRA leaves принимаются как `jax.typing.ArrayLike`.
+На границе они один раз нормализуются в рекурсивный `ParameterTree` с листьями `jax.Array`;
+никакой `Any` не переходит в trainer или merge path.
+
 ## Минимальный template
 
 ```python

@@ -4,32 +4,28 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Generic, Protocol, Tuple, TypeVar
+from typing import Generic, Protocol, TypeVar
 
-try:
-    import jax
-    import jax.numpy as jnp
-except ImportError:  # Allow contract tests and documentation to run without the accelerator stack.
-    jax = None
-    import numpy as jnp
+import jax
+import jax.numpy as jnp
+from jax.typing import ArrayLike
 
 
-KeyT = TypeVar("KeyT")
 ParamsT = TypeVar("ParamsT")
 ObservationT = TypeVar("ObservationT")
 StateT = TypeVar("StateT")
-ActionT = TypeVar("ActionT")
-ArrayT = TypeVar("ArrayT")
+EnvironmentParamsT = TypeVar("EnvironmentParamsT", contravariant=True)
+EnvironmentObservationT = TypeVar("EnvironmentObservationT", covariant=True)
 
 
 class AdapterContractError(ValueError):
     """Raised when a vendor environment violates the fixed adapter boundary."""
 
 
-class CrafTextEnvironment(Protocol[KeyT, ParamsT, ObservationT, StateT, ActionT, ArrayT]):
+class CrafTextEnvironment(Protocol[EnvironmentParamsT, EnvironmentObservationT, StateT]):
     """Minimal CrafText/CagedCrafText reset-step contract used by the adapter."""
 
-    def reset(self, key: KeyT, params: ParamsT) -> Tuple[ObservationT, StateT]:
+    def reset(self, key: ArrayLike, params: EnvironmentParamsT) -> tuple[EnvironmentObservationT, StateT]:
         """Reset one environment episode.
 
         :param key: Environment RNG key.
@@ -39,8 +35,8 @@ class CrafTextEnvironment(Protocol[KeyT, ParamsT, ObservationT, StateT, ActionT,
         ...
 
     def step(
-        self, key: KeyT, state: StateT, action: ActionT, params: ParamsT
-    ) -> Tuple[ObservationT, StateT, ArrayT, ArrayT, Mapping[str, ArrayT]]:
+        self, key: ArrayLike, state: StateT, action: ArrayLike, params: EnvironmentParamsT
+    ) -> tuple[EnvironmentObservationT, StateT, ArrayLike, ArrayLike, Mapping[str, ArrayLike]]:
         """Run one vendor transition with its single ``done`` flag.
 
         :param key: Environment RNG key for this step.
@@ -53,7 +49,7 @@ class CrafTextEnvironment(Protocol[KeyT, ParamsT, ObservationT, StateT, ActionT,
 
 
 @dataclass(frozen=True)
-class EnvironmentReset(Generic[ObservationT, StateT, ArrayT]):
+class EnvironmentReset(Generic[ObservationT, StateT]):
     """Normalized reset result with a static action-mask shape.
 
     :ivar observation: Initial environment observation.
@@ -63,11 +59,11 @@ class EnvironmentReset(Generic[ObservationT, StateT, ArrayT]):
 
     observation: ObservationT
     state: StateT
-    action_mask: ArrayT
+    action_mask: jax.Array
 
 
 @dataclass(frozen=True)
-class EnvironmentStep(Generic[ObservationT, StateT, ArrayT]):
+class EnvironmentStep(Generic[ObservationT, StateT]):
     """Normalized CrafText transition.
 
     CrafText's vendor ``done`` is represented as ``terminated``. ``truncated`` is an explicit
@@ -83,22 +79,21 @@ class EnvironmentStep(Generic[ObservationT, StateT, ArrayT]):
 
     observation: ObservationT
     state: StateT
-    reward: ArrayT
-    terminated: ArrayT
-    truncated: ArrayT
-    action_mask: ArrayT
+    reward: jax.Array
+    terminated: jax.Array
+    truncated: jax.Array
+    action_mask: jax.Array
 
 
-if jax is not None:
-    jax.tree_util.register_dataclass(EnvironmentReset, data_fields=["observation", "state", "action_mask"], meta_fields=[])
-    jax.tree_util.register_dataclass(
-        EnvironmentStep,
-        data_fields=["observation", "state", "reward", "terminated", "truncated", "action_mask"],
-        meta_fields=[],
-    )
+jax.tree_util.register_dataclass(EnvironmentReset, data_fields=["observation", "state", "action_mask"], meta_fields=[])
+jax.tree_util.register_dataclass(
+    EnvironmentStep,
+    data_fields=["observation", "state", "reward", "terminated", "truncated", "action_mask"],
+    meta_fields=[],
+)
 
 
-class CrafTextAdapter(Generic[KeyT, ParamsT, ObservationT, StateT, ActionT, ArrayT]):
+class CrafTextAdapter(Generic[ParamsT, ObservationT, StateT]):
     """Normalize one CrafText-family environment without mutating vendor state or info.
 
     :param environment: Vendor CrafText-compatible environment.
@@ -111,7 +106,7 @@ class CrafTextAdapter(Generic[KeyT, ParamsT, ObservationT, StateT, ActionT, Arra
 
     def __init__(
         self,
-        environment: CrafTextEnvironment[KeyT, ParamsT, ObservationT, StateT, ActionT, ArrayT],
+        environment: CrafTextEnvironment[ParamsT, ObservationT, StateT],
         params: ParamsT,
         action_count: int,
         action_mask_key: str = "action_mask",
@@ -123,11 +118,11 @@ class CrafTextAdapter(Generic[KeyT, ParamsT, ObservationT, StateT, ActionT, Arra
         self._action_count = action_count
         self._action_mask_key = action_mask_key
 
-    def _fallback_mask(self) -> ArrayT:
+    def _fallback_mask(self) -> jax.Array:
         """Return the conservative all-actions-available mask with shape ``[A]``."""
         return jnp.ones((self._action_count,), dtype=bool)
 
-    def _action_mask(self, info: Mapping[str, ArrayT]) -> ArrayT:
+    def _action_mask(self, info: Mapping[str, ArrayLike]) -> jax.Array:
         """Extract and validate next-action availability without retaining vendor info.
 
         :param info: Vendor information mapping after one transition.
@@ -137,13 +132,14 @@ class CrafTextAdapter(Generic[KeyT, ParamsT, ObservationT, StateT, ActionT, Arra
         mask = info.get(self._action_mask_key)
         if mask is None:
             return self._fallback_mask()
-        if tuple(mask.shape) != (self._action_count,):
+        normalized_mask = jnp.asarray(mask, dtype=bool)
+        if tuple(normalized_mask.shape) != (self._action_count,):
             raise AdapterContractError(
-                f"{self._action_mask_key} must have shape ({self._action_count},), got {mask.shape}"
+                f"{self._action_mask_key} must have shape ({self._action_count},), got {normalized_mask.shape}"
             )
-        return mask
+        return normalized_mask
 
-    def reset(self, key: KeyT) -> EnvironmentReset[ObservationT, StateT, ArrayT]:
+    def reset(self, key: ArrayLike) -> EnvironmentReset[ObservationT, StateT]:
         """Reset CrafText and attach an all-true static action mask.
 
         :param key: Environment RNG key owned by the caller.
@@ -152,7 +148,7 @@ class CrafTextAdapter(Generic[KeyT, ParamsT, ObservationT, StateT, ActionT, Arra
         observation, state = self._environment.reset(key, self._params)
         return EnvironmentReset(observation=observation, state=state, action_mask=self._fallback_mask())
 
-    def step(self, key: KeyT, state: StateT, action: ActionT) -> EnvironmentStep[ObservationT, StateT, ArrayT]:
+    def step(self, key: ArrayLike, state: StateT, action: ArrayLike) -> EnvironmentStep[ObservationT, StateT]:
         """Step CrafText and split its single terminal flag into the training contract.
 
         :param key: Per-step environment RNG key owned by the caller.
@@ -164,14 +160,14 @@ class CrafTextAdapter(Generic[KeyT, ParamsT, ObservationT, StateT, ActionT, Arra
         return EnvironmentStep(
             observation=observation,
             state=next_state,
-            reward=reward,
-            terminated=done,
-            truncated=jnp.zeros_like(done, dtype=bool),
+            reward=jnp.asarray(reward),
+            terminated=jnp.asarray(done, dtype=bool),
+            truncated=jnp.zeros_like(jnp.asarray(done), dtype=bool),
             action_mask=self._action_mask(info),
         )
 
 
-class CagedCrafTextAdapter(CrafTextAdapter[KeyT, ParamsT, ObservationT, StateT, ActionT, ArrayT]):
+class CagedCrafTextAdapter(CrafTextAdapter[ParamsT, ObservationT, StateT]):
     """CagedCrafText adapter with the same normalized contract as base CrafText.
 
     Constraint costs remain in the vendor observation/state or a future explicit cost adapter;
