@@ -3,8 +3,9 @@
 Runnable notebooks live in the repository directory `examples/notebooks/`.
 
 ```bash
-.venv/bin/python -m pip install -e '.[examples]'
-.venv/bin/python -m jupyter lab examples/notebooks
+pyenv exec python -m uv sync --extra examples --extra prompts
+pyenv exec python -m uv run jupyter lab examples/notebooks
 ```
 
-Start with rollout contracts, then the environment adapter, then model conversion/LoRA.
+Start with rollout contracts, then the environment adapter, model conversion/LoRA, and
+`04_megaprompts_environment_to_prompt.ipynb` for the real vendored template boundary.
