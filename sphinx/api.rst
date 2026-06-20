@@ -13,6 +13,12 @@ Rollout collection
 .. automodule:: tunix_craftext.rollout
    :members:
 
+Environment adapters
+--------------------
+
+.. automodule:: tunix_craftext.adapters.craftext
+   :members:
+
 Model interoperability
 ----------------------
 

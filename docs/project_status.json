@@ -36,6 +36,11 @@
       "description": "Генерирует Mermaid-граф задач по модулям с цветом статуса и счётчиком объёма работы."
     },
     {
+      "name": "CrafText/Caged environment adapter",
+      "status": "ready",
+      "description": "Нормализует vendor reset/step в action-mask и terminated/truncated contract; deterministic golden tests проходят, real Craftax smoke ожидает envs extra."
+    },
+    {
       "name": "PPO/GRPO, Tunix bridge, Orbax resume",
       "status": "planned",
       "description": "Спроектировано и покрыто quality gates, но ещё не реализовано."

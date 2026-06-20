@@ -73,5 +73,6 @@
 
 ## Текущая ветка реализации
 
-`foundation/contracts-and-docs`: vendor snapshot, contracts, reference rollout, test lanes,
-documentation site. Следующий маленький PR: **CrafTextAdapter + golden tiny-world fixture**.
+`foundation/craftext-adapter-contract`: CrafText/Caged adapter boundary, normalized done/truncated
+semantics и deterministic golden fixture готовы. Следующий маленький PR: **real tiny-world preset
+parity с установленным Craftax и зафиксированной compatibility matrix**.

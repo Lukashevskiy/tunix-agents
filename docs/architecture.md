@@ -38,6 +38,18 @@ Terminal state отделён от truncation: GAE маскирует насто
 может bootstrap-иться по выбранной политике. Это решение тестируется отдельными
 табличными примерами до первой оптимизации.
 
+## CrafText adapter boundary
+
+`CrafTextAdapter` и `CagedCrafTextAdapter` принимают vendor `reset(key, params)` и
+`step(key, state, action, params)`, но отдают training-safe `EnvironmentReset` и
+`EnvironmentStep`. Они фиксируют action mask как `[A]`, переводят vendor `done` в
+`terminated` и создают явный all-false `truncated`: текущий vendor API не различает
+timeout. Vendor `info` не протекает дальше boundary.
+
+Contract golden fixture запускает два детерминированных CrafText-shaped env на 8-step
+траекториях; real CrafText/Caged smoke test запускается только с extra `envs`. Следующий
+шаг — заменить fixture на tiny world preset parity при установленном Craftax.
+
 ## Tunix как расширяемая граница
 
 Tunix не должен становиться скрытой внутренней зависимостью. `TunixPolicyAdapter`
