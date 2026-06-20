@@ -43,12 +43,17 @@
     {
       "name": "Runnable examples",
       "status": "ready",
-      "description": "Три самостоятельных notebooks показывают trajectory contract, CrafText adapter и model/LoRA interoperability."
+      "description": "Четыре самостоятельных notebooks показывают trajectory contract, CrafText adapter, model/LoRA interoperability и MegaPrompts environment-to-prompt boundary."
     },
     {
       "name": "Prompt assembly boundary",
       "status": "ready",
       "description": "Собирает typed PromptContext из goal, observation и action catalog; vendored MegaPrompts renderer проходит integration smoke и возвращает RenderedPrompt с контролируемым mapping actions."
+    },
+    {
+      "name": "Text policy and strict action decoder",
+      "status": "ready",
+      "description": "Принимает только RenderedPrompt, извлекает <action>LABEL</action>, валидирует label через prompt-bound ActionCatalog и выдаёт discrete action id с raw completion provenance."
     },
     {
       "name": "Compiled JAX rollout collector",

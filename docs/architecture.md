@@ -4,6 +4,8 @@
 flowchart LR
   E[CrafText / CagedCrafText\nvendored baseline] --> A[Environment adapter]
   P[MegaPrompts\nvendored assets] --> A
+  A[Prompt assembly] --> TP[TextPolicy + strict action decoder]
+  TP --> R
   A --> R[Rollout collector\nJAX scan]
   R --> C[Trajectory contract\nT × B]
   C --> G[GAE / returns / masks]

@@ -12,6 +12,10 @@ pyenv exec python -m uv sync --extra prompts
 pyenv exec python -m uv run pytest -m integration tests/integration/test_megaprompts_vendor.py
 ```
 
-Следующий слой — `TextPolicy`: он получает только `RenderedPrompt`, возвращает сырой model output,
-а отдельный decoder валидирует `<action>…</action>` через `ActionCatalog` и записывает invalid-action
-metric в trajectory artifact.
+`TextPolicy` уже получает только `RenderedPrompt`; `decode_action()` принимает строго
+`<action>…</action>` и валидирует label через тот же `ActionCatalog`, возвращая `DecodedAction`
+с action id и исходным model text для provenance. Сквозной integration smoke покрывает
+`environment-shaped state → prompt → policy → decoder → adapter.step`.
+
+Controlled fallback и накопительные invalid-action metrics ещё не реализованы: они остаются
+активным пунктом roadmap перед подключением Tunix sampler/logprob/value bridge.
