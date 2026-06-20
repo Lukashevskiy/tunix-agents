@@ -33,3 +33,10 @@ JAX version, mesh, batch/horizon, warmup count и median/p95. Метрики:
 `make perf` сохраняет pytest-benchmark artifact в `artifacts/benchmarks/rollout-latest.json`;
 dashboard автоматически извлекает из него mean, median и OPS. Перед сравнением переименуйте
 artifact по сценарию и commit либо перенесите его в CI artifact storage.
+
+## MVP Python compatibility gate
+
+После MVP GitHub Actions workflow `MVP Python compatibility` запускается на тегах `mvp-v*` (или
+вручную) в матрице Python 3.11, 3.12 и 3.13. Он устанавливает `dev,docs` extras и запускает unit
+и integration lanes. Matrix намеренно не запускает perf: shared GitHub runners непригодны для
+сравнения производительности.

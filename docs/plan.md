@@ -67,6 +67,7 @@
 - [ ] Добавить multi-device tests с порогами масштабирования и явной degradation report.
 - [ ] Добавить preemption/resume test и schema migration checkpoint.
 - [ ] CI: lint + unit на CPU; integration env lane; nightly perf with comparison against baseline.
+  MVP Python 3.11–3.13 matrix запускается отдельно на release tag `mvp-v*`.
 - [x] Генерировать docs site из config schema, benchmark JSON, git revision и Mermaid/ADR.
 - [ ] Release checklist: reproducibility card, known limitations, performance table, migration guide
    для конфигов VERL.
