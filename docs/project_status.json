@@ -46,6 +46,11 @@
       "description": "Три самостоятельных notebooks показывают trajectory contract, CrafText adapter и model/LoRA interoperability."
     },
     {
+      "name": "Prompt assembly boundary",
+      "status": "ready",
+      "description": "Собирает typed PromptContext из goal, observation и action catalog; vendored MegaPrompts renderer проходит integration smoke и возвращает RenderedPrompt с контролируемым mapping actions."
+    },
+    {
       "name": "Compiled JAX rollout collector",
       "status": "ready",
       "description": "lax.scan collector возвращает тот же time-major trajectory contract, проходит jitted parity с reference collector и имеет отдельный steady-state benchmark."

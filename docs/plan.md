@@ -49,8 +49,8 @@
 ## 4. Tunix bridge и LLM policy
 
 - [ ] Зафиксировать проверенный Tunix release и написать adapter только по его публичному API.
-- [ ] Унифицировать tokenizer/action decoder: invalid action → observable, metric и controlled
-   fallback, никогда не silent coercion.
+- [~] Унифицировать tokenizer/action decoder: invalid action → observable, metric и controlled
+  fallback, никогда не silent coercion.
 - [ ] Реализовать sampling/logprob/value bridge; проверить parity против прямого вызова Tunix.
 - [ ] Сделать SFT warm-start и PPO на коротких fixed prompt rollouts.
 - [ ] Лишь после этого добавить GRPO как самостоятельный algorithm module, не как fork PPO.
@@ -77,5 +77,6 @@
 ## Текущая ветка реализации
 
 `foundation/jax-scan-and-adapter`: CrafText/Caged adapter boundary и compiled `lax.scan`
-collector готовы; scan parity/steady-state benchmark проходят. Следующий маленький PR: **добавить
-RNG splitting к scan collector и real tiny-world preset parity с установленным Craftax**.
+collector готовы; scan parity/steady-state benchmark проходят. Prompt boundary уже использует
+vendored MegaPrompts (`PromptContext → RenderedPrompt + ActionCatalog`). Следующий маленький PR:
+**добавить model policy adapter и связать его с real tiny-world CrafText preset**.

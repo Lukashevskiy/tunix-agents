@@ -23,11 +23,15 @@ tunix = ["tunix"]
 envs = ["craftax>=1.4.3", "gymnasium>=0.29.1"]
 interop = ["safetensors>=0.4.5"]
 examples = ["jupyterlab>=4.0"]
+prompts = ["megaprompt"]
 dev = ["pytest>=8.3", "pytest-benchmark>=5.1", "ruff>=0.6", "mypy>=1.11"]
 docs = ["mkdocs-material>=9.5", "sphinx>=7.3", "sphinx-autodoc-typehints>=2.1"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/tunix_craftext"]
+
+[tool.uv.sources]
+megaprompt = { path = "vendor/megaprompts", editable = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

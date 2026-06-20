@@ -32,6 +32,7 @@ nav:
   - Обзор: index.md
   - Архитектура: architecture.md
   - Model interoperability: interop.md
+  - Prompts: prompts.md
   - План реализации: plan.md
   - Качество и perf: quality.md
   - Среда разработки: development.md
