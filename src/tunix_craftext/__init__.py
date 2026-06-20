@@ -4,6 +4,7 @@ from .contracts import RolloutBatch, Transition
 from .adapters import CagedCrafTextAdapter, CrafTextAdapter, EnvironmentReset, EnvironmentStep
 from .interop import LoraAdapter, ModelTemplate, TensorRule, convert_state_dict, merge_lora_adapters
 from .prompts import ActionCatalog, MegaPromptRenderer, PromptContext, RenderedPrompt
+from .text_policy import DecodedAction, DecodeMetrics, TextPolicy, act, decode_action
 from .rollout import collect_rollout, collect_rollout_scan
 
 __all__ = [
@@ -24,4 +25,9 @@ __all__ = [
     "MegaPromptRenderer",
     "PromptContext",
     "RenderedPrompt",
+    "DecodedAction",
+    "DecodeMetrics",
+    "TextPolicy",
+    "act",
+    "decode_action",
 ]
