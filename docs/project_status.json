@@ -41,6 +41,11 @@
       "description": "Нормализует vendor reset/step в action-mask и terminated/truncated contract; deterministic golden tests проходят, real Craftax smoke ожидает envs extra."
     },
     {
+      "name": "Runnable examples",
+      "status": "ready",
+      "description": "Три самостоятельных notebooks показывают trajectory contract, CrafText adapter и model/LoRA interoperability."
+    },
+    {
       "name": "PPO/GRPO, Tunix bridge, Orbax resume",
       "status": "planned",
       "description": "Спроектировано и покрыто quality gates, но ещё не реализовано."

@@ -37,6 +37,7 @@ nav:
   - Типы и docstrings: code-quality.md
   - Поставка изменений: delivery.md
   - Эксперименты: experiments.md
+  - Examples: examples.md
   - История изменений: _generated/changelog.md
   - Бенчмарки: _generated/benchmarks.md
   - ADR:
