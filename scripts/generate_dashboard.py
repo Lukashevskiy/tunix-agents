@@ -109,6 +109,38 @@ def benchmark_records() -> list[dict[str, Any]]:
             payload = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             continue
+        if isinstance(payload, dict) and isinstance(payload.get("benchmarks"), list):
+            machine = payload.get("machine_info", {})
+            commit = payload.get("commit_info", {})
+            for benchmark in payload["benchmarks"]:
+                if not isinstance(benchmark, dict):
+                    continue
+                stats = benchmark.get("stats", {})
+                if not isinstance(stats, dict):
+                    stats = {}
+                mean = stats.get("mean")
+                metrics = {
+                    "mean_ms": round(float(mean) * 1000, 4) if isinstance(mean, (int, float)) else "—",
+                    "median_ms": round(float(stats["median"]) * 1000, 4) if isinstance(stats.get("median"), (int, float)) else "—",
+                    "ops": round(1 / float(mean), 2) if isinstance(mean, (int, float)) and mean else "—",
+                }
+                records.append(
+                    {
+                        "path": path.relative_to(ROOT),
+                        "name": benchmark.get("name", path.stem),
+                        "timestamp": payload.get("datetime", "—"),
+                        "commit": commit.get("id", "—") if isinstance(commit, dict) else "—",
+                        "hardware": (
+                            machine.get("cpu", {}).get("brand_raw")
+                            or machine.get("cpu", {}).get("arch_string_raw")
+                            or machine.get("machine", "—")
+                        )
+                        if isinstance(machine, dict)
+                        else "—",
+                        "metrics": metrics,
+                    }
+                )
+            continue
         entries: Iterable[Any] = payload if isinstance(payload, list) else [payload]
         for entry in entries:
             if not isinstance(entry, dict):

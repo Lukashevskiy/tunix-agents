@@ -4,11 +4,33 @@ from __future__ import annotations
 
 from typing import Protocol, TypeVar, cast
 
+import jax
+import jax.numpy as jnp
 import numpy as np
 
 from .contracts import ActionT, ArrayT, ObservationT, RolloutBatch, Transition
 
 StateT = TypeVar("StateT")
+
+
+def _register_rollout_pytrees() -> None:
+    """Register immutable public contracts once so a jitted collector can return them.
+
+    :returns: None. Registration is process-global and idempotent across normal module imports.
+    """
+    try:
+        jax.tree_util.register_dataclass(
+            Transition,
+            data_fields=["observation", "action", "reward", "terminated", "truncated", "log_prob", "value"],
+            meta_fields=[],
+        )
+        jax.tree_util.register_dataclass(RolloutBatch, data_fields=["transitions", "bootstrap_value"], meta_fields=[])
+    except ValueError:
+        # A notebook reload may register the same public dataclass before this import.
+        pass
+
+
+_register_rollout_pytrees()
 
 
 class PolicyFn(Protocol[ObservationT, ActionT, ArrayT]):
@@ -58,3 +80,42 @@ def collect_rollout(
     batch = RolloutBatch(Transition(*fields), policy(observation)[2])
     batch.validate()
     return state, observation, batch
+
+
+def collect_rollout_scan(
+    initial_state: StateT,
+    initial_observation: ObservationT,
+    horizon: int,
+    policy: PolicyFn[ObservationT, ActionT, ArrayT],
+    step: StepFn[StateT, ActionT, ObservationT, ArrayT],
+) -> tuple[StateT, ObservationT, RolloutBatch[ObservationT, ActionT, ArrayT]]:
+    """Collect a fixed-horizon rollout using ``jax.lax.scan``.
+
+    The function is pure and JIT-safe when ``policy`` and ``step`` are pure JAX functions and
+    ``horizon`` is static. It intentionally omits host-side shape validation; compare it with
+    :func:`collect_rollout` in a parity test before introducing a new environment or policy.
+
+    :param initial_state: JAX PyTree state before time zero.
+    :param initial_observation: Batched observation PyTree at time zero.
+    :param horizon: Positive static rollout length ``T``.
+    :param policy: Pure JAX policy yielding action, log-probability and critic value.
+    :param step: Pure JAX environment transition.
+    :returns: Final state, final observation and time-major ``RolloutBatch`` leaves ``[T, B, ...]``.
+    :raises ValueError: If ``horizon`` is not positive.
+    """
+    if horizon <= 0:
+        raise ValueError("horizon must be positive")
+
+    def scan_step(
+        carry: tuple[StateT, ObservationT], _: jax.Array
+    ) -> tuple[tuple[StateT, ObservationT], tuple[ObservationT, ActionT, ArrayT, ArrayT, ArrayT, ArrayT, ArrayT]]:
+        state, observation = carry
+        action, log_prob, value = policy(observation)
+        next_state, next_observation, reward, terminated, truncated = step(state, action)
+        return (next_state, next_observation), (observation, action, reward, terminated, truncated, log_prob, value)
+
+    (final_state, final_observation), fields = jax.lax.scan(
+        scan_step, (initial_state, initial_observation), xs=jnp.arange(horizon)
+    )
+    bootstrap_value = policy(final_observation)[2]
+    return final_state, final_observation, RolloutBatch(Transition(*fields), bootstrap_value)

@@ -29,3 +29,7 @@ JAX version, mesh, batch/horizon, warmup count и median/p95. Метрики:
 
 Порог регрессии задаётся на сценарий, пока ориентир — предупреждение при >5% median
 регрессии на идентичном hardware. Performance не проходит на shared/unknown machine.
+
+`make perf` сохраняет pytest-benchmark artifact в `artifacts/benchmarks/rollout-latest.json`;
+dashboard автоматически извлекает из него mean, median и OPS. Перед сравнением переименуйте
+artifact по сценарию и commit либо перенесите его в CI artifact storage.

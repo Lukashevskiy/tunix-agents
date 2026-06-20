@@ -46,6 +46,11 @@
       "description": "Три самостоятельных notebooks показывают trajectory contract, CrafText adapter и model/LoRA interoperability."
     },
     {
+      "name": "Compiled JAX rollout collector",
+      "status": "ready",
+      "description": "lax.scan collector возвращает тот же time-major trajectory contract, проходит jitted parity с reference collector и имеет отдельный steady-state benchmark."
+    },
+    {
       "name": "PPO/GRPO, Tunix bridge, Orbax resume",
       "status": "planned",
       "description": "Спроектировано и покрыто quality gates, но ещё не реализовано."

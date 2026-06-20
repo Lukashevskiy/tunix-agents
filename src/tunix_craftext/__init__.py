@@ -3,7 +3,7 @@
 from .contracts import RolloutBatch, Transition
 from .adapters import CagedCrafTextAdapter, CrafTextAdapter, EnvironmentReset, EnvironmentStep
 from .interop import LoraAdapter, ModelTemplate, TensorRule, convert_state_dict, merge_lora_adapters
-from .rollout import collect_rollout
+from .rollout import collect_rollout, collect_rollout_scan
 
 __all__ = [
     "LoraAdapter",
@@ -16,6 +16,7 @@ __all__ = [
     "TensorRule",
     "Transition",
     "collect_rollout",
+    "collect_rollout_scan",
     "convert_state_dict",
     "merge_lora_adapters",
 ]

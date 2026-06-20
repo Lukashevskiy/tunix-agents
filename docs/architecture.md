@@ -50,6 +50,13 @@ Contract golden fixture запускает два детерминированн
 траекториях; real CrafText/Caged smoke test запускается только с extra `envs`. Следующий
 шаг — заменить fixture на tiny world preset parity при установленном Craftax.
 
+## Compiled rollout collection
+
+`collect_rollout_scan` использует `jax.lax.scan` для фиксированного horizon и возвращает тот же
+`RolloutBatch` `[T, B, ...]`, что и читаемый reference collector. Контракты зарегистрированы как
+JAX PyTrees, поэтому collector можно оборачивать в `jax.jit`. Любой новый policy/env сначала
+сверяется leaf-by-leaf с `collect_rollout`; compilation/warmup измеряется отдельно от steady state.
+
 ## Tunix как расширяемая граница
 
 Tunix не должен становиться скрытой внутренней зависимостью. `TunixPolicyAdapter`

@@ -23,7 +23,7 @@
 
 ## 2. Pure JAX collection
 
-- [ ] Реализовать `lax.scan` collector с split PRNG per update/env/action.
+- [~] Реализовать `lax.scan` collector с split PRNG per update/env/action.
 - [ ] Добавить done-reset semantics без Python ветвления; отдельно проверить terminated vs
    truncated и action mask.
 - [ ] Сравнить reference collector с JIT collector на fixed fixture leaf-by-leaf.
@@ -73,6 +73,6 @@
 
 ## Текущая ветка реализации
 
-`foundation/craftext-adapter-contract`: CrafText/Caged adapter boundary, normalized done/truncated
-semantics и deterministic golden fixture готовы. Следующий маленький PR: **real tiny-world preset
-parity с установленным Craftax и зафиксированной compatibility matrix**.
+`foundation/jax-scan-and-adapter`: CrafText/Caged adapter boundary и compiled `lax.scan`
+collector готовы; scan parity/steady-state benchmark проходят. Следующий маленький PR: **добавить
+RNG splitting к scan collector и real tiny-world preset parity с установленным Craftax**.

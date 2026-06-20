@@ -1,4 +1,5 @@
 PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
+PERF_ARTIFACT ?= artifacts/benchmarks/rollout-latest.json
 
 .PHONY: audit test integration perf docs api-docs serve provenance sync-tasks verify
 
@@ -12,7 +13,8 @@ integration:
 	PYTHONPATH=src $(PYTHON) -m pytest -m integration
 
 perf:
-	$(PYTHON) -m pytest -m performance --benchmark-only
+	mkdir -p artifacts/benchmarks
+	PYTHONPATH=src $(PYTHON) -m pytest -m performance --benchmark-only --benchmark-json=$(PERF_ARTIFACT)
 
 docs:
 	$(PYTHON) scripts/generate_dashboard.py
