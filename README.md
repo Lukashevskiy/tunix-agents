@@ -14,16 +14,22 @@ Tunix bridge are planned extension points, not claimed implementations yet.
 ## Quick start
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -e '.[dev]'
-pytest
+pyenv install --skip-existing 3.12.13
+pyenv local 3.12.13
+pyenv exec python -m pip install --upgrade uv
+pyenv exec python -m uv sync --extra dev --extra docs
+uv run pytest
 ```
+
+`pyenv` owns the project interpreter; `uv.lock` owns the resolved dependency graph; `.venv`
+is a disposable environment created by `uv`. See [the development environment practice](docs/development.md)
+for upgrades, opt-in extras and CI rules.
 
 For the actual environments and Tunix, install the opt-in extras after pinning a known
 compatible accelerator-specific JAX build:
 
 ```bash
-pip install -e '.[envs,tunix,dev]'
+pyenv exec python -m uv sync --extra envs --extra tunix --extra dev
 ```
 
 ## Local project site
@@ -32,8 +38,7 @@ Create the local documentation environment once, then use the repository command
 running a globally installed MkDocs:
 
 ```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install --upgrade pip mkdocs-material sphinx sphinx-autodoc-typehints
+pyenv exec python -m uv sync --extra dev --extra docs
 make serve
 ```
 
