@@ -2,7 +2,7 @@ import numpy as np
 import jax
 import jax.numpy as jnp
 
-from tunix_craftext.rollout import collect_rollout, collect_rollout_scan
+from tunix_craftext.rollout import collect_rollout, collect_rollout_scan, collect_rollout_scan_indexed
 
 
 def test_collect_rollout_is_time_major_and_preserves_terminal_flags() -> None:
@@ -40,3 +40,17 @@ def test_jax_scan_collector_matches_reference_and_can_be_jitted() -> None:
         jax.tree_util.tree_leaves(reference), jax.tree_util.tree_leaves(scanned)
     ):
         np.testing.assert_allclose(reference_leaf, scanned_leaf)
+
+
+def test_indexed_scan_exposes_each_step_index_for_explicit_rng_selection() -> None:
+    def policy(observation):
+        return jnp.zeros_like(observation, dtype=jnp.int32), jnp.zeros_like(observation), jnp.zeros_like(observation)
+
+    def step(state, action, index):
+        next_state = state + index + 1
+        reward = jnp.full_like(state, index + 1.0, dtype=jnp.float32)
+        return next_state, next_state, reward, jnp.zeros_like(state, dtype=bool), jnp.zeros_like(state, dtype=bool)
+
+    _, _, rollout = jax.jit(lambda state: collect_rollout_scan_indexed(state, state, 3, policy, step))(jnp.zeros(2))
+
+    np.testing.assert_array_equal(rollout.transitions.reward[:, 0], [1.0, 2.0, 3.0])

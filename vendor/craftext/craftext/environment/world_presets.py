@@ -1137,15 +1137,18 @@ class SolidBlocksBehavior(BaseMovementBehavior):
 
         if self.resolved_family == "classic":
             pos = new_state.player_position
-            current_block = int(new_state.map[pos[0], pos[1]])
+            current_block = new_state.map[pos[0], pos[1]]
         else:
             pos = new_state.player_position
-            level = int(new_state.player_level)
-            current_block = int(new_state.map[level, pos[0], pos[1]])
+            current_block = new_state.map[new_state.player_level, pos[0], pos[1]]
 
-        if current_block not in self.solid_block_values:
-            return new_state
-        return new_state.replace(player_position=previous_state.player_position)
+        is_solid = jnp.isin(current_block, jnp.asarray(tuple(self.solid_block_values)))
+        return jax.lax.cond(
+            is_solid,
+            lambda state: state.replace(player_position=previous_state.player_position),
+            lambda state: state,
+            new_state,
+        )
 
     def _resolve_solid_block_values(self) -> set[int]:
         solid_values: set[int] = set()
@@ -1268,18 +1271,17 @@ class IntrinsicDynamicsBehavior(BaseStepBehavior):
             awake_rate = _value("player_fatigue_rate", 0.0)
             sleep_rate = _value("player_fatigue_sleep_rate", -abs(awake_rate) if awake_rate != 0.0 else 0.0)
             fatigue_delta = jax.lax.select(getattr(state, "is_sleeping", False), sleep_rate, awake_rate)
-            if fatigue_delta != 0.0:
-                fatigue = state.player_fatigue + fatigue_delta
-                drop_threshold = max(_threshold("player_fatigue_threshold", 30.0), 1e-6)
-                recover_threshold = min(_threshold("player_fatigue_recover_threshold", -10.0), -1e-6)
-                drain_ticks = jnp.floor(jnp.maximum(fatigue, 0.0) / drop_threshold).astype(jnp.int32)
-                fatigue = fatigue - drain_ticks.astype(fatigue.dtype) * drop_threshold
-                energy = jnp.maximum(state.player_energy - drain_ticks, 0)
-                recover_ticks = jnp.floor(jnp.maximum(-fatigue, 0.0) / abs(recover_threshold)).astype(jnp.int32)
-                fatigue = fatigue + recover_ticks.astype(fatigue.dtype) * abs(recover_threshold)
-                energy = jnp.minimum(energy + recover_ticks, 9)
-                updates["player_fatigue"] = fatigue
-                updates["player_energy"] = energy
+            fatigue = state.player_fatigue + fatigue_delta
+            drop_threshold = max(_threshold("player_fatigue_threshold", 30.0), 1e-6)
+            recover_threshold = min(_threshold("player_fatigue_recover_threshold", -10.0), -1e-6)
+            drain_ticks = jnp.floor(jnp.maximum(fatigue, 0.0) / drop_threshold).astype(jnp.int32)
+            fatigue = fatigue - drain_ticks.astype(fatigue.dtype) * drop_threshold
+            energy = jnp.maximum(state.player_energy - drain_ticks, 0)
+            recover_ticks = jnp.floor(jnp.maximum(-fatigue, 0.0) / abs(recover_threshold)).astype(jnp.int32)
+            fatigue = fatigue + recover_ticks.astype(fatigue.dtype) * abs(recover_threshold)
+            energy = jnp.minimum(energy + recover_ticks, 9)
+            updates["player_fatigue"] = fatigue
+            updates["player_energy"] = energy
 
         if hasattr(state, "player_recover") and hasattr(state, "player_health"):
             positive_rate = _value("player_recover_rate", 0.0)
@@ -1289,18 +1291,17 @@ class IntrinsicDynamicsBehavior(BaseStepBehavior):
             has_energy = jnp.logical_or(getattr(state, "player_energy", 1) > 0, getattr(state, "is_sleeping", False))
             all_necessities = jnp.logical_and(jnp.logical_and(has_food, has_drink), has_energy)
             recover_delta = jax.lax.select(all_necessities, positive_rate, negative_rate)
-            if recover_delta != 0.0:
-                recover = state.player_recover + recover_delta
-                pos_threshold = max(_threshold("player_recover_positive_threshold", 25.0), 1e-6)
-                neg_threshold = min(_threshold("player_recover_negative_threshold", -15.0), -1e-6)
-                heal_ticks = jnp.floor(jnp.maximum(recover, 0.0) / pos_threshold).astype(jnp.int32)
-                recover = recover - heal_ticks.astype(recover.dtype) * pos_threshold
-                health = jnp.minimum(state.player_health + heal_ticks, 9)
-                hurt_ticks = jnp.floor(jnp.maximum(-recover, 0.0) / abs(neg_threshold)).astype(jnp.int32)
-                recover = recover + hurt_ticks.astype(recover.dtype) * abs(neg_threshold)
-                health = jnp.maximum(health - hurt_ticks, 0)
-                updates["player_recover"] = recover
-                updates["player_health"] = health
+            recover = state.player_recover + recover_delta
+            pos_threshold = max(_threshold("player_recover_positive_threshold", 25.0), 1e-6)
+            neg_threshold = min(_threshold("player_recover_negative_threshold", -15.0), -1e-6)
+            heal_ticks = jnp.floor(jnp.maximum(recover, 0.0) / pos_threshold).astype(jnp.int32)
+            recover = recover - heal_ticks.astype(recover.dtype) * pos_threshold
+            health = jnp.minimum(state.player_health + heal_ticks, 9)
+            hurt_ticks = jnp.floor(jnp.maximum(-recover, 0.0) / abs(neg_threshold)).astype(jnp.int32)
+            recover = recover + hurt_ticks.astype(recover.dtype) * abs(neg_threshold)
+            health = jnp.maximum(health - hurt_ticks, 0)
+            updates["player_recover"] = recover
+            updates["player_health"] = health
 
         return state.replace(**updates) if updates else state
 
@@ -1314,20 +1315,36 @@ class InstantRecoveryBehavior(BaseStepBehavior):
 
     def apply_step(self, previous_state: Any, new_state: Any) -> Any:
         state = new_state
-        updates: dict[str, Any] = {}
         instant_sleep_enabled = bool(self.rules.get("instant_sleep_recovery", False))
         instant_rest_enabled = bool(self.rules.get("instant_rest_recovery", False))
 
-        if instant_sleep_enabled and getattr(state, "is_sleeping", False):
-            self._apply_recovery_mode_updates(state=state, updates=updates, prefix="sleep")
-            if bool(self.rules.get("wake_after_sleep_recovery", True)) and hasattr(state, "is_sleeping"):
-                updates["is_sleeping"] = False
+        if instant_sleep_enabled and hasattr(state, "is_sleeping"):
+            state = jax.lax.cond(
+                state.is_sleeping,
+                lambda current: self._recovered_state(
+                    current, "sleep", bool(self.rules.get("wake_after_sleep_recovery", True))
+                ),
+                lambda current: current,
+                state,
+            )
+        if instant_rest_enabled and hasattr(state, "is_resting"):
+            state = jax.lax.cond(
+                state.is_resting,
+                lambda current: self._recovered_state(
+                    current, "rest", bool(self.rules.get("stop_rest_after_recovery", True))
+                ),
+                lambda current: current,
+                state,
+            )
+        return state
 
-        if instant_rest_enabled and getattr(state, "is_resting", False):
-            self._apply_recovery_mode_updates(state=state, updates=updates, prefix="rest")
-            if bool(self.rules.get("stop_rest_after_recovery", True)) and hasattr(state, "is_resting"):
-                updates["is_resting"] = False
-
+    def _recovered_state(self, state: Any, prefix: str, stop_mode: bool) -> Any:
+        """Apply static recovery targets in one JAX branch and return a whole state."""
+        updates: dict[str, Any] = {}
+        self._apply_recovery_mode_updates(state=state, updates=updates, prefix=prefix)
+        mode_field = "is_sleeping" if prefix == "sleep" else "is_resting"
+        if stop_mode and hasattr(state, mode_field):
+            updates[mode_field] = False
         return state.replace(**updates) if updates else state
 
     def _apply_recovery_mode_updates(self, *, state: Any, updates: dict[str, Any], prefix: str):

@@ -34,6 +34,10 @@ JAX version, mesh, batch/horizon, warmup count и median/p95. Метрики:
 dashboard автоматически извлекает из него mean, median и OPS. Перед сравнением переименуйте
 artifact по сценарию и commit либо перенесите его в CI artifact storage.
 
+После real CrafText scan parity benchmark matrix обязана покрывать как минимум `batch_size` 1, 2,
+8 и `horizon` 8, 32, 128. Для каждой точки записывать отдельно compile latency и steady-state
+env-steps/s; сравнивать только одинаковые preset, seed, device и JAX version.
+
 ## MVP Python compatibility gate
 
 После MVP GitHub Actions workflow `MVP Python compatibility` запускается на тегах `mvp-v*` (или

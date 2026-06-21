@@ -33,6 +33,14 @@ class StepFn(Protocol[StateT, StepActionT, StepObservationT]):
     ) -> tuple[StateT, StepObservationT, ArrayLike, ArrayLike, ArrayLike]: ...
 
 
+class IndexedStepFn(Protocol[StateT, StepActionT, StepObservationT]):
+    """JAX step signature that receives the static scan index for explicit RNG selection."""
+
+    def __call__(
+        self, state: StateT, action: StepActionT, step_index: jax.Array
+    ) -> tuple[StateT, StepObservationT, ArrayLike, ArrayLike, ArrayLike]: ...
+
+
 def collect_rollout(
     initial_state: StateT,
     initial_observation: ObservationT,
@@ -130,6 +138,40 @@ def collect_rollout_scan(
     observation, action, reward, terminated, truncated, log_prob, value = fields
     return final_state, final_observation, RolloutBatch(
         Transition(observation, action, reward, terminated, truncated, log_prob, value), bootstrap_value
+    )
+
+
+def collect_rollout_scan_indexed(
+    initial_state: StateT,
+    initial_observation: ObservationT,
+    horizon: int,
+    policy: PolicyFn[ObservationT, ActionT],
+    step: IndexedStepFn[StateT, ActionT, ObservationT],
+) -> tuple[StateT, ObservationT, RolloutBatch[ObservationT, ActionT]]:
+    """Collect a JIT-safe rollout while passing each ``lax.scan`` index to the step function.
+
+    The index lets callers select pre-split environment keys ``[T, B, 2]`` without hidden global
+    RNG state. It is the production form for real CrafText environments.
+    """
+    if horizon <= 0:
+        raise ValueError("horizon must be positive")
+
+    def scan_step(carry: tuple[StateT, ObservationT], index: jax.Array):
+        state, observation = carry
+        action, log_prob, value = policy(observation)
+        next_state, next_observation, reward, terminated, truncated = step(state, action, index)
+        return (next_state, next_observation), (
+            observation, action, jnp.asarray(reward), jnp.asarray(terminated), jnp.asarray(truncated),
+            jnp.asarray(log_prob), jnp.asarray(value),
+        )
+
+    (final_state, final_observation), fields = jax.lax.scan(
+        scan_step, (initial_state, initial_observation), xs=jnp.arange(horizon)
+    )
+    observation, action, reward, terminated, truncated, log_prob, value = fields
+    return final_state, final_observation, RolloutBatch(
+        Transition(observation, action, reward, terminated, truncated, log_prob, value),
+        jnp.asarray(policy(final_observation)[2]),
     )
 
 

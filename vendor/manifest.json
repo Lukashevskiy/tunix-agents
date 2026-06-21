@@ -7,5 +7,5 @@
     "caged-craftext": "agent_system/external/CagedCraftext",
     "megaprompts": "MegaPrompts"
   },
-  "notes": "The source worktree had unrelated uncommitted ResearchOS integration files at copy time; no source files were altered by this snapshot. Licenses and attribution live with each component."
+  "notes": "The source worktree had unrelated uncommitted ResearchOS integration files at copy time. Local compatibility patch: craftext/environment/world_presets.py replaces Python tracer conversions/branches in solid-block, intrinsic-dynamics and instant-recovery step behaviors with JAX primitives; regression test lives in craftext/tests/test_world_presets_jax.py. Licenses and attribution live with each component."
 }
