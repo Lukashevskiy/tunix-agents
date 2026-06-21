@@ -1,0 +1,39 @@
+"""Versioned JSON replay artifacts for prompt-driven environment trajectories."""
+
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass
+import json
+from pathlib import Path
+
+
+@dataclass(frozen=True)
+class ReplayStep:
+    """One prompt/model/environment decision retained for deterministic inspection."""
+
+    index: int
+    prompt: str
+    raw_completion: str
+    action_id: int
+    action_label: str
+    reward: float
+    terminated: bool
+
+
+@dataclass(frozen=True)
+class ReplayArtifact:
+    """Versioned replay with code/config provenance and ordered decision steps."""
+
+    config_path: str
+    commit: str
+    backend: str
+    steps: tuple[ReplayStep, ...]
+    schema: str = "tunix-craftext.replay/v1"
+
+
+def save_replay(path: Path, artifact: ReplayArtifact) -> None:
+    """Persist a human-inspectable replay atomically."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(".tmp")
+    temporary.write_text(json.dumps(asdict(artifact), indent=2, ensure_ascii=False), encoding="utf-8")
+    temporary.replace(path)

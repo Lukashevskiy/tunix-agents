@@ -9,6 +9,7 @@ from .config import ConfigError, MvpRunConfig, load_mvp_config
 from .runtime import CrafTextRuntime, build_craftext_runtime
 from .random_policy import ActionSamplingError, sample_masked_actions, validate_action_mask
 from .llm import LlmBackend, LlmRequest, LlmResponse, ScriptedLlmBackend
+from .replay import ReplayArtifact, ReplayStep, save_replay
 from .rollout import collect_rollout, collect_rollout_scan
 
 __all__ = [
@@ -43,4 +44,5 @@ __all__ = [
     "sample_masked_actions",
     "validate_action_mask",
     "LlmBackend", "LlmRequest", "LlmResponse", "ScriptedLlmBackend",
+    "ReplayArtifact", "ReplayStep", "save_replay",
 ]
