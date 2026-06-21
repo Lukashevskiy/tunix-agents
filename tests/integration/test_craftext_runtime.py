@@ -28,6 +28,17 @@ def test_canonical_config_builds_real_craftext_and_resets_through_adapter() -> N
 
 
 @pytest.mark.integration
+def test_caged_config_builds_real_runtime_and_steps_through_adapter() -> None:
+    config = load_mvp_config(ROOT / "configs" / "benchmarks" / "caged_craftext_full.yaml")
+    runtime = build_craftext_runtime(config)
+    reset = runtime.adapter.reset(jax.random.PRNGKey(config.run.seed))
+    transition = runtime.adapter.step(jax.random.PRNGKey(config.run.seed + 1), reset.state, 0)
+
+    assert runtime.action_count > 0
+    assert transition.action_mask.shape == (runtime.action_count,)
+
+
+@pytest.mark.integration
 def test_real_craftext_fixed_keys_and_actions_produce_deterministic_mini_trajectory() -> None:
     config = load_mvp_config(ROOT / "configs" / "mvp" / "tiny_craftext.yaml")
 
