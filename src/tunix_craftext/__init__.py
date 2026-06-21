@@ -8,6 +8,7 @@ from .text_policy import DecodedAction, DecodeMetrics, TextPolicy, act, decode_a
 from .config import ConfigError, MvpRunConfig, load_mvp_config
 from .runtime import CrafTextRuntime, build_craftext_runtime
 from .random_policy import ActionSamplingError, sample_masked_actions, validate_action_mask
+from .llm import LlmBackend, LlmRequest, LlmResponse, ScriptedLlmBackend
 from .rollout import collect_rollout, collect_rollout_scan
 
 __all__ = [
@@ -41,4 +42,5 @@ __all__ = [
     "ActionSamplingError",
     "sample_masked_actions",
     "validate_action_mask",
+    "LlmBackend", "LlmRequest", "LlmResponse", "ScriptedLlmBackend",
 ]
