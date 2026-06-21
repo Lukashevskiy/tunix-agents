@@ -4,7 +4,6 @@ import pytest
 
 from tunix_craftext.config import ConfigError, load_mvp_config
 
-
 ROOT = Path(__file__).resolve().parents[2]
 
 

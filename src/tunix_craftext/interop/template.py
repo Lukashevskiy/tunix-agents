@@ -7,14 +7,13 @@ can appear to load while producing nonsense.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from collections.abc import Mapping, Sequence
-from typing import Optional, TypeAlias
+from dataclasses import dataclass
+from typing import TypeAlias
 
 import jax
 import jax.numpy as jnp
 from jax.typing import ArrayLike
-
 
 ParameterTree: TypeAlias = "dict[str, jax.Array | ParameterTree]"
 ParameterTreeLike: TypeAlias = "Mapping[str, ArrayLike | ParameterTreeLike]"
@@ -31,7 +30,7 @@ class TensorRule:
     source: str
     target: tuple[str, ...]
     transform: str = "identity"
-    expected_shape: Optional[tuple[int, ...]] = None
+    expected_shape: tuple[int, ...] | None = None
 
     def __post_init__(self) -> None:
         if self.transform not in {"identity", "transpose_2d"}:

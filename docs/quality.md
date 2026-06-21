@@ -38,6 +38,20 @@ artifact по сценарию и commit либо перенесите его в
 8 и `horizon` 8, 32, 128. Для каждой точки записывать отдельно compile latency и steady-state
 env-steps/s; сравнивать только одинаковые preset, seed, device и JAX version.
 
+`scripts/benchmark_environments.py` записывает schema
+`tunix-craftext.environment-benchmark/v2`: raw blocking samples, mean/median/p95/min/max,
+config SHA-256, full Git revision/dirty state, JAX version и hardware. Throughput считается по
+median; варианты сравниваются с `craftext-full` только при одинаковых batch/horizon. Для
+материальной записи используйте минимум 10 (предпочтительно 20) repeats:
+
+```bash
+make perf-env  # defaults: 20 repeats; full × tiny × Caged, B=1/2/8/32, T=8/32/128/512
+```
+
+Smoke with three repeats полезен только для проверки pipeline и **не** считается baseline.
+На CPU runner честно записывает `memory_peak_bytes` и `host_device_bytes` как `null`: эти
+метрики потребуют backend-specific profiler на целевом accelerator.
+
 ## MVP Python compatibility gate
 
 После MVP GitHub Actions workflow `MVP Python compatibility` запускается на тегах `mvp-v*` (или

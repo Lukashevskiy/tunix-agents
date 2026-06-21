@@ -41,7 +41,7 @@
 - [ ] Чистые функции loss: policy clip, value clip, entropy, KL; каждая имеет hand-computed
    mini-batch test.
 - [ ] Flax actor-critic и `TrainState` с Optax schedule/gradient clipping.
-- [ ] Один update на synthetic trajectory → loss finite, params change, checkpoint round-trip.
+- [x] Один update на synthetic trajectory → loss finite, params change, checkpoint round-trip.
 - [ ] Запустить tiny CrafText end-to-end и сохранить trajectory/rendered prompt/metrics.
 
 **Gate:** loss tests, deterministic smoke learning, Orbax resume даёт идентичный следующий update.
@@ -62,7 +62,7 @@
 - [x] Базовый versionable template для state_dict → JAX/Flax PyTree и безопасный LoRA merge.
 - [ ] Добавить архитектурные templates для выбранных Tunix-compatible моделей с output parity fixtures.
 - [ ] Добавить QLoRA/dequantization adapter с numerical tolerance tests.
-- [ ] Добавить Orbax import/export и round-trip test model + optimizer + adapter metadata.
+- [~] Добавить Orbax import/export и round-trip test model + optimizer + adapter metadata.
 
 ## 5. Масштабирование, отчётность и release
 

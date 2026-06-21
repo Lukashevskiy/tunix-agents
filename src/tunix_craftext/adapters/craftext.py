@@ -10,7 +10,6 @@ import jax
 import jax.numpy as jnp
 from jax.typing import ArrayLike
 
-
 ParamsT = TypeVar("ParamsT")
 ObservationT = TypeVar("ObservationT")
 StateT = TypeVar("StateT")
@@ -25,7 +24,9 @@ class AdapterContractError(ValueError):
 class CrafTextEnvironment(Protocol[EnvironmentParamsT, EnvironmentObservationT, StateT]):
     """Minimal CrafText/CagedCrafText reset-step contract used by the adapter."""
 
-    def reset(self, key: ArrayLike, params: EnvironmentParamsT) -> tuple[EnvironmentObservationT, StateT]:
+    def reset(
+        self, key: ArrayLike, params: EnvironmentParamsT
+    ) -> tuple[EnvironmentObservationT, StateT]:
         """Reset one environment episode.
 
         :param key: Environment RNG key.
@@ -85,7 +86,9 @@ class EnvironmentStep(Generic[ObservationT, StateT]):
     action_mask: jax.Array
 
 
-jax.tree_util.register_dataclass(EnvironmentReset, data_fields=["observation", "state", "action_mask"], meta_fields=[])
+jax.tree_util.register_dataclass(
+    EnvironmentReset, data_fields=["observation", "state", "action_mask"], meta_fields=[]
+)
 jax.tree_util.register_dataclass(
     EnvironmentStep,
     data_fields=["observation", "state", "reward", "terminated", "truncated", "action_mask"],
@@ -135,7 +138,8 @@ class CrafTextAdapter(Generic[ParamsT, ObservationT, StateT]):
         normalized_mask = jnp.asarray(mask, dtype=bool)
         if tuple(normalized_mask.shape) != (self._action_count,):
             raise AdapterContractError(
-                f"{self._action_mask_key} must have shape ({self._action_count},), got {normalized_mask.shape}"
+                f"{self._action_mask_key} must have shape ({self._action_count},), "
+                f"got {normalized_mask.shape}"
             )
         return normalized_mask
 
@@ -146,9 +150,13 @@ class CrafTextAdapter(Generic[ParamsT, ObservationT, StateT]):
         :returns: Initial observation/state and a fallback action mask ``[A]``.
         """
         observation, state = self._environment.reset(key, self._params)
-        return EnvironmentReset(observation=observation, state=state, action_mask=self._fallback_mask())
+        return EnvironmentReset(
+            observation=observation, state=state, action_mask=self._fallback_mask()
+        )
 
-    def step(self, key: ArrayLike, state: StateT, action: ArrayLike) -> EnvironmentStep[ObservationT, StateT]:
+    def step(
+        self, key: ArrayLike, state: StateT, action: ArrayLike
+    ) -> EnvironmentStep[ObservationT, StateT]:
         """Step CrafText and split its single terminal flag into the training contract.
 
         :param key: Per-step environment RNG key owned by the caller.
@@ -156,7 +164,9 @@ class CrafTextAdapter(Generic[ParamsT, ObservationT, StateT]):
         :param action: Action selected by the policy.
         :returns: Normalized transition; ``truncated`` is all false for the current vendor API.
         """
-        observation, next_state, reward, done, info = self._environment.step(key, state, action, self._params)
+        observation, next_state, reward, done, info = self._environment.step(
+            key, state, action, self._params
+        )
         return EnvironmentStep(
             observation=observation,
             state=next_state,

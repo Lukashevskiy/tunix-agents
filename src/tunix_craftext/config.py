@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
+
 from .resources import ResourceConfig
 
 
@@ -83,7 +84,12 @@ def load_mvp_config(path: Path) -> MvpRunConfig:
     except OSError as error:
         raise ConfigError(f"cannot read config: {path}") from error
     root = _mapping(raw, "root")
-    _keys(root, {"schema_version", "run", "environment", "prompt", "policy", "artifacts", "resources"}, "root", optional={"resources"})
+    _keys(
+        root,
+        {"schema_version", "run", "environment", "prompt", "policy", "artifacts", "resources"},
+        "root",
+        optional={"resources"},
+    )
     schema_version = _int(root.get("schema_version"), "schema_version")
     if schema_version != 1:
         raise ConfigError(f"unsupported schema_version: {schema_version}")
@@ -92,12 +98,26 @@ def load_mvp_config(path: Path) -> MvpRunConfig:
     prompt = _prompt(_mapping(root.get("prompt"), "prompt"))
     policy = _policy(_mapping(root.get("policy"), "policy"))
     artifacts = _artifacts(_mapping(root.get("artifacts"), "artifacts"))
-    resources = _resources(_mapping(root["resources"], "resources")) if "resources" in root else ResourceConfig()
+    resources = (
+        _resources(_mapping(root["resources"], "resources"))
+        if "resources" in root
+        else ResourceConfig()
+    )
     return MvpRunConfig(schema_version, run, environment, prompt, policy, artifacts, resources)
 
+
 def _resources(value: Mapping[str, object]) -> ResourceConfig:
-    _keys(value, {"data_axis_size", "params_placement", "optimizer_placement", "trajectory_placement"}, "resources")
-    return ResourceConfig(_int(value["data_axis_size"], "resources.data_axis_size"), _string(value["params_placement"], "resources.params_placement"), _string(value["optimizer_placement"], "resources.optimizer_placement"), _string(value["trajectory_placement"], "resources.trajectory_placement"))
+    _keys(
+        value,
+        {"data_axis_size", "params_placement", "optimizer_placement", "trajectory_placement"},
+        "resources",
+    )
+    return ResourceConfig(
+        _int(value["data_axis_size"], "resources.data_axis_size"),
+        _string(value["params_placement"], "resources.params_placement"),
+        _string(value["optimizer_placement"], "resources.optimizer_placement"),
+        _string(value["trajectory_placement"], "resources.trajectory_placement"),
+    )
 
 
 def _run(value: Mapping[str, object]) -> RunSpec:
@@ -106,13 +126,33 @@ def _run(value: Mapping[str, object]) -> RunSpec:
 
 
 def _environment(value: Mapping[str, object]) -> EnvironmentSpec:
-    _keys(value, {"implementation", "base_environment", "world_preset", "scenario_config", "instruction_index", "batch_size", "horizon"}, "environment")
+    _keys(
+        value,
+        {
+            "implementation",
+            "base_environment",
+            "world_preset",
+            "scenario_config",
+            "instruction_index",
+            "batch_size",
+            "horizon",
+        },
+        "environment",
+    )
     implementation = _string(value.get("implementation"), "environment.implementation")
     if implementation not in {"craftext", "caged-craftext"}:
         raise ConfigError("environment.implementation must be 'craftext' or 'caged-craftext'")
     batch_size = _positive_int(value.get("batch_size"), "environment.batch_size")
     horizon = _positive_int(value.get("horizon"), "environment.horizon")
-    return EnvironmentSpec(implementation, _string(value.get("base_environment"), "environment.base_environment"), _string(value.get("world_preset"), "environment.world_preset"), _string(value.get("scenario_config"), "environment.scenario_config"), _int(value.get("instruction_index"), "environment.instruction_index"), batch_size, horizon)
+    return EnvironmentSpec(
+        implementation,
+        _string(value.get("base_environment"), "environment.base_environment"),
+        _string(value.get("world_preset"), "environment.world_preset"),
+        _string(value.get("scenario_config"), "environment.scenario_config"),
+        _int(value.get("instruction_index"), "environment.instruction_index"),
+        batch_size,
+        horizon,
+    )
 
 
 def _prompt(value: Mapping[str, object]) -> PromptSpec:
@@ -147,7 +187,9 @@ def _mapping(value: object, name: str) -> Mapping[str, object]:
     return value
 
 
-def _keys(value: Mapping[str, object], expected: set[str], name: str, optional: set[str] | None = None) -> None:
+def _keys(
+    value: Mapping[str, object], expected: set[str], name: str, optional: set[str] | None = None
+) -> None:
     optional = optional or set()
     if set(value) - optional != expected - optional or set(value) - expected:
         raise ConfigError(f"{name} keys must be exactly {sorted(expected)}, got {sorted(value)}")

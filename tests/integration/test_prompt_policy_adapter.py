@@ -1,7 +1,7 @@
 """Vertical smoke: environment-shaped state → prompt → text policy → adapter action."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Mapping
 
 import numpy as np
 import pytest

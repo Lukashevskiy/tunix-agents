@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
-from typing import Optional
 
 
-def git_revision(root: Optional[Path] = None) -> str:
+def git_revision(root: Path | None = None) -> str:
     """Return the checked-out revision, or a clear sentinel outside a Git checkout."""
     root = root or Path.cwd()
     try:

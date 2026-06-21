@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
 import json
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 
@@ -35,5 +35,7 @@ def save_replay(path: Path, artifact: ReplayArtifact) -> None:
     """Persist a human-inspectable replay atomically."""
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(".tmp")
-    temporary.write_text(json.dumps(asdict(artifact), indent=2, ensure_ascii=False), encoding="utf-8")
+    temporary.write_text(
+        json.dumps(asdict(artifact), indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     temporary.replace(path)

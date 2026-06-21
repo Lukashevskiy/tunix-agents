@@ -22,7 +22,9 @@ StepObservationT = TypeVar("StepObservationT", covariant=True)
 class PolicyFn(Protocol[PolicyObservationT, PolicyActionT]):
     """Policy signature used by the framework-neutral reference collector."""
 
-    def __call__(self, observation: PolicyObservationT) -> tuple[PolicyActionT, ArrayLike, ArrayLike]: ...
+    def __call__(
+        self, observation: PolicyObservationT
+    ) -> tuple[PolicyActionT, ArrayLike, ArrayLike]: ...
 
 
 class StepFn(Protocol[StateT, StepActionT, StepObservationT]):
@@ -64,7 +66,9 @@ def collect_rollout(
     if horizon <= 0:
         raise ValueError("horizon must be positive")
     state, observation = initial_state, initial_observation
-    records: list[tuple[ObservationT, ActionT, ArrayLike, ArrayLike, ArrayLike, ArrayLike, ArrayLike]] = []
+    records: list[
+        tuple[ObservationT, ActionT, ArrayLike, ArrayLike, ArrayLike, ArrayLike, ArrayLike]
+    ] = []
     for _ in range(horizon):
         action, log_prob, value = policy(observation)
         next_state, next_observation, reward, terminated, truncated = step(state, action)
@@ -136,8 +140,13 @@ def collect_rollout_scan(
     )
     bootstrap_value = jnp.asarray(policy(final_observation)[2])
     observation, action, reward, terminated, truncated, log_prob, value = fields
-    return final_state, final_observation, RolloutBatch(
-        Transition(observation, action, reward, terminated, truncated, log_prob, value), bootstrap_value
+    return (
+        final_state,
+        final_observation,
+        RolloutBatch(
+            Transition(observation, action, reward, terminated, truncated, log_prob, value),
+            bootstrap_value,
+        ),
     )
 
 
@@ -161,17 +170,26 @@ def collect_rollout_scan_indexed(
         action, log_prob, value = policy(observation)
         next_state, next_observation, reward, terminated, truncated = step(state, action, index)
         return (next_state, next_observation), (
-            observation, action, jnp.asarray(reward), jnp.asarray(terminated), jnp.asarray(truncated),
-            jnp.asarray(log_prob), jnp.asarray(value),
+            observation,
+            action,
+            jnp.asarray(reward),
+            jnp.asarray(terminated),
+            jnp.asarray(truncated),
+            jnp.asarray(log_prob),
+            jnp.asarray(value),
         )
 
     (final_state, final_observation), fields = jax.lax.scan(
         scan_step, (initial_state, initial_observation), xs=jnp.arange(horizon)
     )
     observation, action, reward, terminated, truncated, log_prob, value = fields
-    return final_state, final_observation, RolloutBatch(
-        Transition(observation, action, reward, terminated, truncated, log_prob, value),
-        jnp.asarray(policy(final_observation)[2]),
+    return (
+        final_state,
+        final_observation,
+        RolloutBatch(
+            Transition(observation, action, reward, terminated, truncated, log_prob, value),
+            jnp.asarray(policy(final_observation)[2]),
+        ),
     )
 
 

@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from collections.abc import Mapping, Sequence
-from typing import Tuple
+from dataclasses import dataclass
 
 import jax
 import jax.numpy as jnp
@@ -21,7 +20,7 @@ class LoraAdapter:
     PEFT/PyTorch tensors. The returned delta is transposed into Flax kernel layout.
     """
 
-    target: Tuple[str, ...]
+    target: tuple[str, ...]
     down: ArrayLike
     up: ArrayLike
     alpha: float
@@ -65,7 +64,9 @@ def _copy_and_set(tree: ParameterTree, path: Sequence[str], value: jax.Array) ->
     return result
 
 
-def merge_lora_adapters(params: ParameterTreeLike, adapters: Sequence[LoraAdapter]) -> ParameterTree:
+def merge_lora_adapters(
+    params: Mapping[str, ArrayLike | ParameterTreeLike], adapters: Sequence[LoraAdapter]
+) -> ParameterTree:
     """Return a new parameter PyTree with one or more adapters merged, never mutating input."""
     merged = normalize_parameter_tree(params)
     for adapter in adapters:
@@ -73,7 +74,8 @@ def merge_lora_adapters(params: ParameterTreeLike, adapters: Sequence[LoraAdapte
         delta = adapter.delta()
         if base.shape != delta.shape:
             raise ConversionError(
-                f"LoRA delta for {'.'.join(adapter.target)} has shape {delta.shape}; base is {base.shape}"
+                f"LoRA delta for {'.'.join(adapter.target)} has shape {delta.shape}; "
+                f"base is {base.shape}"
             )
         merged = _copy_and_set(merged, adapter.target, base + delta)
     return merged

@@ -1,7 +1,7 @@
-import numpy as np
-import pytest
 import jax
 import jax.numpy as jnp
+import numpy as np
+import pytest
 
 from tunix_craftext.contracts import RolloutBatch, Transition
 
@@ -22,7 +22,9 @@ def test_contracts_are_registered_pytrees_and_done_can_be_jitted() -> None:
     batch = RolloutBatch(transition, jnp.zeros(2))
 
     assert len(jax.tree_util.tree_leaves(batch)) == 8
-    np.testing.assert_array_equal(jax.jit(lambda value: value.done)(transition), np.zeros((3, 2), dtype=bool))
+    np.testing.assert_array_equal(
+        jax.jit(lambda value: value.done)(transition), np.zeros((3, 2), dtype=bool)
+    )
 
 
 def test_rollout_contract_rejects_nested_observation_with_wrong_leading_axes() -> None:

@@ -2,7 +2,11 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from tunix_craftext.random_policy import ActionSamplingError, sample_masked_actions, validate_action_mask
+from tunix_craftext.random_policy import (
+    ActionSamplingError,
+    sample_masked_actions,
+    validate_action_mask,
+)
 
 
 def test_masked_random_policy_never_samples_invalid_actions() -> None:

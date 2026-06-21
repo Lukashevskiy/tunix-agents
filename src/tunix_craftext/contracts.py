@@ -10,6 +10,8 @@ import jax.numpy as jnp
 
 ObservationT = TypeVar("ObservationT")
 ActionT = TypeVar("ActionT")
+
+
 @dataclass(frozen=True)
 class Transition(Generic[ObservationT, ActionT]):
     """Represent one synchronous environment step with a leading batch axis.
@@ -78,17 +80,29 @@ def _validate_tree_axes(value: object, field_name: str, expected_axes: tuple[int
     for index, leaf in enumerate(leaves):
         shape = _shape_of(leaf, field_name)
         if tuple(shape[: len(expected_axes)]) != expected_axes:
-            raise ValueError(f"{field_name} leaf {index} must begin with axes {expected_axes}, got {shape}")
+            raise ValueError(
+                f"{field_name} leaf {index} must begin with axes {expected_axes}, got {shape}"
+            )
 
 
 def _register_contract_pytrees() -> None:
     """Register public contract dataclasses at their definition boundary for JIT returns."""
     jax.tree_util.register_dataclass(
         Transition,
-        data_fields=["observation", "action", "reward", "terminated", "truncated", "log_prob", "value"],
+        data_fields=[
+            "observation",
+            "action",
+            "reward",
+            "terminated",
+            "truncated",
+            "log_prob",
+            "value",
+        ],
         meta_fields=[],
     )
-    jax.tree_util.register_dataclass(RolloutBatch, data_fields=["transitions", "bootstrap_value"], meta_fields=[])
+    jax.tree_util.register_dataclass(
+        RolloutBatch, data_fields=["transitions", "bootstrap_value"], meta_fields=[]
+    )
 
 
 _register_contract_pytrees()

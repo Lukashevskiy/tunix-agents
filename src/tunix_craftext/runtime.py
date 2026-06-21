@@ -24,13 +24,19 @@ class CrafTextRuntime:
 def build_craftext_runtime(config: MvpRunConfig) -> CrafTextRuntime:
     """Build a non-auto-reset CrafText world selected by one validated config.
 
-    :raises RuntimeError: If the config is not a CrafText runtime or vendor action cardinality is invalid.
+    :raises RuntimeError: If config is not a CrafText runtime or its action cardinality is invalid.
     """
     try:
         if config.environment.implementation == "craftext":
-            from craftext.environment.world_presets import build_env_and_params, build_world_preset_spec  # type: ignore[import-not-found]
+            from craftext.environment.world_presets import (  # type: ignore[import-not-found]
+                build_env_and_params,
+                build_world_preset_spec,
+            )
         elif config.environment.implementation == "caged-craftext":
-            from caged_craftext.environment.world_presets import build_env_and_params, build_world_preset_spec  # type: ignore[import-not-found]
+            from caged_craftext.environment.world_presets import (  # type: ignore[import-not-found]
+                build_env_and_params,
+                build_world_preset_spec,
+            )
         else:
             raise RuntimeError("unsupported environment implementation")
     except ImportError as error:

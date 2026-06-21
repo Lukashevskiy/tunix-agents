@@ -68,12 +68,17 @@
     {
       "name": "Compiled JAX rollout collector",
       "status": "ready",
-      "description": "lax.scan collector возвращает тот же time-major trajectory contract, проходит jitted parity с reference collector и имеет отдельный steady-state benchmark."
+      "description": "lax.scan collector возвращает тот же time-major trajectory contract, проходит jitted parity с reference collector; benchmark schema v2 сохраняет raw samples, median/p95, config hash и сравнение full/tiny/Caged."
     },
     {
-      "name": "PPO/GRPO, Tunix bridge, Orbax resume",
+      "name": "PPO learner и Orbax resume",
+      "status": "ready",
+      "description": "Flax actor-critic и Optax PPO smoke update покрыты TDD; Orbax сохраняет params, optimizer state и step с версионируемым metadata record. Restore подтверждён идентичным следующим update."
+    },
+    {
+      "name": "Tunix bridge и GRPO",
       "status": "planned",
-      "description": "Спроектировано и покрыто quality gates, но ещё не реализовано."
+      "description": "Ожидает закрепления официального Tunix source/revision, затем будет добавлен public-API adapter с parity sampling/logprob/value."
     }
   ]
 }

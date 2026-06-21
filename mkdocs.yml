@@ -32,6 +32,7 @@ nav:
   - Обзор: index.md
   - Архитектура: architecture.md
   - Model interoperability: interop.md
+  - Checkpoints: checkpoints.md
   - Prompts: prompts.md
   - Конфигурация: configuration.md
   - Vendor patches: vendor-patches.md

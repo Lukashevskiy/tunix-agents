@@ -1,6 +1,6 @@
+import jax
 import numpy as np
 import pytest
-import jax
 
 from tunix_craftext.interop import (
     ConversionError,

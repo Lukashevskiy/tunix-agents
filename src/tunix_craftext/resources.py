@@ -31,7 +31,8 @@ class ResourceConfig:
 def data_mesh(config: ResourceConfig) -> jax.sharding.Mesh:
     """Return a data-parallel mesh; ``-1`` uses all visible devices."""
     size = len(jax.devices()) if config.data_axis_size == -1 else config.data_axis_size
-    if size > len(jax.devices()): raise ValueError("requested data axis exceeds visible devices")
+    if size > len(jax.devices()):
+        raise ValueError("requested data axis exceeds visible devices")
     return jax.make_mesh((size,), ("data",))
 
 

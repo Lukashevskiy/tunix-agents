@@ -1,5 +1,5 @@
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Mapping
 
 import pytest
 
@@ -27,7 +27,9 @@ def test_megaprompt_renderer_preserves_environment_goal_and_action_mapping() -> 
     catalog = ActionCatalog(("LEFT", "RIGHT", "DO"))
 
     rendered = MegaPromptRenderer("base", backend).render(
-        PromptContext(goal="collect wood", observation={"inventory": 0}, actions=catalog, safety="stay safe")
+        PromptContext(
+            goal="collect wood", observation={"inventory": 0}, actions=catalog, safety="stay safe"
+        )
     )
 
     assert rendered.template_name == "base"

@@ -11,11 +11,11 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+from collections.abc import Iterable
+from datetime import UTC, datetime
 from html import escape
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable
-
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
@@ -35,6 +35,14 @@ def command(*args: str) -> str:
 
 def markdown_escape(value: object) -> str:
     return str(value).replace("|", "\\|").replace("\n", " ")
+
+
+def display_artifact_path(path: Path) -> Path | str:
+    """Return a repository-relative artifact name, retaining external test paths safely."""
+    try:
+        return path.relative_to(ROOT)
+    except ValueError:
+        return path
 
 
 def plan_progress() -> tuple[int, int, list[tuple[str, int, int]]]:
@@ -104,7 +112,9 @@ def benchmark_records() -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     if not BENCHMARKS.exists():
         return records
-    for path in sorted(BENCHMARKS.rglob("*.json"), key=lambda item: item.stat().st_mtime, reverse=True):
+    for path in sorted(
+        BENCHMARKS.rglob("*.json"), key=lambda item: item.stat().st_mtime, reverse=True
+    ):
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
@@ -120,13 +130,19 @@ def benchmark_records() -> list[dict[str, Any]]:
                     stats = {}
                 mean = stats.get("mean")
                 metrics = {
-                    "mean_ms": round(float(mean) * 1000, 4) if isinstance(mean, (int, float)) else "—",
-                    "median_ms": round(float(stats["median"]) * 1000, 4) if isinstance(stats.get("median"), (int, float)) else "—",
-                    "ops": round(1 / float(mean), 2) if isinstance(mean, (int, float)) and mean else "—",
+                    "mean_ms": round(float(mean) * 1000, 4)
+                    if isinstance(mean, (int, float))
+                    else "—",
+                    "median_ms": round(float(stats["median"]) * 1000, 4)
+                    if isinstance(stats.get("median"), (int, float))
+                    else "—",
+                    "ops": round(1 / float(mean), 2)
+                    if isinstance(mean, (int, float)) and mean
+                    else "—",
                 }
                 records.append(
                     {
-                        "path": path.relative_to(ROOT),
+                        "path": display_artifact_path(path),
                         "name": benchmark.get("name", path.stem),
                         "timestamp": payload.get("datetime", "—"),
                         "commit": commit.get("id", "—") if isinstance(commit, dict) else "—",
@@ -140,22 +156,45 @@ def benchmark_records() -> list[dict[str, Any]]:
                         "metrics": metrics,
                     }
                 )
-        elif isinstance(payload, dict) and payload.get("schema") == "tunix-craftext.environment-benchmark/v1":
+        elif isinstance(payload, dict) and payload.get("schema") in {
+            "tunix-craftext.environment-benchmark/v1",
+            "tunix-craftext.environment-benchmark/v2",
+        }:
+            hardware = payload.get("hardware", "—")
+            if isinstance(hardware, dict):
+                hardware = f"{hardware.get('platform', '—')} / {hardware.get('backend', '—')}"
             for point in payload.get("points", []):
                 if not isinstance(point, dict):
                     continue
+                is_v2 = payload.get("schema") == "tunix-craftext.environment-benchmark/v2"
+                metrics: dict[str, object]
+                if point.get("status") == "failed":
+                    metrics = {"status": "failed", "error": point.get("error", "unknown")}
+                elif is_v2:
+                    metrics = {
+                        "compile_ms": point.get("compile_and_first_execution_ms", "—"),
+                        "median_ms": point.get("steady_state_median_ms", "—"),
+                        "p95_ms": point.get("steady_state_p95_ms", "—"),
+                        "env_steps_per_second": point.get("env_steps_per_second_median", "—"),
+                        "vs_full": point.get("throughput_relative_to_craftext_full", "—"),
+                    }
+                else:
+                    metrics = {
+                        "mean_ms": point.get("steady_state_ms", "—"),
+                        "compile_ms": point.get("compile_ms", "—"),
+                        "env_steps_per_second": point.get("env_steps_per_second", "—"),
+                    }
                 records.append(
                     {
-                        "path": path.relative_to(ROOT),
-                        "name": f"{point.get('variant', 'environment')} B={point.get('batch_size', '—')} T={point.get('horizon', '—')}",
+                        "path": display_artifact_path(path),
+                        "name": (
+                            f"{point.get('variant', 'environment')} "
+                            f"B={point.get('batch_size', '—')} T={point.get('horizon', '—')}"
+                        ),
                         "timestamp": payload.get("timestamp", "—"),
-                        "commit": payload.get("commit", "—"),
-                        "hardware": payload.get("hardware", "—"),
-                        "metrics": {
-                            "mean_ms": point.get("steady_state_ms", "—"),
-                            "median_ms": point.get("compile_ms", "—"),
-                            "ops": point.get("env_steps_per_second", "—"),
-                        },
+                        "commit": payload.get("git_revision", payload.get("commit", "—")),
+                        "hardware": hardware,
+                        "metrics": metrics,
                     }
                 )
             continue
@@ -166,7 +205,7 @@ def benchmark_records() -> list[dict[str, Any]]:
             metrics = entry.get("metrics", {})
             records.append(
                 {
-                    "path": path.relative_to(ROOT),
+                    "path": display_artifact_path(path),
                     "name": entry.get("name", path.stem),
                     "timestamp": entry.get("timestamp", entry.get("created_at", "—")),
                     "commit": entry.get("git_revision", entry.get("commit", "—")),
@@ -207,7 +246,7 @@ def generate() -> None:
     caps = capabilities()
     ready = [item for item in caps if item["status"] == "ready"]
     benchmarks = benchmark_records()
-    built_at = datetime.now(timezone.utc).isoformat()
+    built_at = datetime.now(UTC).isoformat()
 
     phase_rows = "\n".join(
         f"| {markdown_escape(title)} | {finished}/{count} | "
@@ -215,7 +254,8 @@ def generate() -> None:
         for title, finished, count in phases
     )
     capability_rows = "\n".join(
-        f"| {markdown_escape(item['name'])} | {'Готово' if item['status'] == 'ready' else 'Запланировано'} | "
+        f"| {markdown_escape(item['name'])} | "
+        f"{'Готово' if item['status'] == 'ready' else 'Запланировано'} | "
         f"{markdown_escape(item['description'])} |"
         for item in caps
     )
@@ -230,9 +270,9 @@ _Сгенерировано автоматически: `{built_at}`. Источ
 | Показатель | Значение |
 | --- | --- |
 | Прогресс roadmap | **{done}/{total} задач ({percent}%)** |
-| Последний commit | `{git['short']}` — {markdown_escape(git['subject'])} |
-| Автор / дата | {markdown_escape(git['author'])} / `{git['date']}` |
-| Working tree dirty | {git['dirty']} |
+| Последний commit | `{git["short"]}` — {markdown_escape(git["subject"])} |
+| Автор / дата | {markdown_escape(git["author"])} / `{git["date"]}` |
+| Working tree dirty | {git["dirty"]} |
 | Benchmark records | {len(benchmarks)} |
 | Готовые возможности | {len(ready)} |
 
@@ -253,7 +293,7 @@ _Сгенерировано автоматически: `{built_at}`. Источ
 ## Последнее изменение
 
 ```text
-{git['changed']}
+{git["changed"]}
 ```
 
 Смотрите [историю улучшений](changelog.md) и [результаты benchmark](benchmarks.md).
@@ -265,7 +305,11 @@ _Сгенерировано автоматически: `{built_at}`. Источ
     for phase, _, _ in cards:
         if phase not in phases:
             phases.append(phase)
-    lane_names = (("done", "Сделано"), ("active", "В текущей реализации"), ("planned", "Запланировано"))
+    lane_names = (
+        ("done", "Сделано"),
+        ("active", "В текущей реализации"),
+        ("planned", "Запланировано"),
+    )
     boards = []
     for phase in phases:
         phase_cards = [card for card in cards if card[0] == phase]
@@ -281,7 +325,7 @@ _Сгенерировано автоматически: `{built_at}`. Источ
                 f'<section class="kanban-lane kanban-lane--{status}"><h3>{label}</h3>'
                 f"{lane_contents}</section>"
             )
-        boards.append(f"## {escape(phase)}\n\n<div class=\"kanban-board\">{''.join(lanes)}</div>")
+        boards.append(f'## {escape(phase)}\n\n<div class="kanban-board">{"".join(lanes)}</div>')
     write_page(
         "kanban.md",
         f"""
@@ -294,7 +338,10 @@ _Автогенерация: `{built_at}` из `docs/plan.md`. Меняйте с
 """,
     )
 
-    status_counts = {status: sum(1 for _, item_status, _ in cards if item_status == status) for status, _ in lane_names}
+    status_counts = {
+        status: sum(1 for _, item_status, _ in cards if item_status == status)
+        for status, _ in lane_names
+    }
     palette = {
         "done": {"color": "#238636", "border": "#3fb950", "label": "Сделано"},
         "active": {"color": "#9e6a03", "border": "#d29922", "label": "В текущей реализации"},
@@ -326,12 +373,21 @@ _Автогенерация: `{built_at}` из `docs/plan.md`. Меняйте с
             )
             if previous_task:
                 graph_elements.append(
-                    {"data": {"id": f"order-{previous_task['id']}-{task_id}", "source": previous_task["id"], "target": task_id}}
+                    {
+                        "data": {
+                            "id": f"order-{previous_task['id']}-{task_id}",
+                            "source": previous_task["id"],
+                            "target": task_id,
+                        }
+                    }
                 )
             previous_task = {"id": task_id, "title": task}
-    graph_json = json.dumps({"elements": graph_elements}, ensure_ascii=False).replace("<", "\\u003c").replace(
-        ">", "\\u003e"
-    ).replace("&", "\\u0026")
+    graph_json = (
+        json.dumps({"elements": graph_elements}, ensure_ascii=False)
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("&", "\\u0026")
+    )
     write_page(
         "task-graph.md",
         f"""
@@ -341,17 +397,19 @@ _Автогенерация: `{built_at}` из `docs/plan.md`._
 
 | Статус | Задач |
 | --- | ---: |
-| Сделано | {status_counts['done']} |
-| В текущей реализации | {status_counts['active']} |
-| Запланировано | {status_counts['planned']} |
+| Сделано | {status_counts["done"]} |
+| В текущей реализации | {status_counts["active"]} |
+| Запланировано | {status_counts["planned"]} |
 
 <div class="task-graph-toolbar">
   <button id="task-graph-fit" type="button">Показать весь граф</button>
   <button id="task-graph-layout" type="button">Переложить узлы</button>
-  <span>Колесо — zoom · drag background — pan · drag task — переместить · click — карточка задачи</span>
+  <span>Колесо — zoom · drag background — pan · drag task — переместить ·
+  click — карточка задачи</span>
 </div>
 <div id="task-graph"></div>
-<div id="task-graph-detail" class="task-graph-detail">Выберите задачу, чтобы увидеть её описание и связь.</div>
+<div id="task-graph-detail" class="task-graph-detail">Выберите задачу, чтобы увидеть её
+описание и связь.</div>
 <script id="task-graph-data" type="application/json">{graph_json}</script>
 
 Каждый узел — конкретная задача, а стрелки показывают текущий **выведенный порядок исполнения**
@@ -360,10 +418,13 @@ _Автогенерация: `{built_at}` из `docs/plan.md`._
 """,
     )
 
-    commit_rows = "\n".join(
-        f"| `{sha}` | {markdown_escape(subject)} | {markdown_escape(author)} | `{date}` |"
-        for sha, subject, author, date in recent_commits()
-    ) or "| — | История пока пуста | — | — |"
+    commit_rows = (
+        "\n".join(
+            f"| `{sha}` | {markdown_escape(subject)} | {markdown_escape(author)} | `{date}` |"
+            for sha, subject, author, date in recent_commits()
+        )
+        or "| — | История пока пуста | — | — |"
+    )
     write_page(
         "changelog.md",
         f"""
@@ -378,7 +439,7 @@ _Автогенерация: `{built_at}`._
 Детали последнего commit:
 
 ```text
-{git['changed']}
+{git["changed"]}
 ```
 """,
     )
@@ -399,7 +460,7 @@ _Автогенерация: `{built_at}`._
 # Бенчмарки
 
 _Автогенерация: `{built_at}`. Отображаются все JSON-файлы из `artifacts/benchmarks/`._
-{empty if not benchmark_rows else ''}
+{empty if not benchmark_rows else ""}
 | Сценарий | Время | Commit | Hardware | Метрики | Артефакт |
 | --- | --- | --- | --- | --- | --- |
 {benchmark_rows}

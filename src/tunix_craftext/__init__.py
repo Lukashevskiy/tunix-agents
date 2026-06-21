@@ -1,16 +1,17 @@
 """JAX-native contracts and adapters for CrafText training."""
 
-from .contracts import RolloutBatch, Transition
 from .adapters import CagedCrafTextAdapter, CrafTextAdapter, EnvironmentReset, EnvironmentStep
-from .interop import LoraAdapter, ModelTemplate, TensorRule, convert_state_dict, merge_lora_adapters
-from .prompts import ActionCatalog, MegaPromptRenderer, PromptContext, RenderedPrompt
-from .text_policy import DecodedAction, DecodeMetrics, TextPolicy, act, decode_action
+from .checkpoints import CheckpointMetadata, restore_checkpoint, save_checkpoint
 from .config import ConfigError, MvpRunConfig, load_mvp_config
-from .runtime import CrafTextRuntime, build_craftext_runtime
-from .random_policy import ActionSamplingError, sample_masked_actions, validate_action_mask
+from .contracts import RolloutBatch, Transition
+from .interop import LoraAdapter, ModelTemplate, TensorRule, convert_state_dict, merge_lora_adapters
 from .llm import LlmBackend, LlmRequest, LlmResponse, ScriptedLlmBackend
+from .prompts import ActionCatalog, MegaPromptRenderer, PromptContext, RenderedPrompt
+from .random_policy import ActionSamplingError, sample_masked_actions, validate_action_mask
 from .replay import ReplayArtifact, ReplayStep, save_replay
 from .rollout import collect_rollout, collect_rollout_scan
+from .runtime import CrafTextRuntime, build_craftext_runtime
+from .text_policy import DecodedAction, DecodeMetrics, TextPolicy, act, decode_action
 
 __all__ = [
     "LoraAdapter",
@@ -43,6 +44,14 @@ __all__ = [
     "ActionSamplingError",
     "sample_masked_actions",
     "validate_action_mask",
-    "LlmBackend", "LlmRequest", "LlmResponse", "ScriptedLlmBackend",
-    "ReplayArtifact", "ReplayStep", "save_replay",
+    "LlmBackend",
+    "LlmRequest",
+    "LlmResponse",
+    "ScriptedLlmBackend",
+    "ReplayArtifact",
+    "ReplayStep",
+    "save_replay",
+    "CheckpointMetadata",
+    "restore_checkpoint",
+    "save_checkpoint",
 ]

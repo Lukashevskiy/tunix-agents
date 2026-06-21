@@ -10,7 +10,9 @@ from tunix_craftext.prompts import ActionCatalog, MegaPromptRenderer, PromptCont
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(importlib.util.find_spec("megaprompt") is None, reason="install the prompts extra")
+@pytest.mark.skipif(
+    importlib.util.find_spec("megaprompt") is None, reason="install the prompts extra"
+)
 def test_vendored_megaprompt_renders_environment_shaped_observation() -> None:
     observation = SimpleNamespace(
         map=np.zeros((3, 3), dtype=np.int32),

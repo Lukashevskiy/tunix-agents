@@ -8,7 +8,6 @@ from typing import Protocol
 
 from .prompts import PromptContractError, RenderedPrompt
 
-
 _ACTION_TAG = re.compile(r"<action>\s*([^<\n]+?)\s*</action>", re.IGNORECASE)
 
 
