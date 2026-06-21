@@ -5,6 +5,7 @@ from .adapters import CagedCrafTextAdapter, CrafTextAdapter, EnvironmentReset, E
 from .interop import LoraAdapter, ModelTemplate, TensorRule, convert_state_dict, merge_lora_adapters
 from .prompts import ActionCatalog, MegaPromptRenderer, PromptContext, RenderedPrompt
 from .text_policy import DecodedAction, DecodeMetrics, TextPolicy, act, decode_action
+from .config import ConfigError, MvpRunConfig, load_mvp_config
 from .rollout import collect_rollout, collect_rollout_scan
 
 __all__ = [
@@ -30,4 +31,7 @@ __all__ = [
     "TextPolicy",
     "act",
     "decode_action",
+    "ConfigError",
+    "MvpRunConfig",
+    "load_mvp_config",
 ]

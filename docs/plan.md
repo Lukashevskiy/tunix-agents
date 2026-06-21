@@ -79,4 +79,4 @@
 `foundation/jax-scan-and-adapter`: CrafText/Caged adapter boundary и compiled `lax.scan`
 collector готовы; scan parity/steady-state benchmark проходят. Prompt boundary уже использует
 vendored MegaPrompts (`PromptContext → RenderedPrompt + ActionCatalog`). Следующий маленький PR:
-**связать text-policy/decoder с real tiny-world CrafText preset**.
+**связать validated `MvpRunConfig` с real tiny-world CrafText preset и adapter**.

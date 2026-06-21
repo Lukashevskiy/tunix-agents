@@ -56,6 +56,11 @@
       "description": "Принимает только RenderedPrompt, извлекает <action>LABEL</action>, валидирует label через prompt-bound ActionCatalog и выдаёт discrete action id с raw completion provenance."
     },
     {
+      "name": "Validated MVP run configuration",
+      "status": "ready",
+      "description": "Строго загружает schema_version 1 YAML: run, CrafText environment, prompt, policy и replay artifacts; unknown/missing keys не допускаются."
+    },
+    {
       "name": "Compiled JAX rollout collector",
       "status": "ready",
       "description": "lax.scan collector возвращает тот же time-major trajectory contract, проходит jitted parity с reference collector и имеет отдельный steady-state benchmark."

@@ -33,6 +33,7 @@ nav:
   - Архитектура: architecture.md
   - Model interoperability: interop.md
   - Prompts: prompts.md
+  - Конфигурация: configuration.md
   - План реализации: plan.md
   - Качество и perf: quality.md
   - Среда разработки: development.md
