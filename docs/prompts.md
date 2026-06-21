@@ -19,3 +19,8 @@ pyenv exec python -m uv run pytest -m integration tests/integration/test_megapro
 
 Controlled fallback и накопительные invalid-action metrics ещё не реализованы: они остаются
 активным пунктом roadmap перед подключением Tunix sampler/logprob/value bridge.
+
+`collect_text_episode` — host-side reference pipeline: он последовательно выполняет
+`PromptContext → RenderedPrompt → LlmBackend → strict decode_action → CrafTextAdapter.step`
+и возвращает versioned `ReplayArtifact`. Это намеренно не JIT path: LLM I/O и текстовый
+parser остаются на host, а JAX rollout используется для численного обучения после сбора.

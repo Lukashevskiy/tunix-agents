@@ -4,6 +4,7 @@ from .adapters import CagedCrafTextAdapter, CrafTextAdapter, EnvironmentReset, E
 from .checkpoints import CheckpointMetadata, restore_checkpoint, save_checkpoint
 from .config import ConfigError, MvpRunConfig, load_mvp_config
 from .contracts import RolloutBatch, Transition
+from .episode import collect_text_episode
 from .interop import LoraAdapter, ModelTemplate, TensorRule, convert_state_dict, merge_lora_adapters
 from .llm import LlmBackend, LlmRequest, LlmResponse, ScriptedLlmBackend
 from .prompts import ActionCatalog, MegaPromptRenderer, PromptContext, RenderedPrompt
@@ -23,6 +24,7 @@ __all__ = [
     "RolloutBatch",
     "TensorRule",
     "Transition",
+    "collect_text_episode",
     "collect_rollout",
     "collect_rollout_scan",
     "convert_state_dict",

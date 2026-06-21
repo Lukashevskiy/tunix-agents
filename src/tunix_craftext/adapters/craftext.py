@@ -121,6 +121,11 @@ class CrafTextAdapter(Generic[ParamsT, ObservationT, StateT]):
         self._action_count = action_count
         self._action_mask_key = action_mask_key
 
+    @property
+    def action_count(self) -> int:
+        """Return the static discrete action cardinality exposed by this adapter."""
+        return self._action_count
+
     def _fallback_mask(self) -> jax.Array:
         """Return the conservative all-actions-available mask with shape ``[A]``."""
         return jnp.ones((self._action_count,), dtype=bool)
