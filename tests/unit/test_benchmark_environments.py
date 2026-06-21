@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -64,3 +65,23 @@ def test_baseline_comparison_matches_only_same_matrix_cell() -> None:
     assert points[1]["throughput_relative_to_craftext_full"] == 0.8
     assert points[1]["throughput_degradation_percent"] == 20.0
     assert "throughput_relative_to_craftext_full" not in points[2]
+
+
+def test_isolated_point_records_native_child_failure(monkeypatch, tmp_path: Path) -> None:
+    """A killed JIT child becomes a failure record instead of aborting the matrix."""
+    monkeypatch.setattr(
+        benchmark.subprocess,
+        "run",
+        lambda *args, **kwargs: SimpleNamespace(returncode=-9, stderr="killed", stdout=""),
+    )
+
+    point = benchmark.isolated_point(
+        Path("configs/benchmarks/craftext_full.yaml"),
+        batch_size=32,
+        horizon=512,
+        repeats=20,
+        point_output=tmp_path / "missing.json",
+    )
+
+    assert point["status"] == "failed"
+    assert "child exit -9" in str(point["error"])

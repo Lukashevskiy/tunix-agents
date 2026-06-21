@@ -193,7 +193,9 @@ def benchmark_records() -> list[dict[str, Any]]:
                         ),
                         "timestamp": payload.get("timestamp", "—"),
                         "commit": payload.get("git_revision", payload.get("commit", "—")),
-                        "hardware": hardware,
+                        "hardware": (
+                            f"{hardware} / {point.get('jax_backend', '—')}" if is_v2 else hardware
+                        ),
                         "metrics": metrics,
                     }
                 )

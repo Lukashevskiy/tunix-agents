@@ -10,10 +10,10 @@ samples so its median and p95 can be independently audited later.
 from __future__ import annotations
 
 import argparse
-import gc
 import json
 import platform
 import subprocess
+import sys
 import time
 from collections.abc import Sequence
 from dataclasses import replace
@@ -156,6 +156,8 @@ def benchmark_point(path: Path, batch_size: int, horizon: int, repeats: int) -> 
         "variant": config.run.name,
         "config": str(path),
         "config_sha256": sha256(path.read_bytes()).hexdigest(),
+        "jax_backend": jax.default_backend(),
+        "jax_devices": [str(device) for device in jax.devices()],
         "batch_size": batch_size,
         "horizon": horizon,
         "warmup_runs": 1,
@@ -194,8 +196,8 @@ def benchmark_payload(points: list[BenchmarkPoint]) -> dict[str, object]:
         "jax_version": jax.__version__,
         "hardware": {
             "platform": platform.platform(),
-            "backend": jax.default_backend(),
-            "devices": [str(device) for device in jax.devices()],
+            "backend": "recorded per point",
+            "devices": [],
         },
         "notes": {
             "compile_metric": "first JIT invocation, including first execution",
@@ -215,42 +217,101 @@ def write_checkpoint(output: Path, payload: dict[str, object]) -> None:
     temporary.replace(output)
 
 
+def isolated_point(
+    config: Path,
+    batch_size: int,
+    horizon: int,
+    repeats: int,
+    point_output: Path,
+) -> BenchmarkPoint:
+    """Run one JIT cell in a child process and return a structured result.
+
+    A native accelerator/compiler failure can terminate Python without raising an
+    exception. Isolating each shape protects the remaining matrix and makes that
+    failure visible in the artifact rather than silently truncating it.
+
+    :param config: Benchmark configuration for the child process.
+    :param batch_size: Environment batch size for the cell.
+    :param horizon: Scan horizon for the cell.
+    :param repeats: Number of steady-state samples for the cell.
+    :param point_output: Temporary JSON destination written by a successful child.
+    :returns: Successful point payload or a structured failed record.
+    """
+    command = [
+        sys.executable,
+        str(Path(__file__).resolve()),
+        "--_point",
+        "--config",
+        str(config),
+        "--batch-size",
+        str(batch_size),
+        "--horizon",
+        str(horizon),
+        "--repeats",
+        str(repeats),
+        "--point-output",
+        str(point_output),
+    ]
+    completed = subprocess.run(command, text=True, capture_output=True, check=False)
+    try:
+        if completed.returncode == 0 and point_output.is_file():
+            payload = json.loads(point_output.read_text(encoding="utf-8"))
+            if isinstance(payload, dict):
+                return payload
+        detail = completed.stderr.strip() or completed.stdout.strip()
+        return {
+            "status": "failed",
+            "variant": config.stem,
+            "config": str(config),
+            "batch_size": batch_size,
+            "horizon": horizon,
+            "error": f"child exit {completed.returncode}: {detail[-1_000:]}",
+        }
+    finally:
+        point_output.unlink(missing_ok=True)
+
+
 def main() -> None:
     """Parse the matrix CLI and record every point, including recoverable failures."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--configs", nargs="+", type=Path, required=True)
+    parser.add_argument("--configs", nargs="+", type=Path)
     parser.add_argument("--batch-sizes", nargs="+", type=int, default=[1, 2, 8, 32])
     parser.add_argument("--horizons", nargs="+", type=int, default=[8, 32, 128, 512])
     parser.add_argument("--repeats", type=int, default=20)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=Path)
+    parser.add_argument("--_point", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--config", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument("--batch-size", type=int, help=argparse.SUPPRESS)
+    parser.add_argument("--horizon", type=int, help=argparse.SUPPRESS)
+    parser.add_argument("--point-output", type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args()
+
+    if args._point:
+        if (
+            args.config is None
+            or args.batch_size is None
+            or args.horizon is None
+            or args.point_output is None
+        ):
+            parser.error("--_point requires config, batch-size, horizon and point-output")
+        point = benchmark_point(args.config, args.batch_size, args.horizon, args.repeats)
+        args.point_output.write_text(json.dumps(point) + "\n", encoding="utf-8")
+        return
+
+    if not args.configs or args.output is None:
+        parser.error("--configs and --output are required for a matrix run")
 
     points: list[BenchmarkPoint] = []
     payload = benchmark_payload(points)
     for config in args.configs:
         for batch_size in args.batch_sizes:
             for horizon in args.horizons:
-                try:
-                    points.append(benchmark_point(config, batch_size, horizon, args.repeats))
-                except (
-                    Exception
-                ) as error:  # Artifact must disclose failures instead of stopping a matrix.
-                    points.append(
-                        {
-                            "status": "failed",
-                            "variant": config.stem,
-                            "config": str(config),
-                            "batch_size": batch_size,
-                            "horizon": horizon,
-                            "error": f"{type(error).__name__}: {error}",
-                        }
-                    )
+                temporary_point = args.output.with_suffix(f".point-{len(points):03d}.json")
+                points.append(
+                    isolated_point(config, batch_size, horizon, args.repeats, temporary_point)
+                )
                 add_baseline_comparisons(points)
                 write_checkpoint(args.output, payload)
-                # Every shape creates a distinct executable. Release its cache before the
-                # next cell so a long matrix does not accumulate compiler/device memory.
-                jax.clear_caches()
-                gc.collect()
 
 
 if __name__ == "__main__":
