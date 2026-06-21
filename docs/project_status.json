@@ -71,6 +71,11 @@
       "description": "lax.scan collector возвращает тот же time-major trajectory contract, проходит jitted parity с reference collector; benchmark schema v2 сохраняет raw samples, median/p95, config hash и сравнение full/tiny/Caged."
     },
     {
+      "name": "Reproducible environment benchmark matrix",
+      "status": "ready",
+      "description": "Полная CPU matrix full/tiny/Caged: 48 ячеек B=1/2/8/32 × T=8/32/128/512, 20 repeats, без failed points. Runner разделяет compile и steady state, checkpoint-ит каждую ячейку и сохраняет median/p95/provenance."
+    },
+    {
       "name": "PPO learner и Orbax resume",
       "status": "ready",
       "description": "Flax actor-critic и Optax PPO smoke update покрыты TDD; Orbax сохраняет params, optimizer state и step с версионируемым metadata record. Restore подтверждён идентичным следующим update."

@@ -14,11 +14,11 @@
 - [ ] Зафиксировать Python/JAX/JAXLIB/Tunix/Flax/Optax/Orbax в lockfile для CPU и целевого
    accelerator, с отдельной таблицей compatibility.
 - [ ] Вынести exact source revision и SHA256 vendor-снимков в `vendor/manifest.json`.
-- [~] Написать `CrafTextAdapter.reset/step`, который возвращает статические pytree и
+- [x] Написать `CrafTextAdapter.reset/step`, который возвращает статические pytree и
    action-mask; сделать Caged-вариант тем же протоколом.
 - [ ] Создать deterministic tiny-world fixture: seed, 2 env, 8 steps, золотая
    последовательность reward/done/allowed actions.
-- [ ] Снять baseline: reset/step throughput, host→device transfer, compile time, peak HBM,
+- [~] Снять baseline: reset/step throughput, host→device transfer, compile time, peak HBM,
    tokens/s и env-steps/s. Данные — JSON в `artifacts/benchmarks/`, не только console log.
 
 **Gate:** две среды проходят parity fixture; baseline имеет hardware, commit, config и seed.
@@ -30,17 +30,17 @@
    truncated и action mask.
 - [ ] Сравнить reference collector с JIT collector на fixed fixture leaf-by-leaf.
 - [ ] Добавить sharding API заранее (`Mesh`/named axes), но начать с одного device.
-- [ ] Профилировать compilation отдельно от steady-state и документировать warmup.
+- [~] Профилировать compilation отдельно от steady-state и документировать warmup.
 
 **Gate:** exact parity дискретных полей, численная tolerance для float, не хуже baseline
 по env-step/s после warmup.
 
 ## 3. Алгоритмический минимум: PPO
 
-- [ ] TDD для discounted return, GAE, advantage normalization, masks и value bootstrap.
-- [ ] Чистые функции loss: policy clip, value clip, entropy, KL; каждая имеет hand-computed
+- [~] TDD для discounted return, GAE, advantage normalization, masks и value bootstrap.
+- [~] Чистые функции loss: policy clip, value clip, entropy, KL; каждая имеет hand-computed
    mini-batch test.
-- [ ] Flax actor-critic и `TrainState` с Optax schedule/gradient clipping.
+- [~] Flax actor-critic и `TrainState` с Optax schedule/gradient clipping.
 - [x] Один update на synthetic trajectory → loss finite, params change, checkpoint round-trip.
 - [ ] Запустить tiny CrafText end-to-end и сохранить trajectory/rendered prompt/metrics.
 

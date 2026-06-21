@@ -19,14 +19,8 @@ from collections.abc import Sequence
 from dataclasses import replace
 from datetime import UTC, datetime
 from hashlib import sha256
+from importlib.metadata import version
 from pathlib import Path
-
-import jax
-import jax.numpy as jnp
-
-from tunix_craftext.config import load_mvp_config
-from tunix_craftext.random_policy import sample_masked_actions
-from tunix_craftext.runtime import build_craftext_runtime
 
 SCHEMA = "tunix-craftext.environment-benchmark/v2"
 BenchmarkPoint = dict[str, object]
@@ -110,6 +104,14 @@ def benchmark_point(path: Path, batch_size: int, horizon: int, repeats: int) -> 
     """
     if repeats <= 0:
         raise ValueError("repeats must be positive")
+    # Deliberately local: the matrix dispatcher must not initialize a JAX runtime.
+    import jax
+    import jax.numpy as jnp
+
+    from tunix_craftext.config import load_mvp_config
+    from tunix_craftext.random_policy import sample_masked_actions
+    from tunix_craftext.runtime import build_craftext_runtime
+
     config = load_mvp_config(path)
     config = replace(
         config,
@@ -193,7 +195,7 @@ def benchmark_payload(points: list[BenchmarkPoint]) -> dict[str, object]:
                 check=False,
             ).stdout.strip()
         ),
-        "jax_version": jax.__version__,
+        "jax_version": version("jax"),
         "hardware": {
             "platform": platform.platform(),
             "backend": "recorded per point",
@@ -306,12 +308,16 @@ def main() -> None:
     for config in args.configs:
         for batch_size in args.batch_sizes:
             for horizon in args.horizons:
-                temporary_point = args.output.with_suffix(f".point-{len(points):03d}.json")
-                points.append(
-                    isolated_point(config, batch_size, horizon, args.repeats, temporary_point)
+                print(
+                    f"[{len(points) + 1}] {config.stem} B={batch_size} T={horizon}",
+                    flush=True,
                 )
+                temporary_point = args.output.with_suffix(f".point-{len(points):03d}.json")
+                point = isolated_point(config, batch_size, horizon, args.repeats, temporary_point)
+                points.append(point)
                 add_baseline_comparisons(points)
                 write_checkpoint(args.output, payload)
+                print(f"  → {point['status']}", flush=True)
 
 
 if __name__ == "__main__":
