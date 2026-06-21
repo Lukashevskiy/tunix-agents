@@ -101,8 +101,8 @@ def _run(value: Mapping[str, object]) -> RunSpec:
 def _environment(value: Mapping[str, object]) -> EnvironmentSpec:
     _keys(value, {"implementation", "base_environment", "world_preset", "scenario_config", "instruction_index", "batch_size", "horizon"}, "environment")
     implementation = _string(value.get("implementation"), "environment.implementation")
-    if implementation != "craftext":
-        raise ConfigError("environment.implementation must be 'craftext'")
+    if implementation not in {"craftext", "caged-craftext"}:
+        raise ConfigError("environment.implementation must be 'craftext' or 'caged-craftext'")
     batch_size = _positive_int(value.get("batch_size"), "environment.batch_size")
     horizon = _positive_int(value.get("horizon"), "environment.horizon")
     return EnvironmentSpec(implementation, _string(value.get("base_environment"), "environment.base_environment"), _string(value.get("world_preset"), "environment.world_preset"), _string(value.get("scenario_config"), "environment.scenario_config"), _int(value.get("instruction_index"), "environment.instruction_index"), batch_size, horizon)

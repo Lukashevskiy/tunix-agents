@@ -61,6 +61,11 @@
       "description": "Строго загружает schema_version 1 YAML: run, CrafText environment, prompt, policy и replay artifacts; unknown/missing keys не допускаются."
     },
     {
+      "name": "Real CrafText runtime boundary",
+      "status": "ready",
+      "description": "Строит vendored Craftax world preset из MvpRunConfig и выдаёт training-safe CrafTextAdapter; real reset и deterministic fixed-action mini-trajectory проходят integration smoke."
+    },
+    {
       "name": "Compiled JAX rollout collector",
       "status": "ready",
       "description": "lax.scan collector возвращает тот же time-major trajectory contract, проходит jitted parity с reference collector и имеет отдельный steady-state benchmark."

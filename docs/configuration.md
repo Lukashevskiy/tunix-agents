@@ -15,8 +15,9 @@
 | `artifacts` | trajectory, rendered prompt, metrics для replay/provenance |
 
 Поддерживаемая schema version сейчас только `1`; изменение полей — отдельная migration/ADR.
-Launcher ещё не реализован; следующий PR свяжет validated `MvpRunConfig` с real vendor env и
-`CrafTextAdapter`.
+`build_craftext_runtime()` уже связывает validated `MvpRunConfig` с vendored world preset и
+`CrafTextAdapter`; real reset и fixed-key mini-trajectory проверены integration test. Следующий
+шаг — batched 2×8 golden trajectory и JAX scan parity.
 
 ```bash
 pyenv exec python -m uv sync --extra envs --extra prompts

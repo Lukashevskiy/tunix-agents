@@ -20,7 +20,7 @@ dependencies = [
 
 [project.optional-dependencies]
 tunix = ["tunix"]
-envs = ["craftext", "craftax>=1.4.3", "gymnasium>=0.29.1"]
+envs = ["craftext", "caged-craftext", "craftax>=1.4.3", "gymnasium>=0.29.1"]
 interop = ["safetensors>=0.4.5"]
 examples = ["jupyterlab>=4.0"]
 prompts = ["megaprompt"]
@@ -33,6 +33,7 @@ packages = ["src/tunix_craftext"]
 [tool.uv.sources]
 megaprompt = { path = "vendor/megaprompts", editable = true }
 craftext = { path = "vendor/craftext", editable = true }
+caged-craftext = { path = "vendor/caged-craftext", editable = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

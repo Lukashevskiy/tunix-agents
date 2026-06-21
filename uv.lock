@@ -243,6 +243,35 @@ css = [
 ]
 
 [[package]]
+name = "caged-craftext"
+version = "0.1.0"
+source = { editable = "vendor/caged-craftext" }
+dependencies = [
+    { name = "craftax" },
+    { name = "flax" },
+    { name = "gymnasium" },
+    { name = "jax" },
+    { name = "jaxlib" },
+    { name = "numpy" },
+    { name = "pyyaml" },
+    { name = "tqdm" },
+    { name = "transformers" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "craftax", specifier = ">=1.4.3" },
+    { name = "flax", specifier = ">=0.8.5" },
+    { name = "gymnasium", specifier = ">=0.29.1" },
+    { name = "jax", specifier = ">=0.4.30" },
+    { name = "jaxlib", specifier = ">=0.4.30" },
+    { name = "numpy", specifier = ">=1.24.4" },
+    { name = "pyyaml", specifier = ">=6.0.0" },
+    { name = "tqdm", specifier = ">=4.66.0" },
+    { name = "transformers", specifier = ">=4.44.2" },
+]
+
+[[package]]
 name = "certifi"
 version = "2026.6.17"
 source = { registry = "https://pypi.org/simple" }
@@ -3668,6 +3697,7 @@ docs = [
     { name = "sphinx-autodoc-typehints", version = "3.11.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
 ]
 envs = [
+    { name = "caged-craftext" },
     { name = "craftax" },
     { name = "craftext" },
     { name = "gymnasium" },
@@ -3687,6 +3717,7 @@ tunix = [
 
 [package.metadata]
 requires-dist = [
+    { name = "caged-craftext", marker = "extra == 'envs'", editable = "vendor/caged-craftext" },
     { name = "craftax", marker = "extra == 'envs'", specifier = ">=1.4.3" },
     { name = "craftext", marker = "extra == 'envs'", editable = "vendor/craftext" },
     { name = "flax", specifier = ">=0.8.5" },

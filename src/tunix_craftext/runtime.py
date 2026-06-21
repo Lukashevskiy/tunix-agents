@@ -26,10 +26,13 @@ def build_craftext_runtime(config: MvpRunConfig) -> CrafTextRuntime:
 
     :raises RuntimeError: If the config is not a CrafText runtime or vendor action cardinality is invalid.
     """
-    if config.environment.implementation != "craftext":
-        raise RuntimeError("MVP runtime currently supports only craftext")
     try:
-        from craftext.environment.world_presets import build_env_and_params, build_world_preset_spec  # type: ignore[import-not-found]
+        if config.environment.implementation == "craftext":
+            from craftext.environment.world_presets import build_env_and_params, build_world_preset_spec  # type: ignore[import-not-found]
+        elif config.environment.implementation == "caged-craftext":
+            from caged_craftext.environment.world_presets import build_env_and_params, build_world_preset_spec  # type: ignore[import-not-found]
+        else:
+            raise RuntimeError("unsupported environment implementation")
     except ImportError as error:
         raise RuntimeError("install `tunix-craftext[envs]` to build CrafText runtime") from error
     spec = build_world_preset_spec(
