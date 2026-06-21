@@ -10,6 +10,7 @@ samples so its median and p95 can be independently audited later.
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 import platform
 import subprocess
@@ -246,6 +247,10 @@ def main() -> None:
                     )
                 add_baseline_comparisons(points)
                 write_checkpoint(args.output, payload)
+                # Every shape creates a distinct executable. Release its cache before the
+                # next cell so a long matrix does not accumulate compiler/device memory.
+                jax.clear_caches()
+                gc.collect()
 
 
 if __name__ == "__main__":

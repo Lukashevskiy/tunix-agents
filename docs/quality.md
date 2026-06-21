@@ -44,6 +44,10 @@ config SHA-256, full Git revision/dirty state, JAX version и hardware. Throughp
 median; варианты сравниваются с `craftext-full` только при одинаковых batch/horizon. Для
 материальной записи используйте минимум 10 (предпочтительно 20) repeats:
 
+После каждой точки runner очищает JAX executable cache и запускает сборщик мусора: каждое
+сочетание batch/horizon компилирует иной executable, и иначе длинная матрица может накопить
+device/compiler memory на одной машине.
+
 ```bash
 make perf-env  # defaults: 20 repeats; full × tiny × Caged, B=1/2/8/32, T=8/32/128/512
 ```
