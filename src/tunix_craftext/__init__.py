@@ -6,6 +6,7 @@ from .interop import LoraAdapter, ModelTemplate, TensorRule, convert_state_dict,
 from .prompts import ActionCatalog, MegaPromptRenderer, PromptContext, RenderedPrompt
 from .text_policy import DecodedAction, DecodeMetrics, TextPolicy, act, decode_action
 from .config import ConfigError, MvpRunConfig, load_mvp_config
+from .runtime import CrafTextRuntime, build_craftext_runtime
 from .rollout import collect_rollout, collect_rollout_scan
 
 __all__ = [
@@ -34,4 +35,6 @@ __all__ = [
     "ConfigError",
     "MvpRunConfig",
     "load_mvp_config",
+    "CrafTextRuntime",
+    "build_craftext_runtime",
 ]
