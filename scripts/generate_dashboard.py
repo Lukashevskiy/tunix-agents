@@ -140,6 +140,24 @@ def benchmark_records() -> list[dict[str, Any]]:
                         "metrics": metrics,
                     }
                 )
+        elif isinstance(payload, dict) and payload.get("schema") == "tunix-craftext.environment-benchmark/v1":
+            for point in payload.get("points", []):
+                if not isinstance(point, dict):
+                    continue
+                records.append(
+                    {
+                        "path": path.relative_to(ROOT),
+                        "name": f"{point.get('variant', 'environment')} B={point.get('batch_size', '—')} T={point.get('horizon', '—')}",
+                        "timestamp": payload.get("timestamp", "—"),
+                        "commit": payload.get("commit", "—"),
+                        "hardware": payload.get("hardware", "—"),
+                        "metrics": {
+                            "mean_ms": point.get("steady_state_ms", "—"),
+                            "median_ms": point.get("compile_ms", "—"),
+                            "ops": point.get("env_steps_per_second", "—"),
+                        },
+                    }
+                )
             continue
         entries: Iterable[Any] = payload if isinstance(payload, list) else [payload]
         for entry in entries:
