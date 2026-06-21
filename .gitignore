@@ -1,5 +1,6 @@
 .venv/
 /vendor/megaprompts/megaprompt.egg-info/
+/vendor/caged-craftext/caged_craftext.egg-info/
 __pycache__/
 *.py[cod]
 .pytest_cache/
