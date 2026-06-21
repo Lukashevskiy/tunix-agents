@@ -1,0 +1,12 @@
+schema_version: 1
+name: qwen25-05b-instruction-ppo
+architecture: qwen2
+model_id: Qwen/Qwen2.5-0.5B-Instruct
+source: huggingface
+tokenizer_source: model
+purpose: tunix-ppo-workload
+weights_downloaded: false
+license_acknowledged: false
+resource_profile:
+  accelerator: target-training-accelerator
+  mesh_axis_size: 1

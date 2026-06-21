@@ -24,3 +24,8 @@ and tokenizer stack while preserving an exact, reproducible bridge source.
 The selected smoke architecture and the separate PPO workload profile are recorded
 in [ADR 0002](adr/0002-first-tunix-model.md). No model weights are downloaded as
 a side effect of installation or test execution.
+
+The corresponding versioned profiles are `configs/models/gemma3_270m_instruction.yaml`
+and `configs/models/qwen25_05b_instruction.yaml`. Both intentionally declare
+`weights_downloaded: false` and `license_acknowledged: false` until a user supplies
+the permitted source and storage location.
