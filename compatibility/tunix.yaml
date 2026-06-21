@@ -1,0 +1,14 @@
+schema_version: 1
+distribution: google-tunix
+import_package: tunix
+source:
+  repository: https://github.com/google/tunix.git
+  revision: 9beef62509a623835542f5239aa50d7552decb86
+  snapshot_version: 0.1.7
+public_api_boundary:
+  ppo_config: tunix.rl.ppo.ppo_learner.PPOConfig
+  ppo_learner: tunix.rl.ppo.ppo_learner.PPOLearner
+compatibility_status: pinned-awaiting-extra-install
+notes:
+  - Core never imports Tunix; only the future bridge extra may do so.
+  - The legacy PyPI distribution named tunix==0.0.0 is not this project and is prohibited.

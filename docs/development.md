@@ -32,7 +32,9 @@ pyenv exec python -m uv run make perf
 
 `make` по-прежнему вызывает `.venv/bin/python`, так что генератор dashboard, MkDocs и Sphinx
 всегда работают из lockfile-окружения. Для notebooks: `pyenv exec python -m uv sync --extra examples`.
-Для среды и Tunix: `pyenv exec python -m uv sync --extra envs --extra tunix`.
+Для полной рабочей среды (dev, docs, envs, prompts и Tunix) используйте
+`pyenv exec python -m uv sync --all-extras`. Один `--extra tunix` синхронизирует
+только base + Tunix и временно убирает остальные extras из текущей venv.
 
 ## Изменение зависимостей
 

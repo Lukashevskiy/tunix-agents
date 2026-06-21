@@ -11,7 +11,7 @@
 
 ## 1. Совместимость и измеримая baseline
 
-- [ ] Зафиксировать Python/JAX/JAXLIB/Tunix/Flax/Optax/Orbax в lockfile для CPU и целевого
+- [~] Зафиксировать Python/JAX/JAXLIB/Tunix/Flax/Optax/Orbax в lockfile для CPU и целевого
    accelerator, с отдельной таблицей compatibility.
 - [ ] Вынести exact source revision и SHA256 vendor-снимков в `vendor/manifest.json`.
 - [x] Написать `CrafTextAdapter.reset/step`, который возвращает статические pytree и
@@ -48,7 +48,7 @@
 
 ## 4. Tunix bridge и LLM policy
 
-- [ ] Зафиксировать проверенный Tunix release и написать adapter только по его публичному API.
+- [~] Зафиксировать проверенный Tunix release и написать adapter только по его публичному API.
 - [~] Унифицировать tokenizer/action decoder: invalid action → observable, metric и controlled
   fallback, никогда не silent coercion.
 - [ ] Реализовать sampling/logprob/value bridge; проверить parity против прямого вызова Tunix.

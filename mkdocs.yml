@@ -33,6 +33,7 @@ nav:
   - Архитектура: architecture.md
   - Model interoperability: interop.md
   - Checkpoints: checkpoints.md
+  - Tunix integration: tunix.md
   - Prompts: prompts.md
   - Конфигурация: configuration.md
   - Vendor patches: vendor-patches.md

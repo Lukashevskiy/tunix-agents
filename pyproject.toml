@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-tunix = ["tunix"]
+tunix = ["google-tunix"]
 envs = ["craftext", "caged-craftext", "craftax>=1.4.3", "gymnasium>=0.29.1"]
 interop = ["safetensors>=0.4.5"]
 examples = ["jupyterlab>=4.0"]
@@ -34,6 +34,7 @@ packages = ["src/tunix_craftext"]
 megaprompt = { path = "vendor/megaprompts", editable = true }
 craftext = { path = "vendor/craftext", editable = true }
 caged-craftext = { path = "vendor/caged-craftext", editable = true }
+google-tunix = { git = "https://github.com/google/tunix.git", rev = "9beef62509a623835542f5239aa50d7552decb86" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -83,7 +83,7 @@
     {
       "name": "Tunix bridge и GRPO",
       "status": "planned",
-      "description": "Ожидает закрепления официального Tunix source/revision, затем будет добавлен public-API adapter с parity sampling/logprob/value."
+      "description": "Official google/tunix revision закреплён и PPOConfig/PPOLearner проходят import smoke; следующий шаг — public-API adapter с parity sampling/logprob/value, затем SFT/PPO LLM rollout."
     }
   ]
 }
