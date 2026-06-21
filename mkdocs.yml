@@ -48,3 +48,4 @@ nav:
   - Бенчмарки: _generated/benchmarks.md
   - ADR:
       - Границы системы: adr/0001-system-boundaries.md
+      - Первая Tunix-модель: adr/0002-first-tunix-model.md

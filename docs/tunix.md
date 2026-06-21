@@ -20,3 +20,7 @@ a direct Tunix invocation before it is allowed into a real rollout.
 The base environment does not import Tunix. This keeps `make test`, CrafText
 collection and Flax/Optax smoke learning independent of the heavyweight model
 and tokenizer stack while preserving an exact, reproducible bridge source.
+
+The selected smoke architecture and the separate PPO workload profile are recorded
+in [ADR 0002](adr/0002-first-tunix-model.md). No model weights are downloaded as
+a side effect of installation or test execution.
