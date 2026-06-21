@@ -7,6 +7,7 @@ from .prompts import ActionCatalog, MegaPromptRenderer, PromptContext, RenderedP
 from .text_policy import DecodedAction, DecodeMetrics, TextPolicy, act, decode_action
 from .config import ConfigError, MvpRunConfig, load_mvp_config
 from .runtime import CrafTextRuntime, build_craftext_runtime
+from .random_policy import ActionSamplingError, sample_masked_actions, validate_action_mask
 from .rollout import collect_rollout, collect_rollout_scan
 
 __all__ = [
@@ -37,4 +38,7 @@ __all__ = [
     "load_mvp_config",
     "CrafTextRuntime",
     "build_craftext_runtime",
+    "ActionSamplingError",
+    "sample_masked_actions",
+    "validate_action_mask",
 ]
