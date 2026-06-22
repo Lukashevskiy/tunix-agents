@@ -70,3 +70,30 @@ def test_dashboard_reads_v2_environment_benchmark(monkeypatch, tmp_path: Path) -
     assert records[0]["metrics"]["median_ms"] == 2.0
     assert records[0]["metrics"]["p95_ms"] == 3.0
     assert records[0]["metrics"]["vs_full"] == 1.0
+
+
+def test_dashboard_reads_latest_versioned_text_episode_metrics(monkeypatch, tmp_path: Path) -> None:
+    artifact = tmp_path / "qwen.json"
+    artifact.write_text(
+        json.dumps(
+            {
+                "schema": "tunix-craftext.text-episode-metrics/v1",
+                "created_at": "2026-06-23T00:00:00Z",
+                "steps": 1,
+                "reward_sum": 0.0,
+                "generated_token_count": 7,
+                "fallback_count": 0,
+                "invalid_format_count": 0,
+                "unknown_action_count": 0,
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(dashboard, "TEXT_EPISODE_METRICS", tmp_path)
+
+    record = dashboard.latest_text_episode_metrics()
+
+    assert record is not None
+    assert record["path"] == artifact
+    assert record["generated_token_count"] == 7
+    assert "Tokens / fallback | 7 / 0" in dashboard.text_episode_table(record)

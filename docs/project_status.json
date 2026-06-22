@@ -43,12 +43,12 @@
     {
       "name": "Runnable examples",
       "status": "ready",
-      "description": "Четыре самостоятельных notebooks показывают trajectory contract, CrafText adapter, model/LoRA interoperability и MegaPrompts environment-to-prompt boundary."
+      "description": "Шесть самостоятельных notebooks показывают trajectory contract, CrafText adapter, model/LoRA interoperability, MegaPrompts boundary и полный ручной Qwen→CrafText episode."
     },
     {
       "name": "Prompt assembly boundary",
       "status": "ready",
-      "description": "Собирает typed PromptContext из goal, observation и action catalog; vendored MegaPrompts renderer проходит integration smoke и возвращает RenderedPrompt с контролируемым mapping actions."
+      "description": "Собирает typed PromptContext из goal, structured CrafText EnvState и action catalog; vendored MegaPrompts renderer проходит integration smoke и возвращает RenderedPrompt с контролируемым mapping actions."
     },
     {
       "name": "Text policy and strict action decoder",
@@ -81,9 +81,9 @@
       "description": "Flax actor-critic и Optax PPO smoke update покрыты TDD; Orbax сохраняет params, optimizer state и step с версионируемым metadata record. Restore подтверждён идентичным следующим update."
     },
     {
-      "name": "Tunix bridge и GRPO",
-      "status": "planned",
-      "description": "Official google/tunix revision закреплён и PPOConfig/PPOLearner проходят import smoke; следующий шаг — public-API adapter с parity sampling/logprob/value, затем SFT/PPO LLM rollout."
+      "name": "Tunix Qwen episode bridge",
+      "status": "ready",
+      "description": "Official google/tunix revision, Qwen chat-template, generated token ids/logprobs, real MegaPrompts EnvState rendering, CrafText action replay и config-driven JSON metrics CLI проходят real integration smoke. RLCluster/value bridge остаётся следующим workload этапом."
     }
   ]
 }

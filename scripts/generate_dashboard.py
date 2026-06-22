@@ -23,6 +23,7 @@ GENERATED = DOCS / "_generated"
 PLAN = DOCS / "plan.md"
 STATUS = DOCS / "project_status.json"
 BENCHMARKS = ROOT / "artifacts" / "benchmarks"
+TEXT_EPISODE_METRICS = ROOT / "artifacts" / "metrics"
 CHECKBOX = re.compile(r"^\s*- \[([ xX~])\]\s+(.*)$", re.MULTILINE)
 
 
@@ -218,6 +219,50 @@ def benchmark_records() -> list[dict[str, Any]]:
     return records
 
 
+def latest_text_episode_metrics() -> dict[str, Any] | None:
+    """Return the most recently written versioned Qwen/CrafText episode summary."""
+    if not TEXT_EPISODE_METRICS.exists():
+        return None
+    for path in sorted(
+        TEXT_EPISODE_METRICS.rglob("*.json"), key=lambda item: item.stat().st_mtime, reverse=True
+    ):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if (
+            isinstance(payload, dict)
+            and payload.get("schema") == "tunix-craftext.text-episode-metrics/v1"
+        ):
+            return {"path": display_artifact_path(path), **payload}
+    return None
+
+
+def text_episode_table(record: dict[str, Any] | None) -> str:
+    """Render the latest text-episode evidence as a compact dashboard table."""
+    if record is None:
+        return (
+            "> Нет `artifacts/metrics/*` с schema `tunix-craftext.text-episode-metrics/v1`. "
+            "Запустите `scripts/run_text_episode.py`."
+        )
+    rows = (
+        ("Время", f"`{record['created_at']}`"),
+        ("Steps / reward", f"{record['steps']} / {record['reward_sum']}"),
+        (
+            "Tokens / fallback",
+            f"{record['generated_token_count']} / {record['fallback_count']}",
+        ),
+        (
+            "Invalid format / unknown action",
+            f"{record['invalid_format_count']} / {record['unknown_action_count']}",
+        ),
+        ("Artifact", f"`{record['path']}`"),
+    )
+    return "\n".join(["| Показатель | Значение |", "| --- | --- |"] + [
+        f"| {name} | {value} |" for name, value in rows
+    ])
+
+
 def metric_summary(record: dict[str, Any]) -> str:
     metrics = record["metrics"]
     if not metrics:
@@ -248,6 +293,8 @@ def generate() -> None:
     caps = capabilities()
     ready = [item for item in caps if item["status"] == "ready"]
     benchmarks = benchmark_records()
+    text_episode = latest_text_episode_metrics()
+    text_episode_rows = text_episode_table(text_episode)
     built_at = datetime.now(UTC).isoformat()
 
     phase_rows = "\n".join(
@@ -276,6 +323,7 @@ _Сгенерировано автоматически: `{built_at}`. Источ
 | Автор / дата | {markdown_escape(git["author"])} / `{git["date"]}` |
 | Working tree dirty | {git["dirty"]} |
 | Benchmark records | {len(benchmarks)} |
+| Последний LLM episode | {"есть" if text_episode else "нет"} |
 | Готовые возможности | {len(ready)} |
 
 ## Продвижение по плану
@@ -285,6 +333,10 @@ _Сгенерировано автоматически: `{built_at}`. Источ
 {phase_rows}
 
 Полный и редактируемый roadmap — в [плане реализации](../plan.md).
+
+## Последний Qwen/CrafText episode
+
+{text_episode_rows}
 
 ## Что уже можно делать
 
