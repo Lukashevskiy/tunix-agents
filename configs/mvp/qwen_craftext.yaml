@@ -1,0 +1,22 @@
+schema_version: 1
+run:
+  name: qwen-craftext-text-episode
+  seed: 7
+environment:
+  implementation: craftext
+  base_environment: Craftax-Classic-Pixels-v1
+  world_preset: tiny_box_oob_no_mobs
+  scenario_config: relational/achievements/easy/safe_avoid_enemy_by_radius
+  instruction_index: 0
+  batch_size: 1
+  horizon: 4
+prompt:
+  renderer: megaprompts
+  template: base
+policy:
+  implementation: tunix
+  invalid_action: fallback
+artifacts:
+  save_trajectory: true
+  save_rendered_prompt: true
+  save_metrics: true

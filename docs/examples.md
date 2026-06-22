@@ -14,3 +14,9 @@ Start with rollout contracts, then the environment adapter, model conversion/LoR
 explicit local Qwen snapshot and walks through environment reset, real vendored MegaPrompts
 `base` rendering from `EnvState`, Tunix sampling, strict decode with visible fallback, one
 CrafText action and replay v2 persistence.
+
+The same path is available outside Jupyter and persists both raw replay and summary metrics:
+
+```bash
+.venv/bin/python scripts/run_text_episode.py --horizon 1
+```

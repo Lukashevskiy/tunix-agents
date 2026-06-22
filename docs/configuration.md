@@ -14,6 +14,10 @@
 | `policy` | implementation и реакция на invalid action |
 | `artifacts` | trajectory, rendered prompt, metrics для replay/provenance |
 
+`configs/mvp/qwen_craftext.yaml` is the corresponding local-Qwen host-side episode profile.
+It uses the real `MegaPrompts base` template, an explicit `tunix` policy and observable `NOOP`
+fallback. It is run with `scripts/run_text_episode.py`; weights remain an explicit local input.
+
 Поддерживаемая schema version сейчас только `1`; изменение полей — отдельная migration/ADR.
 `build_craftext_runtime()` уже связывает validated `MvpRunConfig` с vendored world preset и
 `CrafTextAdapter`; real reset и fixed-key mini-trajectory проверены integration test. Следующий
