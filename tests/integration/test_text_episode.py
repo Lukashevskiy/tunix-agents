@@ -10,7 +10,7 @@ import pytest
 
 from tunix_craftext.adapters import CrafTextAdapter
 from tunix_craftext.episode import collect_text_episode
-from tunix_craftext.llm import ScriptedLlmBackend
+from tunix_craftext.llm import LlmRequest, LlmResponse, ScriptedLlmBackend
 from tunix_craftext.prompts import ActionCatalog, MegaPromptRenderer
 
 
@@ -47,6 +47,17 @@ class Renderer:
         return f"{meta_info['goal']} :: {meta_info['obs']} :: {meta_info['dialog']}"
 
 
+@dataclass
+class RecordingBackend:
+    """Test backend that exposes the request passed through episode orchestration."""
+
+    request: LlmRequest | None = None
+
+    def complete(self, request: LlmRequest) -> LlmResponse:
+        self.request = request
+        return LlmResponse("<action>DO</action>", "recording", "fixture")
+
+
 @pytest.mark.integration
 def test_text_episode_preserves_prompt_completion_and_real_action_replay() -> None:
     """Two model decisions reach the terminal environment and retain provenance."""
@@ -68,3 +79,24 @@ def test_text_episode_preserves_prompt_completion_and_real_action_replay() -> No
     assert [step.action_id for step in artifact.steps] == [2, 2]
     assert artifact.steps[1].raw_completion.startswith("reasoning")
     assert "reasoning" in artifact.steps[1].prompt
+
+
+@pytest.mark.integration
+def test_text_episode_passes_generation_cap_to_backend() -> None:
+    """Short real-model smokes can cap decoding without changing replay semantics."""
+    backend = RecordingBackend()
+    collect_text_episode(
+        CrafTextAdapter(Environment(), params=object(), action_count=3),
+        MegaPromptRenderer("test", Renderer()),
+        backend,
+        goal="collect safely",
+        actions=ActionCatalog(("LEFT", "RIGHT", "DO")),
+        horizon=1,
+        seed=7,
+        config_path="configs/test.yaml",
+        commit="abc123",
+        max_new_tokens=4,
+    )
+
+    assert backend.request is not None
+    assert backend.request.max_new_tokens == 4

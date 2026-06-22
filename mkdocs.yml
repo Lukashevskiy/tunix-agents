@@ -50,3 +50,4 @@ nav:
       - Границы системы: adr/0001-system-boundaries.md
       - Первая Tunix-модель: adr/0002-first-tunix-model.md
       - Extension и observability: adr/0003-extension-and-observability-contracts.md
+      - Tunix topology: adr/0004-tunix-cluster-topology.md

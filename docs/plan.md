@@ -51,7 +51,12 @@
 - [~] Зафиксировать проверенный Tunix release и написать adapter только по его публичному API.
 - [~] Унифицировать tokenizer/action decoder: invalid action → observable, metric и controlled
   fallback, никогда не silent coercion.
-- [ ] Реализовать sampling/logprob/value bridge; проверить parity против прямого вызова Tunix.
+- [~] Добавить Qwen local smoke через публичный Tunix sampler; single-device backend не является
+  production multi-device path.
+- [ ] Реализовать Qwen chat-template и sampling/logprob/value bridge; проверить parity против
+  прямого вызова Tunix и записать invalid-action/fallback metrics.
+- [ ] Построить workload path через Tunix `RLCluster` и versioned `role_to_mesh` для
+  actor/rollout/critic/reference; не реализовывать собственный GPU scheduler.
 - [ ] Сделать SFT warm-start и PPO на коротких fixed prompt rollouts.
 - [ ] Лишь после этого добавить GRPO как самостоятельный algorithm module, не как fork PPO.
 
@@ -80,8 +85,8 @@
   PPO становится первой реализацией без изменения orchestration transport contracts.
 - [ ] Добавить будущий GRPO/GSPO только по первичному источнику с отдельным group-shape contract
   `[B, G, T]`, hand-computed fixtures и explicit reference log-probs.
-- [ ] Ввести `ModelAdapter`/profile boundary: tokenizer, mesh axes, load path, weight mapping и
-  output parity fixture; Qwen является первой реализацией.
+- [~] Ввести `ModelAdapter`/profile boundary: Qwen local loader и tokenizer уже отделены от core;
+  остаются chat-template, `RLCluster` profile и output parity fixture.
 - [ ] Экспортировать structured JAX metrics на epoch boundary в JSONL и optional TensorBoard.
 - [ ] Добавить явный profiler command: warmup, ограниченный trace, Perfetto artifact, compile
   ledger с shape/dtype/mesh fingerprint и recompilation alert.
@@ -92,7 +97,7 @@
 
 ## Текущая ветка реализации
 
-`foundation/jax-scan-and-adapter`: CrafText/Caged adapter boundary и compiled `lax.scan`
-collector готовы; scan parity/steady-state benchmark проходят. Prompt boundary уже использует
-vendored MegaPrompts (`PromptContext → RenderedPrompt + ActionCatalog`). Следующий маленький PR:
-**добавить RNG-aware `lax.scan` parity для real `B=2 × T=8` CrafText trajectory**.
+`main`: CrafText/Caged adapter boundary и compiled `lax.scan` collector готовы; scan
+parity/steady-state benchmark проходят. Qwen 2.5 0.5B локально загружается через публичный
+Tunix API в single-device smoke-профиле. Следующий implementation slice: **Qwen chat-template
+и token/logprob bridge**, затем hardware-gated `RLCluster` profile с явным `role_to_mesh`.

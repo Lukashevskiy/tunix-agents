@@ -11,21 +11,27 @@ Install the bridge environment explicitly:
 pyenv exec python -m uv sync --all-extras
 ```
 
-The public boundary is intentionally narrow: `PPOConfig` and `PPOLearner`.
-Our environment/prompt/replay contracts remain framework-neutral. The next
-implementation task is `TunixPolicyAdapter`, which maps rendered prompts and
-tokenized samples to Tunix sampling/logprob/value APIs and proves parity against
-a direct Tunix invocation before it is allowed into a real rollout.
+The public boundary is intentionally narrow: `PPOConfig`/`PPOLearner` plus the
+explicit Qwen loader and sampler boundary in `tunix_adapter.py`. A local Qwen 2.5
+0.5B snapshot can be sampled through `QwenTunixBackend`; this is an integration
+smoke profile, not a replacement for the training architecture. Our
+environment/prompt/replay contracts remain framework-neutral.
 
 The base environment does not import Tunix. This keeps `make test`, CrafText
 collection and Flax/Optax smoke learning independent of the heavyweight model
 and tokenizer stack while preserving an exact, reproducible bridge source.
 
-The selected smoke architecture and the separate PPO workload profile are recorded
-in [ADR 0002](adr/0002-first-tunix-model.md). No model weights are downloaded as
-a side effect of installation or test execution.
+No model weights are downloaded as a side effect of installation or ordinary test
+execution. The optional real-Qwen smoke runs only when the explicit local snapshot
+exists under `artifacts/models/qwen25-05b-instruct`.
+
+Tunix owns distributed execution, but the project must declare topology: the future
+workload path uses `RLCluster` with a versioned `role_to_mesh` mapping for actor,
+rollout, critic and reference. It may use Tunix resharding/offload; it must not add a
+second GPU scheduler in this repository. The architecture decision and the distinction
+from the local sampler are recorded in [ADR 0004](adr/0004-tunix-cluster-topology.md).
 
 The corresponding versioned profiles are `configs/models/gemma3_270m_instruction.yaml`
-and `configs/models/qwen25_05b_instruction.yaml`. Both intentionally declare
-`weights_downloaded: false` and `license_acknowledged: false` until a user supplies
-the permitted source and storage location.
+and `configs/models/qwen25_05b_instruction.yaml`. Their committed download/license
+flags deliberately remain `false`: they describe a portable repository, not the
+private local state of one machine.

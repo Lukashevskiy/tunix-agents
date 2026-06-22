@@ -22,6 +22,7 @@ def collect_text_episode(
     seed: int,
     config_path: str,
     commit: str,
+    max_new_tokens: int = 32,
 ) -> ReplayArtifact:
     """Run prompt → completion → strict action decode → environment steps.
 
@@ -34,11 +35,14 @@ def collect_text_episode(
     :param seed: Deterministic source of reset and step keys.
     :param config_path: Config provenance written into replay.
     :param commit: Code revision provenance written into replay.
+    :param max_new_tokens: Per-decision completion cap passed to the model backend.
     :returns: Ordered replay, including every rendered prompt and raw completion.
     :raises ValueError: If horizon is non-positive or catalog disagrees with the adapter.
     """
     if horizon <= 0:
         raise ValueError("horizon must be positive")
+    if max_new_tokens <= 0:
+        raise ValueError("max_new_tokens must be positive")
     if len(actions.labels) != adapter.action_count:
         raise ValueError("action catalog length must equal adapter action_count")
 
@@ -51,7 +55,7 @@ def collect_text_episode(
 
     for index, key in enumerate(keys[1:]):
         prompt = renderer.render(PromptContext(goal, observation, actions, dialog))
-        response = backend.complete(LlmRequest(prompt))
+        response = backend.complete(LlmRequest(prompt, max_new_tokens=max_new_tokens))
         decision, _ = decode_action(prompt, response.raw_text)
         transition = adapter.step(key, state, decision.action_id)
         terminated = bool(transition.terminated)
