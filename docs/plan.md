@@ -55,7 +55,8 @@
   production multi-device path.
 - [~] Реализовать Qwen chat-template и sampling/logprob/value bridge: chat-template, sampler
   cache sizing, token ids/logprobs, typed `TextTrajectoryBatch` и invalid-action/fallback replay
-  уже проверены; остаются value bridge и output-parity fixture против прямого Tunix call.
+  уже проверены; Qwen feature bridge через `skip_lm_head` тоже доступен. Остаются trainable value
+  head и output-parity fixture против прямого Tunix call.
 - [ ] Построить workload path через Tunix `RLCluster` и versioned `role_to_mesh` для
   actor/rollout/critic/reference; topology profiles и `Role → Mesh` adapter готовы,
   остаётся hardware-gated creation реального `RLCluster` workload.

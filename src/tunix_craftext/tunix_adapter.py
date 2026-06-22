@@ -70,6 +70,20 @@ class TextSampler(Protocol):
     ) -> SamplerOutputLike: ...
 
 
+class HiddenStateModel(Protocol):
+    """Qwen model subset used to extract token features without the language head."""
+
+    def __call__(
+        self,
+        input_tokens: jax.Array,
+        positions: jax.Array,
+        cache: object | None,
+        attention_mask: jax.Array | None,
+        *,
+        skip_lm_head: bool,
+    ) -> tuple[jax.Array, object | None]: ...
+
+
 QWEN_ACTION_SYSTEM_PROMPT = (
     "You are a CrafText agent. Choose exactly one action from the action catalogue in the "
     "user message. Your complete response is one XML action element containing that exact action "
@@ -171,6 +185,25 @@ def load_qwen_model(snapshot: Path) -> tuple[object, Path]:
     return model, Path(resolved) if resolved is not None else snapshot
 
 
+def load_qwen_single_device_model(snapshot: Path) -> HiddenStateModel:
+    """Load local Qwen weights once for single-device sampling and feature extraction."""
+    if not snapshot.is_dir():
+        raise FileNotFoundError(f"Qwen snapshot not found: {snapshot}")
+    from tunix.models.automodel import call_model_config  # type: ignore[import-untyped]
+    from tunix.models.qwen2.params import (  # type: ignore[import-untyped]
+        create_model_from_safe_tensors,
+    )
+
+    config = call_model_config(QWEN_TUNIX_CONFIG_ID)
+    return cast(HiddenStateModel, create_model_from_safe_tensors(str(snapshot), config, mesh=None))
+
+
+def qwen_chat_token_ids(tokenizer: SamplingTokenizer, chat_prompt: str) -> tuple[int, ...]:
+    """Encode one chat prompt exactly as the Tunix sampler does before padding."""
+    bos = (tokenizer.bos_id(),) if tokenizer.bos_id() else ()
+    return (*bos, *(int(token) for token in tokenizer.encode(chat_prompt)))
+
+
 def build_qwen_sampler(snapshot: Path, cache_size: int) -> TextSampler:
     """Build the public Tunix sampler from explicit local Qwen assets."""
     from tunix.generate.sampler import Sampler  # type: ignore[import-untyped]
@@ -181,7 +214,10 @@ def build_qwen_sampler(snapshot: Path, cache_size: int) -> TextSampler:
 
 
 def build_qwen_single_device_sampler(
-    snapshot: Path, cache_size: int, tokenizer: SamplingTokenizer | None = None
+    snapshot: Path,
+    cache_size: int,
+    tokenizer: SamplingTokenizer | None = None,
+    model: HiddenStateModel | None = None,
 ) -> TextSampler:
     """Build a working unsharded Tunix sampler for local Qwen smoke inference.
 
@@ -191,13 +227,7 @@ def build_qwen_single_device_sampler(
     if not snapshot.is_dir():
         raise FileNotFoundError(f"Qwen snapshot not found: {snapshot}")
     from tunix.generate.sampler import Sampler  # type: ignore[import-untyped]
-    from tunix.models.automodel import call_model_config  # type: ignore[import-untyped]
-    from tunix.models.qwen2.params import (  # type: ignore[import-untyped]
-        create_model_from_safe_tensors,
-    )
-
-    config = call_model_config(QWEN_TUNIX_CONFIG_ID)
-    model = create_model_from_safe_tensors(str(snapshot), config, mesh=None)
+    model = model or load_qwen_single_device_model(snapshot)
     return cast(
         TextSampler,
         Sampler(model, tokenizer or load_qwen_tokenizer(snapshot), qwen_cache_config(cache_size)),
@@ -211,7 +241,10 @@ class QwenTunixBackend:
         if cache_size < 2:
             raise ValueError("cache_size must reserve at least one prompt and one completion token")
         self._tokenizer = load_qwen_tokenizer(snapshot)
-        self._sampler = build_qwen_single_device_sampler(snapshot, cache_size, self._tokenizer)
+        self._model = load_qwen_single_device_model(snapshot)
+        self._sampler = build_qwen_single_device_sampler(
+            snapshot, cache_size, self._tokenizer, self._model
+        )
         self._cache_size = cache_size
         self._seed = seed
 
@@ -256,3 +289,18 @@ class QwenTunixBackend:
             token_ids=token_ids,
             prompt_token_ids=prompt_token_ids,
         )
+
+    def hidden_states(self, request: LlmRequest) -> jax.Array:
+        """Return Qwen final hidden states ``[1, T, D]`` for one rendered chat prompt.
+
+        This is a feature bridge only. A trainable critic/value head must be attached and
+        checkpointed separately before PPO can consume these features as values.
+        """
+        chat_prompt = format_qwen_action_prompt(self._tokenizer, request.prompt.text)
+        token_ids = qwen_chat_token_ids(self._tokenizer, chat_prompt)
+        input_tokens = jax.numpy.asarray([token_ids], dtype=jax.numpy.int32)
+        positions = jax.numpy.arange(input_tokens.shape[1], dtype=jax.numpy.int32)[None, :]
+        hidden_states, _ = self._model(
+            input_tokens, positions, cache=None, attention_mask=None, skip_lm_head=True
+        )
+        return hidden_states

@@ -34,3 +34,20 @@ def test_real_qwen_tunix_backend_generates_completion_with_provenance() -> None:
     assert response.prompt_token_ids is not None and len(response.prompt_token_ids) > 0
     assert response.token_logprobs is not None
     assert len(response.token_ids) == len(response.token_logprobs)
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not SNAPSHOT.is_dir(), reason="download the local Qwen snapshot")
+def test_real_qwen_hidden_state_feature_bridge_has_batch_token_feature_axes() -> None:
+    """Pinned Qwen exposes final hidden states without inventing a critic interface."""
+    backend = QwenTunixBackend(SNAPSHOT, cache_size=256)
+    hidden_states = backend.hidden_states(
+        LlmRequest(
+            RenderedPrompt("Reply only: <action>DO</action>", ActionCatalog(("DO",)), "smoke")
+        )
+    )
+
+    assert hidden_states.ndim == 3
+    assert hidden_states.shape[0] == 1
+    assert hidden_states.shape[1] > 0
+    assert hidden_states.shape[2] == 896

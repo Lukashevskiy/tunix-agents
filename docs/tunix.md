@@ -35,6 +35,11 @@ boundary: they operate only on valid `[B, T]` tokens and ignore padding/fallback
 They need future actor recomputation and critic values; they do not claim to be a complete
 Qwen value bridge by themselves.
 
+For the future critic, `QwenTunixBackend.hidden_states()` exposes the pinned model's final
+`[B, T, D]` features through public Qwen `skip_lm_head=True`. The real integration fixture
+confirms the 0.5B profile's `D=896`; attaching, training and checkpointing a value head remains
+a separate explicit workload step.
+
 The base environment does not import Tunix. This keeps `make test`, CrafText
 collection and Flax/Optax smoke learning independent of the heavyweight model
 and tokenizer stack while preserving an exact, reproducible bridge source.
