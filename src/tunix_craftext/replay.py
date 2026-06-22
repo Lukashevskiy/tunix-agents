@@ -22,6 +22,7 @@ class ReplayStep:
     unknown_action: int = 0
     fallback_used: bool = False
     token_logprobs: tuple[float, ...] | None = None
+    token_ids: tuple[int, ...] | None = None
 
 
 @dataclass(frozen=True)

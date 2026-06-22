@@ -10,7 +10,6 @@ from tunix_craftext.llm import LlmRequest
 from tunix_craftext.prompts import ActionCatalog, RenderedPrompt
 from tunix_craftext.tunix_adapter import QwenTunixBackend
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SNAPSHOT = ROOT / "artifacts" / "models" / "qwen25-05b-instruct"
 
@@ -31,3 +30,6 @@ def test_real_qwen_tunix_backend_generates_completion_with_provenance() -> None:
     assert response.model == "Qwen/Qwen2.5-0.5B-Instruct"
     assert response.raw_text
     assert response.latency_ms is not None and response.latency_ms > 0
+    assert response.token_ids is not None and len(response.token_ids) > 0
+    assert response.token_logprobs is not None
+    assert len(response.token_ids) == len(response.token_logprobs)

@@ -19,7 +19,7 @@ environment/prompt/replay contracts remain framework-neutral.
 
 Before each Qwen call, the backend applies the tokenizer's declared chat template
 and computes the static cache capacity required by Tunix's power-of-two prompt
-padding. It returns raw completion, latency and per-token logprobs. A too-small
+padding. It returns raw completion, latency, generated token ids and per-token logprobs. A too-small
 cache fails with a project-level `ValueError` before entering Tunix. The optional
 integration smoke additionally proves the complete `Qwen → decode/fallback →
 CrafText → replay v2` path with local weights.

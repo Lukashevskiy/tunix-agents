@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from time import perf_counter
 from typing import Protocol, cast
@@ -48,6 +49,7 @@ class SamplerOutputLike(Protocol):
 
     text: list[str]
     logprobs: list[list[float]] | None
+    tokens: list[Sequence[int]]
 
 
 class TextSampler(Protocol):
@@ -236,10 +238,12 @@ class QwenTunixBackend:
         token_logprobs = (
             tuple(float(value) for value in raw_logprobs[0]) if raw_logprobs else None
         )
+        token_ids = tuple(int(token) for token in output.tokens[0])
         return LlmResponse(
             raw_text=output.text[0],
             backend="tunix-single-device",
             model=QWEN_MODEL_ID,
             latency_ms=(perf_counter() - started) * 1_000,
             token_logprobs=token_logprobs,
+            token_ids=token_ids,
         )

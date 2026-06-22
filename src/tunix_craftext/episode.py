@@ -96,6 +96,7 @@ def collect_text_episode(
                 unknown_action=metrics.unknown_action,
                 fallback_used=fallback_used,
                 token_logprobs=response.token_logprobs,
+                token_ids=response.token_ids,
             )
         )
         backend_name = f"{response.backend}:{response.model}"

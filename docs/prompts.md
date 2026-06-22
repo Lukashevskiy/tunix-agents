@@ -21,7 +21,8 @@ pyenv exec python -m uv run pytest -m integration tests/integration/test_megapro
 останавливает прогон, а `invalid_action="fallback"` требует явный допустимый
 `fallback_action_id`. Во втором случае replay v2 записывает `invalid_format`,
 `unknown_action`, `fallback_used`, raw completion и (если backend их выдал) per-token
-logprobs. Поэтому fallback не может стать неявной подменой действия.
+logprobs вместе с generated token ids. Поэтому fallback не может стать неявной подменой
+действия, а replay уже содержит token-level provenance для будущего PPO/SFT bridge.
 
 `collect_text_episode` — host-side reference pipeline: он последовательно выполняет
 `PromptContext → RenderedPrompt → LlmBackend → strict decode_action → CrafTextAdapter.step`
