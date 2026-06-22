@@ -83,7 +83,7 @@
     {
       "name": "Tunix Qwen episode bridge",
       "status": "ready",
-      "description": "Official google/tunix revision, Qwen chat-template, generated token ids/logprobs, real MegaPrompts EnvState rendering, CrafText action replay и config-driven JSON metrics CLI проходят real integration smoke. RLCluster/value bridge остаётся следующим workload этапом."
+      "description": "Official google/tunix revision, Qwen chat-template, generated token ids/logprobs, real MegaPrompts EnvState rendering, CrafText action replay, typed TextTrajectoryBatch и config-driven JSON metrics CLI проходят real integration smoke. RLCluster/value bridge остаётся следующим workload этапом."
     }
   ]
 }

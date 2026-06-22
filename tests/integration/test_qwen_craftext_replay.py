@@ -10,6 +10,7 @@ from tunix_craftext.config import load_mvp_config
 from tunix_craftext.episode import collect_text_episode
 from tunix_craftext.prompts import MegaPromptRenderer
 from tunix_craftext.runtime import build_craftext_runtime
+from tunix_craftext.text_trajectory import text_trajectory_from_replay
 from tunix_craftext.tunix_adapter import QwenTunixBackend
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -44,3 +45,8 @@ def test_local_qwen_completion_records_real_craftext_fallback_replay() -> None:
     assert step.token_ids is not None
     assert len(step.token_ids) == len(step.token_logprobs)
     assert step.raw_completion
+
+    batch = text_trajectory_from_replay(artifact)
+    assert batch.token_ids.shape[0] == 1
+    assert bool(batch.token_mask[0].any())
+    assert bool(batch.policy_mask[0].any()) is not step.fallback_used

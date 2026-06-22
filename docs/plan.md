@@ -54,8 +54,8 @@
 - [~] Добавить Qwen local smoke через публичный Tunix sampler; single-device backend не является
   production multi-device path.
 - [~] Реализовать Qwen chat-template и sampling/logprob/value bridge: chat-template, sampler
-  cache sizing, raw token logprobs и invalid-action/fallback replay уже проверены; остаются
-  value bridge и output-parity fixture против прямого Tunix call.
+  cache sizing, token ids/logprobs, typed `TextTrajectoryBatch` и invalid-action/fallback replay
+  уже проверены; остаются value bridge и output-parity fixture против прямого Tunix call.
 - [ ] Построить workload path через Tunix `RLCluster` и versioned `role_to_mesh` для
   actor/rollout/critic/reference; topology profiles и `Role → Mesh` adapter готовы,
   остаётся hardware-gated creation реального `RLCluster` workload.
@@ -101,5 +101,6 @@
 
 `main`: CrafText/Caged adapter boundary и compiled `lax.scan` collector готовы; scan
 parity/steady-state benchmark проходят. Qwen 2.5 0.5B локально загружается через публичный
-Tunix API в single-device smoke-профиле. Следующий implementation slice: **Qwen chat-template
-и token/logprob bridge**, затем hardware-gated `RLCluster` profile с явным `role_to_mesh`.
+Tunix API в single-device smoke-профиле. Qwen replay уже конвертируется в typed token batch;
+следующий implementation slice: **value bridge и реальный RLCluster workload** с явным
+`role_to_mesh`.

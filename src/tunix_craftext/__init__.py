@@ -20,6 +20,7 @@ from .text_policy import (
     decode_action,
     decode_action_outcome,
 )
+from .text_trajectory import TextTrajectoryBatch, TextTrajectoryError, text_trajectory_from_replay
 from .tunix_topology import (
     TopologyConfigError,
     TunixTopology,
@@ -58,6 +59,9 @@ __all__ = [
     "load_tunix_topology",
     "role_to_meshes",
     "tunix_role_to_meshes",
+    "TextTrajectoryBatch",
+    "TextTrajectoryError",
+    "text_trajectory_from_replay",
     "ConfigError",
     "MvpRunConfig",
     "load_mvp_config",
