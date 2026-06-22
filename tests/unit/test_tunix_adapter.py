@@ -9,6 +9,7 @@ from tunix_craftext.tunix_adapter import (
     QWEN_TUNIX_CONFIG_ID,
     load_qwen_model,
     load_qwen_tokenizer,
+    qwen_cache_config,
     qwen_mesh,
 )
 
@@ -23,6 +24,16 @@ def test_qwen_mesh_exposes_required_tunix_axes() -> None:
     """Qwen's Tunix sharding template requires fsdp and tp, even on one device."""
     assert qwen_mesh().axis_names == ("fsdp", "tp")
 
+
+def test_qwen_cache_config_uses_pinned_model_dimensions() -> None:
+    """Sampler cache tracks the exact Qwen KV layout, not guessed constants."""
+    cache = qwen_cache_config(128)
+    assert (cache.cache_size, cache.num_layers, cache.num_kv_heads, cache.head_dim) == (
+        128,
+        24,
+        2,
+        64,
+    )
 
 def test_qwen_tokenizer_requires_explicit_local_snapshot(tmp_path) -> None:
     """No test or library import may silently download model assets."""

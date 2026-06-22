@@ -1,5 +1,4 @@
-"""Narrow Qwen/Tunix model boundary with explicit local-weight provenance."""
-
+"""Узкая граница модели Qwen/Tunix с явным происхождением локальных весов."""
 from __future__ import annotations
 
 from collections.abc import Sequence
