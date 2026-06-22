@@ -74,6 +74,22 @@
 - [ ] Release checklist: reproducibility card, known limitations, performance table, migration guide
    для конфигов VERL.
 
+## 5a. Расширяемость и исследовательская наблюдаемость
+
+- [~] Ввести typed `AlgorithmSpec`/registry: advantage transform, pure loss и immutable metrics;
+  PPO становится первой реализацией без изменения orchestration transport contracts.
+- [ ] Добавить будущий GRPO/GSPO только по первичному источнику с отдельным group-shape contract
+  `[B, G, T]`, hand-computed fixtures и explicit reference log-probs.
+- [ ] Ввести `ModelAdapter`/profile boundary: tokenizer, mesh axes, load path, weight mapping и
+  output parity fixture; Qwen является первой реализацией.
+- [ ] Экспортировать structured JAX metrics на epoch boundary в JSONL и optional TensorBoard.
+- [ ] Добавить явный profiler command: warmup, ограниченный trace, Perfetto artifact, compile
+  ledger с shape/dtype/mesh fingerprint и recompilation alert.
+- [ ] Добавить Chex assertions только в host boundary/unit lanes, без blocking внутри JIT loops.
+
+**Gate:** новый algorithm/model подключается registry entry и fixtures; JIT transport loop не
+меняется, а trace и metrics связываются с config/commit/mesh provenance.
+
 ## Текущая ветка реализации
 
 `foundation/jax-scan-and-adapter`: CrafText/Caged adapter boundary и compiled `lax.scan`
