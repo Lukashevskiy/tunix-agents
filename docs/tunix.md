@@ -17,6 +17,13 @@ explicit Qwen loader and sampler boundary in `tunix_adapter.py`. A local Qwen 2.
 smoke profile, not a replacement for the training architecture. Our
 environment/prompt/replay contracts remain framework-neutral.
 
+Before each Qwen call, the backend applies the tokenizer's declared chat template
+and computes the static cache capacity required by Tunix's power-of-two prompt
+padding. It returns raw completion, latency and per-token logprobs. A too-small
+cache fails with a project-level `ValueError` before entering Tunix. The optional
+integration smoke additionally proves the complete `Qwen → decode/fallback →
+CrafText → replay v2` path with local weights.
+
 The base environment does not import Tunix. This keeps `make test`, CrafText
 collection and Flax/Optax smoke learning independent of the heavyweight model
 and tokenizer stack while preserving an exact, reproducible bridge source.

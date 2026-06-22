@@ -12,7 +12,14 @@ from .random_policy import ActionSamplingError, sample_masked_actions, validate_
 from .replay import ReplayArtifact, ReplayStep, save_replay
 from .rollout import collect_rollout, collect_rollout_scan
 from .runtime import CrafTextRuntime, build_craftext_runtime
-from .text_policy import DecodedAction, DecodeMetrics, TextPolicy, act, decode_action
+from .text_policy import (
+    DecodedAction,
+    DecodeMetrics,
+    TextPolicy,
+    act,
+    decode_action,
+    decode_action_outcome,
+)
 
 __all__ = [
     "LoraAdapter",
@@ -38,6 +45,7 @@ __all__ = [
     "TextPolicy",
     "act",
     "decode_action",
+    "decode_action_outcome",
     "ConfigError",
     "MvpRunConfig",
     "load_mvp_config",

@@ -39,20 +39,37 @@ class DecodeMetrics:
     unknown_action: int = 0
 
 
+def decode_action_outcome(
+    prompt: RenderedPrompt, raw_text: str
+) -> tuple[DecodedAction | None, DecodeMetrics]:
+    """Decode one completion without hiding a model-format failure.
+
+    :returns: A validated action and zero metrics, or ``None`` with exactly one
+        invalid-action counter set. Callers decide whether that outcome terminates
+        the run or uses an explicitly configured fallback.
+    """
+    match = _ACTION_TAG.search(raw_text)
+    if match is None:
+        return None, DecodeMetrics(invalid_format=1)
+    label = match.group(1).strip()
+    try:
+        action_id = prompt.actions.index_of(label)
+    except PromptContractError:
+        return None, DecodeMetrics(unknown_action=1)
+    return DecodedAction(action_id=action_id, label=label, raw_text=raw_text), DecodeMetrics()
+
+
 def decode_action(prompt: RenderedPrompt, raw_text: str) -> tuple[DecodedAction, DecodeMetrics]:
     """Parse exactly one action tag and validate it against the rendered action catalogue.
 
     :raises PromptContractError: If completion lacks a valid action tag or selects an unknown label.
     """
-    match = _ACTION_TAG.search(raw_text)
-    if match is None:
+    decoded, metrics = decode_action_outcome(prompt, raw_text)
+    if decoded is not None:
+        return decoded, metrics
+    if metrics.invalid_format:
         raise PromptContractError("model output lacks a non-empty <action>LABEL</action> tag")
-    label = match.group(1).strip()
-    try:
-        action_id = prompt.actions.index_of(label)
-    except PromptContractError as error:
-        raise PromptContractError(f"unknown model action {label!r}") from error
-    return DecodedAction(action_id=action_id, label=label, raw_text=raw_text), DecodeMetrics()
+    raise PromptContractError("unknown model action in completion")
 
 
 def act(policy: TextPolicy, prompt: RenderedPrompt) -> tuple[DecodedAction, DecodeMetrics]:

@@ -53,8 +53,9 @@
   fallback, никогда не silent coercion.
 - [~] Добавить Qwen local smoke через публичный Tunix sampler; single-device backend не является
   production multi-device path.
-- [ ] Реализовать Qwen chat-template и sampling/logprob/value bridge; проверить parity против
-  прямого вызова Tunix и записать invalid-action/fallback metrics.
+- [~] Реализовать Qwen chat-template и sampling/logprob/value bridge: chat-template, sampler
+  cache sizing, raw token logprobs и invalid-action/fallback replay уже проверены; остаются
+  value bridge и output-parity fixture против прямого Tunix call.
 - [ ] Построить workload path через Tunix `RLCluster` и versioned `role_to_mesh` для
   actor/rollout/critic/reference; не реализовывать собственный GPU scheduler.
 - [ ] Сделать SFT warm-start и PPO на коротких fixed prompt rollouts.

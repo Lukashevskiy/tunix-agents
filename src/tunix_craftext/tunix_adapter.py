@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from time import perf_counter
+from typing import Protocol, cast
 
 import jax
 
@@ -13,15 +14,109 @@ QWEN_MODEL_ID = "Qwen/Qwen2.5-0.5B-Instruct"
 QWEN_TUNIX_CONFIG_ID = "qwen2.5-0.5b"
 
 
-def qwen_cache_config(cache_size: int) -> object:
+class ChatTemplatingTokenizer(Protocol):
+    """Public tokenizer capability required to prepare a Qwen assistant turn."""
+
+    def apply_chat_template(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        add_generation_prompt: bool,
+        tokenize: bool,
+    ) -> str | list[int]: ...
+
+
+class SamplingTokenizer(ChatTemplatingTokenizer, Protocol):
+    """Tokenizer operations needed to size a static Tunix sampler cache."""
+
+    def encode(self, text: str) -> list[int]: ...
+
+    def bos_id(self) -> int: ...
+
+
+class CacheConfigLike(Protocol):
+    """Stable cache dimensions consumed by the Qwen sampler boundary."""
+
+    cache_size: int
+    num_layers: int
+    num_kv_heads: int
+    head_dim: int
+
+
+class SamplerOutputLike(Protocol):
+    """Public sampler result fields retained by the LLM boundary."""
+
+    text: list[str]
+    logprobs: list[list[float]] | None
+
+
+class TextSampler(Protocol):
+    """Subset of Tunix sampler API required by one text completion."""
+
+    def __call__(
+        self,
+        input_strings: str,
+        *,
+        max_generation_steps: int,
+        max_prompt_length: int,
+        temperature: float,
+        seed: int,
+        return_logprobs: bool,
+    ) -> SamplerOutputLike: ...
+
+
+QWEN_ACTION_SYSTEM_PROMPT = (
+    "You are a CrafText agent. Choose exactly one action from the action catalogue in the "
+    "user message. Your complete response is one XML action element containing that exact action "
+    "name. Never output the placeholder word LABEL and do not add an explanation."
+)
+
+
+def format_qwen_action_prompt(
+    tokenizer: ChatTemplatingTokenizer, prompt_text: str
+) -> str:
+    """Apply Qwen's declared chat template to one already-rendered action prompt.
+
+    :raises ValueError: If the tokenizer does not produce textual chat input.
+    """
+    if not prompt_text.strip():
+        raise ValueError("prompt_text must be non-empty")
+    rendered = tokenizer.apply_chat_template(
+        [
+            {"role": "system", "content": QWEN_ACTION_SYSTEM_PROMPT},
+            {"role": "user", "content": prompt_text},
+        ],
+        add_generation_prompt=True,
+        tokenize=False,
+    )
+    if not isinstance(rendered, str) or not rendered.strip():
+        raise ValueError("Qwen chat template must return non-empty text")
+    return rendered
+
+
+def qwen_required_cache_size(
+    tokenizer: SamplingTokenizer, chat_prompt: str, max_new_tokens: int
+) -> int:
+    """Return Tunix's padded prompt requirement plus requested completion tokens."""
+    if max_new_tokens <= 0:
+        raise ValueError("max_new_tokens must be positive")
+    input_tokens = len(tokenizer.encode(chat_prompt)) + int(bool(tokenizer.bos_id()))
+    padded_prompt_tokens = 1 << max(input_tokens - 1, 0).bit_length()
+    return padded_prompt_tokens + max_new_tokens
+
+
+def qwen_cache_config(cache_size: int) -> CacheConfigLike:
     """Build a Tunix KV cache contract from the pinned Qwen model configuration."""
     if cache_size <= 0:
         raise ValueError("cache_size must be positive")
-    from tunix.generate.sampler import CacheConfig
-    from tunix.models.automodel import call_model_config
+    from tunix.generate.sampler import CacheConfig  # type: ignore[import-untyped]
+    from tunix.models.automodel import call_model_config  # type: ignore[import-untyped]
 
     config = call_model_config(QWEN_TUNIX_CONFIG_ID)
-    return CacheConfig(cache_size, config.num_layers, config.num_kv_heads, config.head_dim)
+    return cast(
+        CacheConfigLike,
+        CacheConfig(cache_size, config.num_layers, config.num_kv_heads, config.head_dim),
+    )
 
 
 def qwen_mesh() -> jax.sharding.Mesh:
@@ -29,7 +124,7 @@ def qwen_mesh() -> jax.sharding.Mesh:
     return jax.make_mesh((1, 1), ("fsdp", "tp"))
 
 
-def load_qwen_tokenizer(snapshot: Path) -> object:
+def load_qwen_tokenizer(snapshot: Path) -> SamplingTokenizer:
     """Load a Tunix HF tokenizer from an already downloaded Qwen snapshot.
 
     :param snapshot: Local Hugging Face snapshot directory.
@@ -38,10 +133,16 @@ def load_qwen_tokenizer(snapshot: Path) -> object:
     """
     if not snapshot.is_dir():
         raise FileNotFoundError(f"Qwen snapshot not found: {snapshot}")
-    from tunix.generate.tokenizer_adapter import Tokenizer
+    from tunix.generate.tokenizer_adapter import Tokenizer  # type: ignore[import-untyped]
 
-    return Tokenizer(
-        tokenizer_type="huggingface", tokenizer_path=str(snapshot), add_bos=False, add_eos=False
+    return cast(
+        SamplingTokenizer,
+        Tokenizer(
+            tokenizer_type="huggingface",
+            tokenizer_path=str(snapshot),
+            add_bos=False,
+            add_eos=False,
+        ),
     )
 
 
@@ -54,7 +155,7 @@ def load_qwen_model(snapshot: Path) -> tuple[object, Path]:
     """
     if not snapshot.is_dir():
         raise FileNotFoundError(f"Qwen snapshot not found: {snapshot}")
-    from tunix.models.automodel import AutoModel, ModelSource
+    from tunix.models.automodel import AutoModel, ModelSource  # type: ignore[import-untyped]
 
     model, resolved = AutoModel.from_pretrained(
         QWEN_MODEL_ID,
@@ -65,15 +166,18 @@ def load_qwen_model(snapshot: Path) -> tuple[object, Path]:
     return model, Path(resolved) if resolved is not None else snapshot
 
 
-def build_qwen_sampler(snapshot: Path, cache_size: int) -> object:
+def build_qwen_sampler(snapshot: Path, cache_size: int) -> TextSampler:
     """Build the public Tunix sampler from explicit local Qwen assets."""
-    from tunix.generate.sampler import Sampler
+    from tunix.generate.sampler import Sampler  # type: ignore[import-untyped]
 
     model, _ = load_qwen_model(snapshot)
-    return Sampler(model, load_qwen_tokenizer(snapshot), qwen_cache_config(cache_size))
+    sampler = Sampler(model, load_qwen_tokenizer(snapshot), qwen_cache_config(cache_size))
+    return cast(TextSampler, sampler)
 
 
-def build_qwen_single_device_sampler(snapshot: Path, cache_size: int) -> object:
+def build_qwen_single_device_sampler(
+    snapshot: Path, cache_size: int, tokenizer: SamplingTokenizer | None = None
+) -> TextSampler:
     """Build a working unsharded Tunix sampler for local Qwen smoke inference.
 
     The named ``fsdp/tp`` path is intentionally not used here: current Tunix
@@ -81,37 +185,61 @@ def build_qwen_single_device_sampler(snapshot: Path, cache_size: int) -> object:
     """
     if not snapshot.is_dir():
         raise FileNotFoundError(f"Qwen snapshot not found: {snapshot}")
-    from tunix.generate.sampler import Sampler
-    from tunix.models.automodel import call_model_config
-    from tunix.models.qwen2.params import create_model_from_safe_tensors
+    from tunix.generate.sampler import Sampler  # type: ignore[import-untyped]
+    from tunix.models.automodel import call_model_config  # type: ignore[import-untyped]
+    from tunix.models.qwen2.params import (  # type: ignore[import-untyped]
+        create_model_from_safe_tensors,
+    )
 
     config = call_model_config(QWEN_TUNIX_CONFIG_ID)
     model = create_model_from_safe_tensors(str(snapshot), config, mesh=None)
-    return Sampler(model, load_qwen_tokenizer(snapshot), qwen_cache_config(cache_size))
+    return cast(
+        TextSampler,
+        Sampler(model, tokenizer or load_qwen_tokenizer(snapshot), qwen_cache_config(cache_size)),
+    )
 
 
 class QwenTunixBackend:
     """Single-device Tunix Qwen implementation of the typed LLM backend."""
 
     def __init__(self, snapshot: Path, cache_size: int = 512, seed: int = 0) -> None:
-        self._sampler = build_qwen_single_device_sampler(snapshot, cache_size)
+        if cache_size < 2:
+            raise ValueError("cache_size must reserve at least one prompt and one completion token")
+        self._tokenizer = load_qwen_tokenizer(snapshot)
+        self._sampler = build_qwen_single_device_sampler(snapshot, cache_size, self._tokenizer)
         self._cache_size = cache_size
         self._seed = seed
 
     def complete(self, request: LlmRequest) -> LlmResponse:
         """Generate one raw completion and retain its latency/provenance."""
+        if request.max_new_tokens >= self._cache_size:
+            raise ValueError("max_new_tokens must be smaller than cache_size")
         started = perf_counter()
+        chat_prompt = format_qwen_action_prompt(self._tokenizer, request.prompt.text)
+        required_cache_size = qwen_required_cache_size(
+            self._tokenizer, chat_prompt, request.max_new_tokens
+        )
+        if required_cache_size > self._cache_size:
+            raise ValueError(
+                "cache_size is too small for the padded Qwen prompt and completion: "
+                f"requires at least {required_cache_size}, got {self._cache_size}"
+            )
         output = self._sampler(
-            request.prompt.text,
+            chat_prompt,
             max_generation_steps=request.max_new_tokens,
-            max_prompt_length=self._cache_size - request.max_new_tokens,
+            max_prompt_length=required_cache_size - request.max_new_tokens,
             temperature=request.temperature,
             seed=self._seed,
             return_logprobs=True,
+        )
+        raw_logprobs = output.logprobs
+        token_logprobs = (
+            tuple(float(value) for value in raw_logprobs[0]) if raw_logprobs else None
         )
         return LlmResponse(
             raw_text=output.text[0],
             backend="tunix-single-device",
             model=QWEN_MODEL_ID,
             latency_ms=(perf_counter() - started) * 1_000,
+            token_logprobs=token_logprobs,
         )

@@ -1,7 +1,7 @@
 import pytest
 
 from tunix_craftext.prompts import ActionCatalog, PromptContractError, RenderedPrompt
-from tunix_craftext.text_policy import decode_action
+from tunix_craftext.text_policy import decode_action, decode_action_outcome
 
 
 def test_decoder_maps_model_action_to_the_prompt_bound_id() -> None:
@@ -24,3 +24,18 @@ def test_decoder_rejects_unknown_action() -> None:
     prompt = RenderedPrompt("choose", ActionCatalog(("LEFT",)), "base")
     with pytest.raises(PromptContractError, match="unknown"):
         decode_action(prompt, "<action>FLY</action>")
+
+
+@pytest.mark.parametrize(
+    ("completion", "invalid_format", "unknown_action"),
+    [("not an action", 1, 0), ("<action>FLY</action>", 0, 1)],
+)
+def test_decoder_outcome_preserves_invalid_action_reason(
+    completion: str, invalid_format: int, unknown_action: int
+) -> None:
+    prompt = RenderedPrompt("choose", ActionCatalog(("LEFT",)), "base")
+
+    decoded, metrics = decode_action_outcome(prompt, completion)
+
+    assert decoded is None
+    assert (metrics.invalid_format, metrics.unknown_action) == (invalid_format, unknown_action)

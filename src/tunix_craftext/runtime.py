@@ -53,7 +53,7 @@ def build_craftext_runtime(config: MvpRunConfig) -> CrafTextRuntime:
     if not isinstance(action_count, int) or action_count <= 0:
         raise RuntimeError("vendor environment must expose positive integer num_actions")
     try:
-        from craftax.craftax_classic.constants import Action
+        from craftax.craftax_classic.constants import Action  # type: ignore[import-untyped]
 
         labels = tuple(action.name for action in Action)
     except ImportError as error:

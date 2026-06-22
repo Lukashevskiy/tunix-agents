@@ -17,8 +17,11 @@ pyenv exec python -m uv run pytest -m integration tests/integration/test_megapro
 с action id и исходным model text для provenance. Сквозной integration smoke покрывает
 `environment-shaped state → prompt → policy → decoder → adapter.step`.
 
-Controlled fallback и накопительные invalid-action metrics ещё не реализованы: они остаются
-активным пунктом roadmap перед подключением Tunix sampler/logprob/value bridge.
+`collect_text_episode()` поддерживает два явных режима ошибки: `invalid_action="error"`
+останавливает прогон, а `invalid_action="fallback"` требует явный допустимый
+`fallback_action_id`. Во втором случае replay v2 записывает `invalid_format`,
+`unknown_action`, `fallback_used`, raw completion и (если backend их выдал) per-token
+logprobs. Поэтому fallback не может стать неявной подменой действия.
 
 `collect_text_episode` — host-side reference pipeline: он последовательно выполняет
 `PromptContext → RenderedPrompt → LlmBackend → strict decode_action → CrafTextAdapter.step`

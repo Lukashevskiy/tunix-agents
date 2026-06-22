@@ -18,6 +18,10 @@ class ReplayStep:
     action_label: str
     reward: float
     terminated: bool
+    invalid_format: int = 0
+    unknown_action: int = 0
+    fallback_used: bool = False
+    token_logprobs: tuple[float, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -28,7 +32,7 @@ class ReplayArtifact:
     commit: str
     backend: str
     steps: tuple[ReplayStep, ...]
-    schema: str = "tunix-craftext.replay/v1"
+    schema: str = "tunix-craftext.replay/v2"
 
 
 def save_replay(path: Path, artifact: ReplayArtifact) -> None:

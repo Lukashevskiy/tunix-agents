@@ -22,6 +22,7 @@ class LlmResponse:
     backend: str
     model: str
     latency_ms: float | None = None
+    token_logprobs: tuple[float, ...] | None = None
 
 
 class LlmBackend(Protocol):

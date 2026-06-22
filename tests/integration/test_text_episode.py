@@ -100,3 +100,45 @@ def test_text_episode_passes_generation_cap_to_backend() -> None:
 
     assert backend.request is not None
     assert backend.request.max_new_tokens == 4
+
+
+@pytest.mark.integration
+def test_text_episode_records_invalid_completion_and_explicit_fallback() -> None:
+    """Fallback is visible in replay and never silently coerces a model completion."""
+    artifact = collect_text_episode(
+        CrafTextAdapter(Environment(), params=object(), action_count=3),
+        MegaPromptRenderer("test", Renderer()),
+        ScriptedLlmBackend("I cannot decide", model="fixture"),
+        goal="collect safely",
+        actions=ActionCatalog(("LEFT", "RIGHT", "DO")),
+        horizon=1,
+        seed=7,
+        config_path="configs/test.yaml",
+        commit="abc123",
+        invalid_action="fallback",
+        fallback_action_id=0,
+    )
+
+    step = artifact.steps[0]
+    assert (step.action_id, step.action_label) == (0, "LEFT")
+    assert step.invalid_format == 1
+    assert step.unknown_action == 0
+    assert step.fallback_used
+
+
+@pytest.mark.integration
+def test_text_episode_rejects_fallback_without_declared_action() -> None:
+    """A fallback policy must name an in-range action rather than use a hidden default."""
+    with pytest.raises(ValueError, match="fallback action"):
+        collect_text_episode(
+            CrafTextAdapter(Environment(), params=object(), action_count=3),
+            MegaPromptRenderer("test", Renderer()),
+            ScriptedLlmBackend("I cannot decide"),
+            goal="collect safely",
+            actions=ActionCatalog(("LEFT", "RIGHT", "DO")),
+            horizon=1,
+            seed=7,
+            config_path="configs/test.yaml",
+            commit="abc123",
+            invalid_action="fallback",
+        )

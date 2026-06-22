@@ -19,7 +19,7 @@ SNAPSHOT = ROOT / "artifacts" / "models" / "qwen25-05b-instruct"
 @pytest.mark.skipif(not SNAPSHOT.is_dir(), reason="download the local Qwen snapshot")
 def test_real_qwen_tunix_backend_generates_completion_with_provenance() -> None:
     """One actual Tunix sampling call yields raw text and measured latency."""
-    backend = QwenTunixBackend(SNAPSHOT, cache_size=128)
+    backend = QwenTunixBackend(SNAPSHOT, cache_size=256)
     response = backend.complete(
         LlmRequest(
             RenderedPrompt("Reply only: <action>DO</action>", ActionCatalog(("DO",)), "smoke"),
