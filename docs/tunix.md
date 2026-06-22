@@ -38,6 +38,12 @@ rollout, critic and reference. It may use Tunix resharding/offload; it must not 
 second GPU scheduler in this repository. The architecture decision and the distinction
 from the local sampler are recorded in [ADR 0004](adr/0004-tunix-cluster-topology.md).
 
+Topology lives in `configs/topology/`: `qwen_local_smoke.yaml` colocates every role on
+device 0, while `qwen_four_device_colocated.yaml` documents a four-device mesh. Both are
+strictly validated before an accelerator workload is constructed; a profile requesting
+unavailable devices fails early. `tunix_role_to_meshes()` is the sole adapter that maps
+these named roles to Tunix's official `Role` enum.
+
 The corresponding versioned profiles are `configs/models/gemma3_270m_instruction.yaml`
 and `configs/models/qwen25_05b_instruction.yaml`. Their committed download/license
 flags deliberately remain `false`: they describe a portable repository, not the

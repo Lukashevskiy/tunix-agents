@@ -10,6 +10,7 @@ import yaml
 
 pytest.importorskip("tunix", reason="install the tunix extra")
 from tunix.rl.ppo.ppo_learner import PPOConfig, PPOLearner
+from tunix.rl.rl_cluster import Role
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -25,3 +26,5 @@ def test_pinned_tunix_exposes_declared_public_ppo_api() -> None:
     assert version("google-tunix") == record["source"]["snapshot_version"]
     assert PPOConfig.__name__ == "PPOConfig"
     assert PPOLearner.__name__ == "PPOLearner"
+    assert record["public_api_boundary"]["role"] == "tunix.rl.rl_cluster.Role"
+    assert Role.ACTOR.value == "actor"

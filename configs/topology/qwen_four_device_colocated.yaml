@@ -1,0 +1,8 @@
+schema_version: 1
+name: qwen-four-device-colocated
+axis_name: data
+roles:
+  actor: [0, 1, 2, 3]
+  rollout: [0, 1, 2, 3]
+  critic: [0, 1, 2, 3]
+  reference: [0, 1, 2, 3]

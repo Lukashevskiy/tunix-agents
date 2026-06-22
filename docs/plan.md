@@ -57,7 +57,8 @@
   cache sizing, raw token logprobs и invalid-action/fallback replay уже проверены; остаются
   value bridge и output-parity fixture против прямого Tunix call.
 - [ ] Построить workload path через Tunix `RLCluster` и versioned `role_to_mesh` для
-  actor/rollout/critic/reference; не реализовывать собственный GPU scheduler.
+  actor/rollout/critic/reference; topology profiles и `Role → Mesh` adapter готовы,
+  остаётся hardware-gated creation реального `RLCluster` workload.
 - [ ] Сделать SFT warm-start и PPO на коротких fixed prompt rollouts.
 - [ ] Лишь после этого добавить GRPO как самостоятельный algorithm module, не как fork PPO.
 

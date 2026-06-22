@@ -20,6 +20,13 @@ from .text_policy import (
     decode_action,
     decode_action_outcome,
 )
+from .tunix_topology import (
+    TopologyConfigError,
+    TunixTopology,
+    load_tunix_topology,
+    role_to_meshes,
+    tunix_role_to_meshes,
+)
 
 __all__ = [
     "LoraAdapter",
@@ -46,6 +53,11 @@ __all__ = [
     "act",
     "decode_action",
     "decode_action_outcome",
+    "TopologyConfigError",
+    "TunixTopology",
+    "load_tunix_topology",
+    "role_to_meshes",
+    "tunix_role_to_meshes",
     "ConfigError",
     "MvpRunConfig",
     "load_mvp_config",

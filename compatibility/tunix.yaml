@@ -8,7 +8,9 @@ source:
 public_api_boundary:
   ppo_config: tunix.rl.ppo.ppo_learner.PPOConfig
   ppo_learner: tunix.rl.ppo.ppo_learner.PPOLearner
+  role: tunix.rl.rl_cluster.Role
 compatibility_status: pinned-awaiting-extra-install
 notes:
   - Core never imports Tunix; only the future bridge extra may do so.
   - The legacy PyPI distribution named tunix==0.0.0 is not this project and is prohibited.
+  - Distributed workloads declare role_to_mesh through configs/topology; Tunix owns resharding.
