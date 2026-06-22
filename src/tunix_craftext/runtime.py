@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from .adapters import CrafTextAdapter
 from .config import MvpRunConfig
+from .prompts import ActionCatalog
 
 
 class RuntimeError(ValueError):
@@ -19,6 +20,7 @@ class CrafTextRuntime:
     adapter: CrafTextAdapter[object, object, object]
     env_params: object
     action_count: int
+    actions: ActionCatalog
 
 
 def build_craftext_runtime(config: MvpRunConfig) -> CrafTextRuntime:
@@ -50,8 +52,17 @@ def build_craftext_runtime(config: MvpRunConfig) -> CrafTextRuntime:
     action_count = getattr(environment, "num_actions", None)
     if not isinstance(action_count, int) or action_count <= 0:
         raise RuntimeError("vendor environment must expose positive integer num_actions")
+    try:
+        from craftax.craftax_classic.constants import Action
+
+        labels = tuple(action.name for action in Action)
+    except ImportError as error:
+        raise RuntimeError("Craftax Action enum is required for text-policy labels") from error
+    if len(labels) != action_count:
+        raise RuntimeError("vendor Action enum does not match environment action cardinality")
     return CrafTextRuntime(
         adapter=CrafTextAdapter(environment, env_params, action_count),
         env_params=env_params,
         action_count=action_count,
+        actions=ActionCatalog(labels),
     )
