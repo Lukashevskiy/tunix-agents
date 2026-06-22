@@ -65,3 +65,65 @@ def generalized_advantage_estimation(
     )
     advantages = advantages[::-1]
     return advantages, advantages + values
+
+
+def masked_token_returns(
+    rewards: jax.Array, token_mask: jax.Array, gamma: float
+) -> jax.Array:
+    """Compute reward-to-go for padded token sequences shaped ``[B, T]``.
+
+    Padding tokens have return zero and reset the backward carry, allowing host-side
+    text completions of unequal length to share a static learning batch.
+    """
+    if rewards.shape != token_mask.shape or rewards.ndim != 2:
+        raise ValueError("rewards and token_mask must have identical shape [B, T]")
+    if not 0.0 <= gamma <= 1.0:
+        raise ValueError("gamma must be in [0, 1]")
+
+    def step(carry: jax.Array, inputs: tuple[jax.Array, jax.Array]) -> tuple[jax.Array, jax.Array]:
+        reward, valid = inputs
+        returned = jnp.where(valid, reward + gamma * carry, 0.0)
+        return returned, returned
+
+    _, reversed_returns = jax.lax.scan(
+        step,
+        jnp.zeros(rewards.shape[0], dtype=rewards.dtype),
+        (rewards.T[::-1], token_mask.T[::-1]),
+    )
+    return reversed_returns[::-1].T
+
+
+def masked_token_ppo_loss(
+    new_log_prob: jax.Array,
+    old_log_prob: jax.Array,
+    advantages: jax.Array,
+    new_value: jax.Array,
+    old_value: jax.Array,
+    returns: jax.Array,
+    token_mask: jax.Array,
+    clip_epsilon: float,
+    value_coefficient: float,
+    entropy: jax.Array,
+    entropy_coefficient: float,
+) -> tuple[jax.Array, dict[str, jax.Array]]:
+    """Apply PPO only to valid token positions in ``[B, T]`` text trajectories.
+
+    :raises ValueError: If token fields differ in shape or no policy token is valid.
+    """
+    fields = (new_log_prob, old_log_prob, advantages, new_value, old_value, returns, entropy)
+    if token_mask.ndim != 2 or any(field.shape != token_mask.shape for field in fields):
+        raise ValueError("all token PPO fields and token_mask must have shape [B, T]")
+    if not bool(jnp.any(token_mask)):
+        raise ValueError("token_mask must select at least one token")
+    return ppo_loss(
+        new_log_prob[token_mask],
+        old_log_prob[token_mask],
+        advantages[token_mask],
+        new_value[token_mask],
+        old_value[token_mask],
+        returns[token_mask],
+        clip_epsilon,
+        value_coefficient,
+        entropy[token_mask],
+        entropy_coefficient,
+    )

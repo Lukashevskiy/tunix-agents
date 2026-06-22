@@ -39,7 +39,7 @@
 
 - [~] TDD для discounted return, GAE, advantage normalization, masks и value bootstrap.
 - [~] Чистые функции loss: policy clip, value clip, entropy, KL; каждая имеет hand-computed
-   mini-batch test.
+   mini-batch test; token-level masked PPO variant покрывает padded text trajectories.
 - [~] Flax actor-critic и `TrainState` с Optax schedule/gradient clipping.
 - [x] Один update на synthetic trajectory → loss finite, params change, checkpoint round-trip.
 - [ ] Запустить tiny CrafText end-to-end и сохранить trajectory/rendered prompt/metrics.

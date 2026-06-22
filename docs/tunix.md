@@ -30,6 +30,11 @@ the environment reward on each completion's final token. Steps that used fallbac
 auditable but are excluded from `policy_mask`, so an eventual PPO/SFT update cannot silently
 learn from a non-model action.
 
+`masked_token_returns()` and `masked_token_ppo_loss()` are the corresponding pure JAX loss
+boundary: they operate only on valid `[B, T]` tokens and ignore padding/fallback mask positions.
+They need future actor recomputation and critic values; they do not claim to be a complete
+Qwen value bridge by themselves.
+
 The base environment does not import Tunix. This keeps `make test`, CrafText
 collection and Flax/Optax smoke learning independent of the heavyweight model
 and tokenizer stack while preserving an exact, reproducible bridge source.
