@@ -34,6 +34,8 @@ class SamplingTokenizer(ChatTemplatingTokenizer, Protocol):
 
     def bos_id(self) -> int: ...
 
+    def pad_id(self) -> int: ...
+
 
 class CacheConfigLike(Protocol):
     """Stable cache dimensions consumed by the Qwen sampler boundary."""
@@ -50,6 +52,7 @@ class SamplerOutputLike(Protocol):
     text: list[str]
     logprobs: list[list[float]] | None
     tokens: list[Sequence[int]]
+    padded_prompt_tokens: Sequence[Sequence[int]]
 
 
 class TextSampler(Protocol):
@@ -239,6 +242,11 @@ class QwenTunixBackend:
             tuple(float(value) for value in raw_logprobs[0]) if raw_logprobs else None
         )
         token_ids = tuple(int(token) for token in output.tokens[0])
+        prompt_token_ids = tuple(
+            int(token)
+            for token in output.padded_prompt_tokens[0]
+            if int(token) != self._tokenizer.pad_id()
+        )
         return LlmResponse(
             raw_text=output.text[0],
             backend="tunix-single-device",
@@ -246,4 +254,5 @@ class QwenTunixBackend:
             latency_ms=(perf_counter() - started) * 1_000,
             token_logprobs=token_logprobs,
             token_ids=token_ids,
+            prompt_token_ids=prompt_token_ids,
         )

@@ -23,6 +23,7 @@ class ReplayStep:
     fallback_used: bool = False
     token_logprobs: tuple[float, ...] | None = None
     token_ids: tuple[int, ...] | None = None
+    prompt_token_ids: tuple[int, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -33,7 +34,7 @@ class ReplayArtifact:
     commit: str
     backend: str
     steps: tuple[ReplayStep, ...]
-    schema: str = "tunix-craftext.replay/v2"
+    schema: str = "tunix-craftext.replay/v3"
 
 
 def save_replay(path: Path, artifact: ReplayArtifact) -> None:

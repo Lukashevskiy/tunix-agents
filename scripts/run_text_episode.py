@@ -48,6 +48,9 @@ def episode_metrics(artifact: object) -> dict[str, object]:
         "invalid_format_count": sum(int(getattr(step, "invalid_format")) for step in steps),
         "unknown_action_count": sum(int(getattr(step, "unknown_action")) for step in steps),
         "generated_token_count": sum(len(getattr(step, "token_ids") or ()) for step in steps),
+        "prompt_token_count": sum(
+            len(getattr(step, "prompt_token_ids") or ()) for step in steps
+        ),
         "mean_token_logprob": (
             sum(token_logprobs) / len(token_logprobs) if token_logprobs else None
         ),

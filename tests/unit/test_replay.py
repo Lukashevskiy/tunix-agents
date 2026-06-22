@@ -16,6 +16,6 @@ def test_replay_is_versioned_and_preserves_raw_completion(tmp_path: Path) -> Non
         ),
     )
     data = json.loads(path.read_text())
-    assert data["schema"] == "tunix-craftext.replay/v2"
+    assert data["schema"] == "tunix-craftext.replay/v3"
     assert data["steps"][0]["raw_completion"] == "<action>DO</action>"
     assert data["steps"][0]["fallback_used"] is False

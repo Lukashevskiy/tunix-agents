@@ -99,6 +99,7 @@ def collect_text_episode(
                 fallback_used=fallback_used,
                 token_logprobs=response.token_logprobs,
                 token_ids=response.token_ids,
+                prompt_token_ids=response.prompt_token_ids,
             )
         )
         backend_name = f"{response.backend}:{response.model}"

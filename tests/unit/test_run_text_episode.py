@@ -34,6 +34,7 @@ def test_episode_metrics_retains_invalid_action_and_token_evidence() -> None:
                 fallback_used=True,
                 token_logprobs=(-1.0, -3.0),
                 token_ids=(10, 11),
+                prompt_token_ids=(1, 2, 3),
             ),
         ),
     )
@@ -44,6 +45,7 @@ def test_episode_metrics_retains_invalid_action_and_token_evidence() -> None:
     assert metrics["reward_sum"] == 1.5
     assert metrics["fallback_count"] == metrics["invalid_format_count"] == 1
     assert metrics["generated_token_count"] == 2
+    assert metrics["prompt_token_count"] == 3
     assert metrics["mean_token_logprob"] == -2.0
 
 

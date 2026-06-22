@@ -43,6 +43,7 @@ def test_local_qwen_completion_records_real_craftext_fallback_replay() -> None:
     assert step.fallback_used or step.action_label in runtime.actions.labels
     assert step.token_logprobs is not None
     assert step.token_ids is not None
+    assert step.prompt_token_ids is not None
     assert len(step.token_ids) == len(step.token_logprobs)
     assert step.raw_completion
 

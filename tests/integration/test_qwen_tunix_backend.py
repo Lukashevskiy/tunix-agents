@@ -31,5 +31,6 @@ def test_real_qwen_tunix_backend_generates_completion_with_provenance() -> None:
     assert response.raw_text
     assert response.latency_ms is not None and response.latency_ms > 0
     assert response.token_ids is not None and len(response.token_ids) > 0
+    assert response.prompt_token_ids is not None and len(response.prompt_token_ids) > 0
     assert response.token_logprobs is not None
     assert len(response.token_ids) == len(response.token_logprobs)

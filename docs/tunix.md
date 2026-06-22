@@ -22,10 +22,10 @@ and computes the static cache capacity required by Tunix's power-of-two prompt
 padding. It returns raw completion, latency, generated token ids and per-token logprobs. A too-small
 cache fails with a project-level `ValueError` before entering Tunix. The optional
 integration smoke additionally proves the complete `Qwen → decode/fallback →
-CrafText → replay v2` path with local weights.
+CrafText → replay v3` path with local weights.
 
 `text_trajectory_from_replay()` turns that replay into a padded JAX
-`TextTrajectoryBatch`: generated token ids, behaviour logprobs, token/policy masks and
+`TextTrajectoryBatch`: unpadded prompt/generated token ids, behaviour logprobs, token/policy masks and
 the environment reward on each completion's final token. Steps that used fallback remain
 auditable but are excluded from `policy_mask`, so an eventual PPO/SFT update cannot silently
 learn from a non-model action.

@@ -82,6 +82,7 @@ def test_dashboard_reads_latest_versioned_text_episode_metrics(monkeypatch, tmp_
                 "steps": 1,
                 "reward_sum": 0.0,
                 "generated_token_count": 7,
+                "prompt_token_count": 128,
                 "fallback_count": 0,
                 "invalid_format_count": 0,
                 "unknown_action_count": 0,
@@ -96,4 +97,4 @@ def test_dashboard_reads_latest_versioned_text_episode_metrics(monkeypatch, tmp_
     assert record is not None
     assert record["path"] == artifact
     assert record["generated_token_count"] == 7
-    assert "Tokens / fallback | 7 / 0" in dashboard.text_episode_table(record)
+    assert "Prompt / generated tokens | 128 / 7" in dashboard.text_episode_table(record)

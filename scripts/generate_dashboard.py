@@ -249,8 +249,12 @@ def text_episode_table(record: dict[str, Any] | None) -> str:
         ("Время", f"`{record['created_at']}`"),
         ("Steps / reward", f"{record['steps']} / {record['reward_sum']}"),
         (
-            "Tokens / fallback",
-            f"{record['generated_token_count']} / {record['fallback_count']}",
+            "Prompt / generated tokens",
+            f"{record.get('prompt_token_count', '—')} / {record['generated_token_count']}",
+        ),
+        (
+            "Fallback",
+            str(record["fallback_count"]),
         ),
         (
             "Invalid format / unknown action",

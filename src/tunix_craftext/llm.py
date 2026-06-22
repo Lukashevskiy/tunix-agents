@@ -24,6 +24,7 @@ class LlmResponse:
     latency_ms: float | None = None
     token_logprobs: tuple[float, ...] | None = None
     token_ids: tuple[int, ...] | None = None
+    prompt_token_ids: tuple[int, ...] | None = None
 
 
 class LlmBackend(Protocol):
