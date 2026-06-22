@@ -1,21 +1,21 @@
-# Examples and notebooks
+# Примеры и notebooks
 
-Runnable notebooks live in the repository directory `examples/notebooks/`.
+Runnable notebooks находятся в каталоге репозитория `examples/notebooks/`.
 
 ```bash
 pyenv exec python -m uv sync --extra examples --extra prompts
 pyenv exec python -m uv run jupyter lab examples/notebooks
 ```
 
-Start with rollout contracts, then the environment adapter, model conversion/LoRA, and
-`04_megaprompts_environment_to_prompt.ipynb` for the real vendored template boundary.
+Начинайте с контрактов rollout, затем adapter среды, конвертации модели/LoRA и
+`04_megaprompts_environment_to_prompt.ipynb` для реальной границы vendored template.
 
-`06_qwen_craftext_manual_episode.ipynb` is the full inspectable LLM smoke: it requires the
-explicit local Qwen snapshot and walks through environment reset, real vendored MegaPrompts
-`base` rendering from `EnvState`, Tunix sampling, strict decode with visible fallback, one
-CrafText action and replay v3 persistence.
+`06_qwen_craftext_manual_episode.ipynb` — это полный проверяемый LLM smoke: он требует явный
+локальный снимок Qwen и проходит reset среды, рендеринг реального vendored MegaPrompts
+`base` из `EnvState`, sampling Tunix, строгий decode с видимым fallback, одно действие CrafText и
+replay v3 persistence.
 
-The same path is available outside Jupyter and persists both raw replay and summary metrics:
+Тот же путь доступен вне Jupyter и сохраняет как raw replay, так и summary metrics:
 
 ```bash
 .venv/bin/python scripts/run_text_episode.py --horizon 1

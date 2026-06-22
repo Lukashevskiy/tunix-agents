@@ -31,19 +31,19 @@ nav:
   - Граф задач: _generated/task-graph.md
   - Обзор: index.md
   - Архитектура: architecture.md
-  - Model interoperability: interop.md
-  - Checkpoints: checkpoints.md
-  - Tunix integration: tunix.md
-  - Prompts: prompts.md
+  - Совместимость моделей: interop.md
+  - Контрольные точки: checkpoints.md
+  - Интеграция с Tunix: tunix.md
+  - Промпты: prompts.md
   - Конфигурация: configuration.md
-  - Vendor patches: vendor-patches.md
+  - Патчи vendor: vendor-patches.md
   - План реализации: plan.md
   - Качество и perf: quality.md
   - Среда разработки: development.md
   - Типы и docstrings: code-quality.md
   - Поставка изменений: delivery.md
   - Эксперименты: experiments.md
-  - Examples: examples.md
+  - Примеры: examples.md
   - История изменений: _generated/changelog.md
   - Бенчмарки: _generated/benchmarks.md
   - ADR:

@@ -26,16 +26,16 @@ metadata = CheckpointMetadata(
 )
 save_checkpoint(Path("artifacts/checkpoints/smoke-001"), state, metadata)
 
-# The template supplies current apply_fn and optimizer transform.
+# Шаблон обеспечивает текущие apply_fn и optimizer transform.
 resumed_state, resumed_metadata = restore_checkpoint(
     Path("artifacts/checkpoints/smoke-001"), state
 )
 ```
 
-Unit test verifies the important property: after an update, save and restore produce
-the same parameters and metrics on the **next** PPO update. This proves optimizer
-moments as well as model weights were restored.
+Unit test проверяет важное свойство: после обновления save и restore дают те же параметры
+и метрики на **следующем** PPO update. Это доказывает, что восстановлены не только веса
+модели, но и состояние оптимизатора.
 
-Known current boundary: this API covers the local Flax actor-critic learner. A future
-Tunix adapter will provide its own policy state template while reusing the same
-schema/provenance rule.
+Известная текущая граница: этот API охватывает локальный Flax actor-critic learner.
+Будущий Tunix adapter предоставит собственный policy state template при повторном
+использовании той же schema/provenance логики.

@@ -1,17 +1,17 @@
 # Tunix CrafText
 
-An intentionally small, JAX-native training foundation for CrafText and CagedCrafText.
-It replaces the orchestration layer—not the environments—with a testable trajectory
-contract, a pure-JAX rollout path, Optax updates, Orbax checkpoints, and a narrow
-adapter seam for Tunix.
+Это намеренно компактный каркас обучения CrafText и CagedCrafText на JAX.
+Он заменяет не уровень окружения, а уровень оркестрации: тестируемый контракт траекторий,
+чистый JAX rollout, обновления Optax, checkpointing Orbax и узкий адаптер для Tunix.
 
-## Status
+## Статус
 
-**Foundation / contract-first.** The vendored environments and prompt assets are copied
-unchanged under `vendor/`; their licenses and attribution remain there. PPO/GRPO and the
-Tunix bridge are planned extension points, not claimed implementations yet.
+**Foundation / contract-first.** Vendored окружения и prompt assets скопированы без
+изменений в `vendor/`; лицензии и атрибуция остались там. Локальный smoke-путь Tunix/Qwen
+уже реализован, однако полноценно распределённый RLCluster workload и GRPO остаются
+следующими этапами.
 
-## Quick start
+## Быстрый старт
 
 ```bash
 pyenv install --skip-existing 3.12.13
@@ -21,39 +21,40 @@ pyenv exec python -m uv sync --extra dev --extra docs
 uv run pytest
 ```
 
-`pyenv` owns the project interpreter; `uv.lock` owns the resolved dependency graph; `.venv`
-is a disposable environment created by `uv`. See [the development environment practice](docs/development.md)
-for upgrades, opt-in extras and CI rules.
+`pyenv` управляет интерпретатором проекта; `uv.lock` хранит разрешённый граф зависимостей; `.venv`
+— одноразовое окружение, созданное `uv`. Смотрите [практику среды разработки](docs/development.md)
+для обновлений, opt-in extras и CI правил.
 
-For the actual environments and Tunix, install the opt-in extras after pinning a known
-compatible accelerator-specific JAX build:
+Для реальных env и Tunix установите opt-in extras после фиксации совместимой accelerator-specific
+сборки JAX:
 
 ```bash
 pyenv exec python -m uv sync --extra envs --extra tunix --extra dev
 ```
 
-## Local project site
+## Локальный запуск сайта
 
-Create the local documentation environment once, then use the repository command rather than
-running a globally installed MkDocs:
+Создайте локальное окружение документации один раз, затем используйте команду репозитория вместо
+глобальной установки MkDocs:
 
 ```bash
 pyenv exec python -m uv sync --extra dev --extra docs
 make serve
 ```
 
-`make serve` first regenerates the Dashboard from the current Git commit, roadmap, capability
-inventory and `artifacts/benchmarks/*.json`, then opens the local MkDocs server. Use `make docs`
-to make the same fully populated static `site/` directory without a server. Benchmark JSON
-artifacts placed under `artifacts/benchmarks/` appear automatically on the next build. The GitHub
-Pages workflow does the same on each push to `main`, weekly, or via manual dispatch.
+`make serve` сперва обновляет Dashboard текущим Git commit, roadmap, inventory возможностей и
+`artifacts/benchmarks/*.json`, затем запускает локальный MkDocs server. Используйте `make docs`
+для сборки того же статического `site/` без сервера. Benchmark JSON артефакты из
+`artifacts/benchmarks/` появляются автоматически при следующем билде. GitHub Pages workflow делает
+tоже самое при каждом пуше в `main`, еженедельно или вручную.
 
-Without Make, run `.venv/bin/python scripts/generate_dashboard.py && .venv/bin/python -m mkdocs
-serve`. Do not use bare `mkdocs serve`: it can select a global interpreter without Material and
-will not refresh the generated dashboard pages.
+Без Make запустите `.venv/bin/python scripts/generate_dashboard.py && .venv/bin/python -m mkdocs
+serve`. Не используйте просто `mkdocs serve`: он может выбрать глобальный интерпретатор без
+Material и не обновит сгенерированные страницы.
 
-Every change follows the repository [Definition of Done](docs/delivery.md): audit, applicable
-tests and performance evidence, documentation/status updates, intentional commit and site build.
+Каждое изменение проходит через [Definition of Done](docs/delivery.md): аудит, применимые
+tесты и доказательства производительности, обновление документации/статуса, intentional commit и
+сборка сайта.
 
-Read [the execution plan](docs/plan.md), [architecture](docs/architecture.md), and
-[test/benchmark strategy](docs/quality.md) before extending the trainer.
+Прочитайте [план выполнения](docs/plan.md), [архитектуру](docs/architecture.md) и
+[стратегию тестирования/benchmark](docs/quality.md) перед расширением тренера.
