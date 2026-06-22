@@ -7,6 +7,7 @@ from pathlib import Path
 import jax
 
 QWEN_MODEL_ID = "Qwen/Qwen2.5-0.5B-Instruct"
+QWEN_TUNIX_CONFIG_ID = "qwen2.5-0.5b"
 
 
 def qwen_mesh() -> jax.sharding.Mesh:
