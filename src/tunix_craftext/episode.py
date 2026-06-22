@@ -60,13 +60,15 @@ def collect_text_episode(
 
     keys = jax.random.split(jax.random.PRNGKey(seed), horizon + 1)
     reset = adapter.reset(keys[0])
-    state, observation = reset.state, reset.observation
+    state = reset.state
     dialog: tuple[str, ...] = ()
     steps: list[ReplayStep] = []
     backend_name = "unknown"
 
     for index, key in enumerate(keys[1:]):
-        prompt = renderer.render(PromptContext(goal, observation, actions, dialog))
+        # MegaPrompts renders CrafText's structured ``EnvState`` (map, inventory,
+        # coordinates), while ``observation`` remains the numerical policy input.
+        prompt = renderer.render(PromptContext(goal, state, actions, dialog))
         response = backend.complete(LlmRequest(prompt, max_new_tokens=max_new_tokens))
         decision, metrics = decode_action_outcome(prompt, response.raw_text)
         fallback_used = False
@@ -101,7 +103,7 @@ def collect_text_episode(
         )
         backend_name = f"{response.backend}:{response.model}"
         dialog = (*dialog, response.raw_text)
-        state, observation = transition.state, transition.observation
+        state = transition.state
         if terminated or bool(transition.truncated):
             break
 

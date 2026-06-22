@@ -79,6 +79,7 @@ def test_text_episode_preserves_prompt_completion_and_real_action_replay() -> No
     assert [step.action_id for step in artifact.steps] == [2, 2]
     assert artifact.steps[1].raw_completion.startswith("reasoning")
     assert "reasoning" in artifact.steps[1].prompt
+    assert "State(timestep=0)" in artifact.steps[0].prompt
 
 
 @pytest.mark.integration

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
@@ -16,29 +15,16 @@ from tunix_craftext.tunix_adapter import QwenTunixBackend
 ROOT = Path(__file__).resolve().parents[2]
 SNAPSHOT = ROOT / "artifacts" / "models" / "qwen25-05b-instruct"
 
-
-class ActionSmokeRenderer:
-    """Small renderer that exposes the full real action catalog to Qwen."""
-
-    def render(self, meta_info: Mapping[str, object]) -> str:
-        actions = meta_info["act"]
-        assert isinstance(actions, list)
-        return (
-            "Choose the safest action for this smoke test. "
-            f"Allowed actions: {', '.join(str(action) for action in actions)}."
-        )
-
-
 @pytest.mark.integration
 @pytest.mark.skipif(not SNAPSHOT.is_dir(), reason="download the local Qwen snapshot")
 def test_local_qwen_completion_records_real_craftext_fallback_replay() -> None:
-    """A malformed Qwen action remains inspectable while the declared fallback steps CrafText."""
+    """Vendor MegaPrompts, Qwen and real CrafText produce an inspectable replay."""
     config = load_mvp_config(ROOT / "configs" / "mvp" / "tiny_craftext.yaml")
     runtime = build_craftext_runtime(config)
     artifact = collect_text_episode(
         runtime.adapter,
-        MegaPromptRenderer("qwen-craftext-smoke", ActionSmokeRenderer()),
-        QwenTunixBackend(SNAPSHOT, cache_size=512, seed=config.run.seed),
+        MegaPromptRenderer(config.prompt.template),
+        QwenTunixBackend(SNAPSHOT, cache_size=2048, seed=config.run.seed),
         goal="Stay safe.",
         actions=runtime.actions,
         horizon=1,
