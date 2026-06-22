@@ -44,6 +44,10 @@ strictly validated before an accelerator workload is constructed; a profile requ
 unavailable devices fails early. `tunix_role_to_meshes()` is the sole adapter that maps
 these named roles to Tunix's official `Role` enum.
 
+`tests/integration/test_tunix_topology_hardware.py` is intentionally hardware-gated: it skips
+below four visible devices and verifies the four-device profile on an accelerator runner. This
+tests placement declaration, not scale-up performance; the latter belongs to the performance lane.
+
 The corresponding versioned profiles are `configs/models/gemma3_270m_instruction.yaml`
 and `configs/models/qwen25_05b_instruction.yaml`. Their committed download/license
 flags deliberately remain `false`: they describe a portable repository, not the
