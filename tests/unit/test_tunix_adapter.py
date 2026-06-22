@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from tunix_craftext.tunix_adapter import QWEN_MODEL_ID, load_qwen_tokenizer, qwen_mesh
+from tunix_craftext.tunix_adapter import (
+    QWEN_MODEL_ID,
+    load_qwen_model,
+    load_qwen_tokenizer,
+    qwen_mesh,
+)
 
 
 def test_qwen_mesh_exposes_required_tunix_axes() -> None:
@@ -16,3 +21,9 @@ def test_qwen_tokenizer_requires_explicit_local_snapshot(tmp_path) -> None:
     """No test or library import may silently download model assets."""
     with pytest.raises(FileNotFoundError):
         load_qwen_tokenizer(tmp_path / QWEN_MODEL_ID)
+
+
+def test_qwen_model_requires_explicit_local_snapshot(tmp_path) -> None:
+    """Model loading never falls through to an implicit network download."""
+    with pytest.raises(FileNotFoundError):
+        load_qwen_model(tmp_path / QWEN_MODEL_ID)
