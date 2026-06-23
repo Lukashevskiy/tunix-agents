@@ -27,6 +27,6 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-      - run: uv sync --locked --extra dev --extra docs
+      - run: uv sync --locked --extra dev --extra docs --extra tunix
       - run: make test
       - run: make integration
