@@ -68,7 +68,8 @@ class RolloutBatch(Generic[ObservationT, ActionT]):
             observation/action/value PyTrees must begin with the same ``[T, B]`` axes as reward.
 
             :raises ValueError: If a field leaf lacks shape metadata, has incompatible leading axes,
-            or bootstrap value is not batch-major ``[B, ...]``.
+                or bootstrap value is not batch-major ``[B, ...]``.
+
             """
             reward_shape = _shape_of(self.transitions.reward, "reward")
             if len(reward_shape) != 2:
