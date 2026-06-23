@@ -1,7 +1,7 @@
 PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 PERF_ARTIFACT ?= artifacts/benchmarks/rollout-latest.json
 
-.PHONY: audit test integration perf perf-env docs api-docs serve provenance sync-tasks verify
+.PHONY: audit test integration perf perf-env perf-text docs api-docs serve provenance sync-tasks verify
 
 audit:
 	$(PYTHON) .codex/skills/repository-audit/scripts/audit_repo.py
@@ -18,6 +18,9 @@ perf:
 
 perf-env:
 	PYTHONPATH=src $(PYTHON) scripts/benchmark_environments.py --configs configs/benchmarks/craftext_full.yaml configs/benchmarks/craftext_tiny.yaml configs/benchmarks/caged_craftext_full.yaml --output artifacts/benchmarks/environment-matrix.json
+
+perf-text:
+	PYTHONPATH=src $(PYTHON) scripts/benchmark_text_pipeline.py --isolate-runs --output artifacts/benchmarks/text-pipeline-latest.json
 
 docs:
 	$(PYTHON) scripts/generate_dashboard.py

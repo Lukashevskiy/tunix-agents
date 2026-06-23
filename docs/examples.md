@@ -20,6 +20,11 @@ replay v3 persistence.
 рисует rewards и actions, а затем выводит ленту CrafText observation frames. Веса по-прежнему
 должны заранее и явно находиться в `artifacts/models/qwen25-05b-instruct`.
 
+`08_parallel_craftext_pipeline.ipynb` демонстрирует текущую JAX-native parallel boundary:
+батч сред через `jax.vmap`, горизонт через `jax.lax.scan`, actions/rewards `[T, B]` и отдельно
+compile/steady-state timing. Он намеренно не выдаёт это за parallel Qwen inference: текущий
+Qwen backend single-request, а batched actor/rollout service относится к будущему RLCluster этапу.
+
 Тот же путь доступен вне Jupyter и сохраняет как raw replay, так и summary metrics:
 
 ```bash

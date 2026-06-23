@@ -201,6 +201,34 @@ def benchmark_records() -> list[dict[str, Any]]:
                     }
                 )
             continue
+        elif isinstance(payload, dict) and payload.get("schema") == (
+            "tunix-craftext.text-pipeline-benchmark/v1"
+        ):
+            phases = payload.get("phase_summaries", {})
+            if not isinstance(phases, dict):
+                phases = {}
+            generation = phases.get("llm_generation_ms", {})
+            total = phases.get("decision_total_ms", {})
+            if not isinstance(generation, dict):
+                generation = {}
+            if not isinstance(total, dict):
+                total = {}
+            records.append(
+                {
+                    "path": display_artifact_path(path),
+                    "name": "Qwen/CrafText synchronous pipeline",
+                    "timestamp": payload.get("timestamp", "—"),
+                    "commit": payload.get("git_revision", "—"),
+                    "hardware": markdown_escape(payload.get("hardware", "—")),
+                    "metrics": {
+                        "generation_median_ms": generation.get("median_ms", "—"),
+                        "generation_p95_ms": generation.get("p95_ms", "—"),
+                        "decision_median_ms": total.get("median_ms", "—"),
+                        "decision_p95_ms": total.get("p95_ms", "—"),
+                    },
+                }
+            )
+            continue
         entries: Iterable[Any] = payload if isinstance(payload, list) else [payload]
         for entry in entries:
             if not isinstance(entry, dict):

@@ -34,6 +34,23 @@ JAX version, mesh, batch/horizon, warmup count и median/p95. Метрики:
 dashboard автоматически извлекает из него mean, median и OPS. Перед сравнением переименуйте
 artifact по сценарию и commit либо перенесите его в CI artifact storage.
 
+`make perf-text` измеряет реальный host-side путь `MegaPrompts render → Qwen/Tunix generation →
+strict decode/fallback → CrafText.step`. Он делает warmup отдельно и сохраняет
+`tunix-craftext.text-pipeline-benchmark/v1` в `artifacts/benchmarks/text-pipeline-latest.json`:
+полный per-decision trace (включая prompt/generated token counts, action/fallback/reward) и
+median/p95 каждой фазы. Для baseline используйте минимум 10 repeats; не сравнивайте эту LLM
+latency с compiled environment-only `make perf-env`.
+
+По умолчанию `make perf-text` изолирует каждый warmup/repeat в дочернем процессе. Это защищает
+длинную серию от native JAX/model termination: artifact получает `status: partial` или `failed`
+и список child failures вместо молчаливой потери уже собранных измерений.
+
+```bash
+make perf-text                         # horizon 4, 1 warmup, 10 repeats
+PYTHONPATH=src .venv/bin/python scripts/benchmark_text_pipeline.py \
+  --horizon 8 --repeats 20 --output artifacts/benchmarks/text-pipeline-h8-r20.json
+```
+
 После real CrafText scan parity benchmark matrix обязана покрывать как минимум `batch_size` 1, 2,
 8 и `horizon` 8, 32, 128. Для каждой точки записывать отдельно compile latency и steady-state
 env-steps/s; сравнивать только одинаковые preset, seed, device и JAX version.

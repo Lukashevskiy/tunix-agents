@@ -89,6 +89,11 @@
       "name": "JIT-safe Flashbax text staging",
       "status": "ready",
       "description": "Typed Flashbax item-buffer принимает и семплирует fixed-shape TextTrajectoryBatch внутри jax.jit; он предназначен для bounded current-policy staging synchronous PPO window, а не для неявного off-policy replay. Qwix/CLU/mpi4jax зафиксированы в versioned training-stack contract для следующих этапов."
+    },
+    {
+      "name": "Phase-traced Qwen/CrafText performance evidence",
+      "status": "ready",
+      "description": "Versioned text-pipeline benchmark измеряет отдельно MegaPrompts render, Qwen/Tunix generation, strict decode и CrafText step, сохраняет raw per-decision trace и median/p95. Повторы изолируются по process boundary, чтобы native failure становился evidence, а не потерянным run."
     }
   ]
 }

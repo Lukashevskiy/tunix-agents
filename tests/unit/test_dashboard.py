@@ -98,3 +98,29 @@ def test_dashboard_reads_latest_versioned_text_episode_metrics(monkeypatch, tmp_
     assert record["path"] == artifact
     assert record["generated_token_count"] == 7
     assert "Prompt / generated tokens | 128 / 7" in dashboard.text_episode_table(record)
+
+
+def test_dashboard_reads_phase_traced_text_pipeline_benchmark(monkeypatch, tmp_path: Path) -> None:
+    """Dashboard surfaces generation and complete-decision percentiles separately."""
+    artifact = tmp_path / "text-pipeline.json"
+    artifact.write_text(
+        json.dumps(
+            {
+                "schema": "tunix-craftext.text-pipeline-benchmark/v1",
+                "timestamp": "2026-06-23T00:00:00Z",
+                "git_revision": "abc",
+                "hardware": {"jax_backend": "cpu"},
+                "phase_summaries": {
+                    "llm_generation_ms": {"median_ms": 10.0, "p95_ms": 12.0},
+                    "decision_total_ms": {"median_ms": 15.0, "p95_ms": 19.0},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(dashboard, "BENCHMARKS", tmp_path)
+
+    records = dashboard.benchmark_records()
+
+    assert records[0]["metrics"]["generation_median_ms"] == 10.0
+    assert records[0]["metrics"]["decision_p95_ms"] == 19.0

@@ -31,6 +31,9 @@
 - [ ] Сравнить reference collector с JIT collector на fixed fixture leaf-by-leaf.
 - [ ] Добавить sharding API заранее (`Mesh`/named axes), но начать с одного device.
 - [~] Профилировать compilation отдельно от steady-state и документировать warmup.
+- [~] Логировать полный host-side LLM decision path: phase trace MegaPrompts render, Qwen
+  generation, strict decode и CrafText step готов; следующий шаг — собрать baseline 10–20 repeats
+  на целевом hardware.
 
 **Gate:** exact parity дискретных полей, численная tolerance для float, не хуже baseline
 по env-step/s после warmup.

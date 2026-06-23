@@ -25,7 +25,7 @@ def sample_masked_actions(keys: jax.Array, action_mask: jax.Array) -> jax.Array:
     :param keys: PRNG keys with shape ``[B, 2]``.
     :param action_mask: Valid-action mask with shape ``[B, A]`` where True marks allowed actions.
     :returns: Integer action ids with shape ``[B]``.
-    :raises ActionSamplingError: If mask/keys axes disagree or no valid action exists.
+    :raises ActionSamplingError: If static mask/key axes disagree.
 
     Example:
         >>> actions = sample_masked_actions(keys, action_mask)
@@ -34,8 +34,6 @@ def sample_masked_actions(keys: jax.Array, action_mask: jax.Array) -> jax.Array:
         raise ActionSamplingError("keys must be [B, 2] and action_mask must be [B, A]")
     if keys.shape[0] != action_mask.shape[0]:
         raise ActionSamplingError("keys and action_mask batch axes must agree")
-    if not bool(jnp.any(action_mask)):
-        raise ActionSamplingError("every environment must have at least one valid action")
     logits = jnp.where(action_mask, 0.0, -jnp.inf)
     return jax.vmap(jax.random.categorical)(keys, logits).astype(jnp.int32)
 
