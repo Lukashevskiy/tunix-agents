@@ -99,6 +99,11 @@
       "name": "Batched Qwen/Tunix completion bridge",
       "status": "ready",
       "description": "QwenTunixBackend.complete_batch передаёт ordered prompts в один публичный Tunix sampler call и сохраняет per-row token/logprob provenance; real Qwen batch-size-2 integration fixture проходит. Это вход в будущую RLCluster rollout role, не подмена actor/critic distributed workload."
+    },
+    {
+      "name": "Parallel Qwen/CrafText decision transport",
+      "status": "ready",
+      "description": "collect_batched_text_decision соединяет batch EnvState/MegaPrompts/Qwen completion/strict decode с одним jax.vmap(CrafText.step); real two-state fixture проходит. Multi-turn done-reset collection и RLCluster actor/critic остаются следующими явными контрактами."
     }
   ]
 }

@@ -66,8 +66,9 @@
   actor/rollout/critic/reference; topology profiles и `Role → Mesh` adapter готовы,
   остаётся hardware-gated creation реального `RLCluster` workload.
 - [~] Добавить batch rollout boundary: Qwen/Tunix sampler уже проходит real batch-size-2 fixture
-  в одном вызове с per-row provenance; следующий шаг — подключить его к `RLCluster.ROLLOUT` и
-  batched decode→`vmap(CrafText.step)` contract.
+  в одном вызове с per-row provenance; `collect_batched_text_decision` уже соединяет его с
+  batched decode/fallback и `vmap(CrafText.step)`. Следующий шаг — multi-turn done-reset collector
+  как consumer `RLCluster.ROLLOUT`.
 - [ ] Сделать SFT warm-start и PPO на коротких fixed prompt rollouts.
 - [ ] Лишь после этого добавить GRPO как самостоятельный algorithm module, не как fork PPO.
 

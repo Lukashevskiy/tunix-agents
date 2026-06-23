@@ -101,6 +101,13 @@ trainable actor/critic/reference, `RLTrainingConfig`, `RolloutConfig` и hardwar
 fixture. После этого batch completions будут декодироваться в `[B]` action ids и подаваться в
 `jax.vmap(CrafText.step)`.
 
+`collect_batched_text_decision()` уже реализует этот synchronous transport: host-side batch
+`EnvState → MegaPrompts → complete_batch → strict decode/fallback`, после чего выполняет один
+`jax.vmap(CrafTextAdapter.step)` по `[B]` action ids. Real Qwen+CrafText fixture подтверждает
+batch size 2. Функция делает ровно **один decision**: она намеренно не скрывает сложные semantics
+`terminated → reset` внутри multi-turn collection. Этот следующий collector станет consumer
+`RLCluster.ROLLOUT`, когда будут созданы trainable роли actor/critic/reference.
+
 Соответствующие versioned profiles — `configs/models/gemma3_270m_instruction.yaml`
 и `configs/models/qwen25_05b_instruction.yaml`. Их зафиксированные флаги download/license
 намеренно остаются `false`: они описывают портируемый репозиторий, а не приватное состояние
