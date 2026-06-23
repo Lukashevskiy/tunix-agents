@@ -30,6 +30,10 @@ rollout, per-row terminal reset и export replay на каждую среду. `
 без повторного LLM inference преобразует этот replay в `TextTrajectoryBatch`, показывает masks,
 returns и token PPO loss mechanics.
 
+`11_end_to_end_batched_qwen_ppo.ipynb` объединяет все эти стадии в одном run: параллельные
+среды и Qwen requests, full rollout/replay, token batch, masked PPO loss и visualisation. Его
+loss — проверка формы данных: до появления RLCluster actor/critic он не выполняет update весов.
+
 Тот же путь доступен вне Jupyter и сохраняет как raw replay, так и summary metrics:
 
 ```bash

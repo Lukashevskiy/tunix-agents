@@ -24,6 +24,7 @@ def test_example_notebooks_are_valid_nbformat_with_runnable_imports() -> None:
         "08_parallel_craftext_pipeline.ipynb": "jax.vmap",
         "09_batched_qwen_craftext_rollout.ipynb": "collect_batched_text_rollout",
         "10_replay_to_token_ppo.ipynb": "masked_token_ppo_loss",
+        "11_end_to_end_batched_qwen_ppo.ipynb": "collect_batched_text_rollout",
     }
     for filename, required_symbol in expected.items():
         notebook = json.loads((NOTEBOOKS / filename).read_text(encoding="utf-8"))
