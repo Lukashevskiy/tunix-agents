@@ -30,7 +30,7 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-      - run: uv sync --locked --extra dev --extra docs --extra tunix
+      - run: uv sync --locked --extra dev --extra docs --extra tunix --extra envs --extra prompts
       - run: make verify
       - uses: actions/upload-pages-artifact@v3
         with:
