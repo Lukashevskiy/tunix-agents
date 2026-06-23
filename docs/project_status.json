@@ -43,7 +43,7 @@
     {
       "name": "Runnable examples",
       "status": "ready",
-      "description": "Шесть самостоятельных notebooks показывают trajectory contract, CrafText adapter, model/LoRA interoperability, MegaPrompts boundary и полный ручной Qwen→CrafText episode."
+      "description": "Семь самостоятельных notebooks показывают trajectory contract, CrafText adapter, model/LoRA interoperability, MegaPrompts boundary, ручной Qwen→CrafText episode и полный Qwen-driven replay с inline visualisation rewards/actions/observations."
     },
     {
       "name": "Prompt assembly boundary",

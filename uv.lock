@@ -5050,6 +5050,7 @@ envs = [
 ]
 examples = [
     { name = "jupyterlab" },
+    { name = "matplotlib" },
 ]
 interop = [
     { name = "safetensors" },
@@ -5083,6 +5084,7 @@ requires-dist = [
     { name = "gymnasium", marker = "extra == 'envs'", specifier = ">=0.29.1" },
     { name = "jax", specifier = ">=0.4.30" },
     { name = "jupyterlab", marker = "extra == 'examples'", specifier = ">=4.0" },
+    { name = "matplotlib", marker = "extra == 'examples'", specifier = ">=3.8" },
     { name = "megaprompt", marker = "extra == 'prompts'", editable = "vendor/megaprompts" },
     { name = "mkdocs-material", marker = "extra == 'docs'", specifier = ">=9.5" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.11" },

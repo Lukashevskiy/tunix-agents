@@ -3,7 +3,7 @@
 Runnable notebooks находятся в каталоге репозитория `examples/notebooks/`.
 
 ```bash
-pyenv exec python -m uv sync --extra examples --extra prompts
+pyenv exec python -m uv sync --extra examples --extra prompts --extra envs --extra tunix
 pyenv exec python -m uv run jupyter lab examples/notebooks
 ```
 
@@ -15,8 +15,20 @@ pyenv exec python -m uv run jupyter lab examples/notebooks
 `base` из `EnvState`, sampling Tunix, строгий decode с видимым fallback, одно действие CrafText и
 replay v3 persistence.
 
+`07_qwen_craftext_full_trajectory.ipynb` продолжает этот пример до полного короткого episode:
+он вызывает `collect_text_episode()`, сохраняет replay с observation/action-mask/token provenance,
+рисует rewards и actions, а затем выводит ленту CrafText observation frames. Веса по-прежнему
+должны заранее и явно находиться в `artifacts/models/qwen25-05b-instruct`.
+
 Тот же путь доступен вне Jupyter и сохраняет как raw replay, так и summary metrics:
 
 ```bash
 .venv/bin/python scripts/run_text_episode.py --horizon 1
+```
+
+Для сохранённого notebook replay также доступен интерактивный pygame viewer:
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/visualize_trajectory.py \
+  --trajectory artifacts/trajectories/qwen-craftext-full-notebook.json
 ```

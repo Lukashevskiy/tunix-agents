@@ -20,6 +20,7 @@ def test_example_notebooks_are_valid_nbformat_with_runnable_imports() -> None:
         "04_megaprompts_environment_to_prompt.ipynb": "MegaPromptRenderer",
         "05_caged_random_policy_trajectory.ipynb": "sample_masked_actions",
         "06_qwen_craftext_manual_episode.ipynb": "QwenTunixBackend",
+        "07_qwen_craftext_full_trajectory.ipynb": "collect_text_episode",
     }
     for filename, required_symbol in expected.items():
         notebook = json.loads((NOTEBOOKS / filename).read_text(encoding="utf-8"))
