@@ -29,7 +29,7 @@ uv run pytest
 сборки JAX:
 
 ```bash
-pyenv exec python -m uv sync --extra envs --extra tunix --extra dev
+pyenv exec python -m uv sync --extra envs --extra tunix --extra replay --extra dev
 ```
 
 ## Локальный запуск сайта

@@ -52,8 +52,12 @@ class TextTrajectoryBatch:
     terminated: jax.Array
     fallback_used: jax.Array
 
-    def validate(self) -> None:
-        """Validate static batch/token axes at the host boundary.
+    def validate_static(self) -> None:
+        """Validate static batch/token axes without reading array values.
+
+        This method is safe while a function is being traced by :func:`jax.jit`.
+        Use :meth:`validate` at a host boundary when semantic value checks are
+        also required.
 
         :returns: None
         :raises TextTrajectoryError: If any batch or token axis shape is invalid.
@@ -76,6 +80,17 @@ class TextTrajectoryBatch:
         for name in ("action_ids", "terminated", "fallback_used"):
             if tuple(getattr(self, name).shape) != batch_shape:
                 raise TextTrajectoryError(f"{name} must have shape {batch_shape}")
+
+    def validate(self) -> None:
+        """Validate static axes and host-visible semantic mask invariants.
+
+        :returns: None
+        :raises TextTrajectoryError: If shape or semantic mask invariants are invalid.
+
+        Example:
+            >>> batch.validate()
+        """
+        self.validate_static()
         if bool(jnp.any(self.policy_mask & ~self.token_mask)):
             raise TextTrajectoryError("policy_mask cannot include padding tokens")
 

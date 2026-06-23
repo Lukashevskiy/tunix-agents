@@ -43,6 +43,8 @@
 - [~] Flax actor-critic и `TrainState` с Optax schedule/gradient clipping.
 - [x] Один update на synthetic trajectory → loss finite, params change, checkpoint round-trip.
 - [ ] Запустить tiny CrafText end-to-end и сохранить trajectory/rendered prompt/metrics.
+- [~] Добавить bounded JIT-safe Flashbax staging: typed text item-buffer проходит
+  `jax.jit(add/sample)`; остаётся включить его в один synchronous collector→PPO update.
 
 **Gate:** loss tests, deterministic smoke learning, Orbax resume даёт идентичный следующий update.
 
@@ -71,6 +73,8 @@
 - [ ] Добавить архитектурные templates для выбранных Tunix-compatible моделей с output parity fixtures.
 - [ ] Добавить QLoRA/dequantization adapter с numerical tolerance tests.
 - [~] Добавить Orbax import/export и round-trip test model + optimizer + adapter metadata.
+- [~] Принять Qwix как единственный QLoRA path; extra и source contract закреплены, но
+  architecture-specific parity/gradient/checkpoint fixtures ещё не реализованы.
 
 ## 5. Масштабирование, отчётность и release
 
@@ -81,6 +85,9 @@
 - [x] Генерировать docs site из config schema, benchmark JSON, git revision и Mermaid/ADR.
 - [ ] Release checklist: reproducibility card, known limitations, performance table, migration guide
    для конфигов VERL.
+- [ ] После sync baseline спроектировать async distributed transport: bounded queue, policy
+  version/staleness, back-pressure, preemption/resume и multi-host benchmark. mpi4jax
+  подключается только при прошедшей MPI/JAX compatibility fixture; CLU — для structured metrics.
 
 ## 5a. Расширяемость и исследовательская наблюдаемость
 
@@ -103,5 +110,7 @@
 `main`: CrafText/Caged adapter boundary и compiled `lax.scan` collector готовы; scan
 parity/steady-state benchmark проходят. Qwen 2.5 0.5B локально загружается через публичный
 Tunix API в single-device smoke-профиле. Qwen replay уже конвертируется в typed token batch;
-следующий implementation slice: **value bridge и реальный RLCluster workload** с явным
-`role_to_mesh`.
+Flashbax typed staging добавлен и JIT-smoke проверен. Следующий implementation slice:
+**собрать synchronous collector → Flashbax → token PPO update**, затем trainable value bridge
+и реальный `RLCluster` workload с явным `role_to_mesh`. Async distributed execution остаётся
+отдельным hardware-gated этапом после sync baseline.

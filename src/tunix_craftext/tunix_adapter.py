@@ -28,14 +28,6 @@ class ChatTemplatingTokenizer(Protocol):
         *,
         add_generation_prompt: bool,
         tokenize: bool,
-    ) -> str | list[int]: ...
-    
-    def apply_chat_template(
-        self,
-        messages: list[dict[str, str]],
-        *,
-        add_generation_prompt: bool,
-        tokenize: bool,
     ) -> str | list[int]:
         """Apply the provider chat templating to a sequence of messages.
 
@@ -50,7 +42,6 @@ class ChatTemplatingTokenizer(Protocol):
 class SamplingTokenizer(ChatTemplatingTokenizer, Protocol):
     """Tokenizer operations needed to size a static Tunix sampler cache."""
 
-    def encode(self, text: str) -> list[int]: ...
     def encode(self, text: str) -> list[int]:
         """Encode text into a sequence of token ids.
 
@@ -120,16 +111,6 @@ class TextSampler(Protocol):
         temperature: float,
         seed: int,
         return_logprobs: bool,
-    ) -> SamplerOutputLike: ...
-    def __call__(
-        self,
-        input_strings: str,
-        *,
-        max_generation_steps: int,
-        max_prompt_length: int,
-        temperature: float,
-        seed: int,
-        return_logprobs: bool,
     ) -> SamplerOutputLike:
         """Produce one sampling output for the given chat prompt.
 
@@ -147,15 +128,6 @@ class TextSampler(Protocol):
 class HiddenStateModel(Protocol):
     """Qwen model subset used to extract token features without the language head."""
 
-    def __call__(
-        self,
-        input_tokens: jax.Array,
-        positions: jax.Array,
-        cache: object | None,
-        attention_mask: jax.Array | None,
-        *,
-        skip_lm_head: bool,
-    ) -> tuple[jax.Array, object | None]: ...
     def __call__(
         self,
         input_tokens: jax.Array,

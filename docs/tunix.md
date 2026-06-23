@@ -65,6 +65,27 @@ rollout, critic и reference. Он может применять sharding/offloa
 профиль на accelerator runner. Это проверяет declaration placement, а не масштабную производительность;
 последняя относится к performance lane.
 
+## Sync-first training path
+
+Ближайший MVP следует [Anakin JAX-first pattern](https://arxiv.org/abs/2104.06272): после
+host-side prompt/rendering фиксированной формы `TextTrajectoryBatch` попадает в
+`FlashbaxTextReplay`. Его `init → add → sample` реально проходят под `jax.jit`; Flashbax
+хранит bounded staging window, а не превращает PPO в off-policy алгоритм. До следующего
+policy update из него можно семплировать только current-window behaviour data.
+
+Установите зависимости данного пути так:
+
+```bash
+pyenv exec python -m uv sync --extra tunix --extra replay --extra lora --extra loop
+```
+
+Qwix — принятый путь для будущего LoRA/QLoRA. Его включение в train workload будет возможно
+после architecture-specific output-parity, gradient и checkpoint metadata fixtures; Qwix не
+подменяет существующий безопасный state-dict LoRA merge. CommonLoopUtils зарезервирован для
+structured metrics/checkpoints на границе update, а mpi4jax — только для будущей multi-host
+async фазы после проверки MPI toolchain. Состояния всех четырёх интеграций зафиксированы в
+`compatibility/training-stack.yaml` и [ADR 0005](adr/0005-sync-first-training-stack.md).
+
 Соответствующие versioned profiles — `configs/models/gemma3_270m_instruction.yaml`
 и `configs/models/qwen25_05b_instruction.yaml`. Их зафиксированные флаги download/license
 намеренно остаются `false`: они описывают портируемый репозиторий, а не приватное состояние

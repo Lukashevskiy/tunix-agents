@@ -1,0 +1,56 @@
+schema_version: 1
+architecture:
+  execution_pattern:
+    name: Anakin JAX-first actor-learner
+    source: https://arxiv.org/abs/2104.06272
+    invariant:
+      - Static PyTree and shape contracts cross the compiled update boundary.
+      - The synchronous path is implemented and measured before asynchronous transport.
+      - Host-only rendering, files and dashboards remain outside jit/scan.
+  milestones:
+    synchronous_vanilla:
+      status: active
+      path: collect -> typed trajectory -> Flashbax staging -> PPO update
+    asynchronous_distributed:
+      status: design-only
+      path: rollout workers -> bounded queue -> metrics/replay -> learner update
+      admission_gate: MPI compatibility fixture and multi-host hardware runner
+components:
+  qwix:
+    distribution: qwix
+    source:
+      repository: https://github.com/google/qwix.git
+      revision: dc8595d0f2c1e69c5d3fb3fc43eb542f16a20809
+    license: Apache-2.0
+    role: QLoRA and quantized JAX/Flax adapter experiments
+    status: pinned-extra-boundary
+    notes:
+      - Qwix is already transitive through Google Tunix but is declared as an explicit lora extra.
+      - No QLoRA adapter is accepted until a selected Tunix model has output-parity and trainability fixtures.
+  flashbax:
+    distribution: flashbax
+    source:
+      repository: https://github.com/instadeepai/flashbax.git
+      revision: 1bda7f1765a555f41814886e67f9560c9ea723ea
+    license: Apache-2.0
+    role: JIT-compatible bounded text trajectory staging
+    status: active-sync-mvp
+  common_loop_utils:
+    distribution: clu
+    source:
+      repository: https://github.com/google/CommonLoopUtils.git
+      revision: 5150136b245edee6baa5b8180458b117adab7f98
+    license: Apache-2.0
+    role: structured training-loop metrics and checkpoint orchestration
+    status: optional-next
+  mpi4jax:
+    distribution: mpi4jax
+    source:
+      repository: https://github.com/mpi4jax/mpi4jax.git
+      revision: 84fa23b5c133c82750dcc38b635081443378d3cb
+    license: MIT
+    role: explicit multi-host collectives for the async distributed phase
+    status: hardware-gated-not-installed
+    constraints:
+      - Requires an MPI toolchain and a compatibility fixture on the target JAX version.
+      - It never becomes a dependency of the local synchronous MVP.

@@ -84,6 +84,11 @@
       "name": "Tunix Qwen episode bridge",
       "status": "ready",
       "description": "Official google/tunix revision, Qwen chat-template, generated token ids/logprobs, real MegaPrompts EnvState rendering, CrafText action replay, typed TextTrajectoryBatch и config-driven JSON metrics CLI проходят real integration smoke. RLCluster/value bridge остаётся следующим workload этапом."
+    },
+    {
+      "name": "JIT-safe Flashbax text staging",
+      "status": "ready",
+      "description": "Typed Flashbax item-buffer принимает и семплирует fixed-shape TextTrajectoryBatch внутри jax.jit; он предназначен для bounded current-policy staging synchronous PPO window, а не для неявного off-policy replay. Qwix/CLU/mpi4jax зафиксированы в versioned training-stack contract для следующих этапов."
     }
   ]
 }

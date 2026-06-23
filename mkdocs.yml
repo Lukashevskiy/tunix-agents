@@ -51,3 +51,4 @@ nav:
       - Первая Tunix-модель: adr/0002-first-tunix-model.md
       - Extension и observability: adr/0003-extension-and-observability-contracts.md
       - Tunix topology: adr/0004-tunix-cluster-topology.md
+      - Sync-first training stack: adr/0005-sync-first-training-stack.md

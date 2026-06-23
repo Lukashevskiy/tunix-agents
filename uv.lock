@@ -271,8 +271,8 @@ name = "array-record"
 version = "0.8.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "absl-py" },
-    { name = "etils", extra = ["epath"] },
+    { name = "absl-py", marker = "sys_platform != 'win32'" },
+    { name = "etils", extra = ["epath"], marker = "sys_platform != 'win32'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/44/e0/90048c75afdbb7e49526fee93f7e113986565a0b36b7c779eb35f745ec7e/array_record-0.8.3-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:8a0caee17d2583638391fb9f90c9c12a43f9665576f18ec3604ba49d62bd2dcc", size = 3988901, upload-time = "2025-11-13T16:15:29.35Z" },
@@ -616,6 +616,23 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/7a/1d/29d32e0fb40864b1f878c7f5a0b343ae676c6e2b271a2d55cc3a152391da/charset_normalizer-3.4.7-cp314-cp314t-win_amd64.whl", hash = "sha256:03853ed82eeebbce3c2abfdbc98c96dc205f32a79627688ac9a27370ea61a49c", size = 174168, upload-time = "2026-04-02T09:27:49.795Z" },
     { url = "https://files.pythonhosted.org/packages/de/32/d92444ad05c7a6e41fb2036749777c163baf7a0301a040cb672d6b2b1ae9/charset_normalizer-3.4.7-cp314-cp314t-win_arm64.whl", hash = "sha256:c35abb8bfff0185efac5878da64c45dafd2b37fb0383add1be155a763c1f083d", size = 153018, upload-time = "2026-04-02T09:27:51.116Z" },
     { url = "https://files.pythonhosted.org/packages/db/8f/61959034484a4a7c527811f4721e75d02d653a35afb0b6054474d8185d4c/charset_normalizer-3.4.7-py3-none-any.whl", hash = "sha256:3dce51d0f5e7951f8bb4900c257dad282f49190fdbebecd4ba99bcc41fef404d", size = 61958, upload-time = "2026-04-02T09:28:37.794Z" },
+]
+
+[[package]]
+name = "chex"
+version = "0.1.92"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "absl-py" },
+    { name = "jax" },
+    { name = "jaxlib" },
+    { name = "numpy" },
+    { name = "toolz" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/51/71/7b2c28cd5ba2743e7cd4d1262d73cdc83c3dce395f56fd52c0ff50947514/chex-0.1.92.tar.gz", hash = "sha256:fa8beff1124204ae466a6eb13cb91ae3c24322a1c7216946aee93d031e2f1996", size = 91863, upload-time = "2026-06-12T14:28:37.908Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/de/42/5d8282d6dc4cd9971f865eb5cc767d180d1564475826e43150d1ea1dba51/chex-0.1.92-py3-none-any.whl", hash = "sha256:f34989d9bff7954edfab09fba7757e3d62404da34577bff0d253599ec5b4f93d", size = 102275, upload-time = "2026-06-12T14:28:36.579Z" },
 ]
 
 [[package]]
@@ -1023,6 +1040,24 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/e6/dc/be6cbe99670cd6e4ad387123647cb08e0c32975e223f82551e914c5568a6/filelock-3.29.4.tar.gz", hash = "sha256:10cdb3656fc44541cdf30652a93fb10ec6b05325620eb316bd26893e4201538a", size = 63028, upload-time = "2026-06-13T16:12:00.744Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/13/37/a065dc3bd6e49423a6532c642ca7378d3f467b1ef44c2800c937af7f9739/filelock-3.29.4-py3-none-any.whl", hash = "sha256:dac1648087d5115554850d113e7dd8c83ab2d38e3435dde2d4f163847e57b767", size = 42757, upload-time = "2026-06-13T16:11:59.582Z" },
+]
+
+[[package]]
+name = "flashbax"
+version = "0.1.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "chex" },
+    { name = "flax" },
+    { name = "jax" },
+    { name = "jaxlib" },
+    { name = "numpy" },
+    { name = "tensorstore" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6d/a2/fddfe1f119b964b45d1e9ac557d3e921f393e4369417d0a98803163c705b/flashbax-0.1.3.tar.gz", hash = "sha256:3792972973169d455188451dd3f93a0ab37004bb122bb256a323927daaca9a3e", size = 56444, upload-time = "2025-03-27T09:50:45.513Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/80/f2/3ec1ebf403bd1593c44a0e42dbd0935a03bffb090259a3e88699d210a9f0/flashbax-0.1.3-py3-none-any.whl", hash = "sha256:798b0056dd0f525269ad9689a402dd0a515db7cb6976c761aa95004ff37e9697", size = 82386, upload-time = "2025-03-27T09:50:44.004Z" },
 ]
 
 [[package]]
@@ -4900,6 +4935,15 @@ wheels = [
 ]
 
 [[package]]
+name = "toolz"
+version = "1.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/11/d6/114b492226588d6ff54579d95847662fc69196bdeec318eb45393b24c192/toolz-1.1.0.tar.gz", hash = "sha256:27a5c770d068c110d9ed9323f24f1543e83b2f300a687b7891c1a6d56b697b5b", size = 52613, upload-time = "2025-10-17T04:03:21.661Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fb/12/5911ae3eeec47800503a238d971e51722ccea5feb8569b735184d5fcdbc0/toolz-1.1.0-py3-none-any.whl", hash = "sha256:15ccc861ac51c53696de0a5d6d4607f99c210739caf987b5d2054f3efed429d8", size = 58093, upload-time = "2025-10-17T04:03:20.435Z" },
+]
+
+[[package]]
 name = "tornado"
 version = "6.5.7"
 source = { registry = "https://pypi.org/simple" }
@@ -4984,6 +5028,7 @@ dependencies = [
 
 [package.optional-dependencies]
 dev = [
+    { name = "flashbax" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-benchmark" },
@@ -5009,8 +5054,17 @@ examples = [
 interop = [
     { name = "safetensors" },
 ]
+loop = [
+    { name = "clu" },
+]
+lora = [
+    { name = "qwix" },
+]
 prompts = [
     { name = "megaprompt" },
+]
+replay = [
+    { name = "flashbax" },
 ]
 tunix = [
     { name = "google-tunix" },
@@ -5019,8 +5073,11 @@ tunix = [
 [package.metadata]
 requires-dist = [
     { name = "caged-craftext", marker = "extra == 'envs'", editable = "vendor/caged-craftext" },
+    { name = "clu", marker = "extra == 'loop'", specifier = "==0.0.12" },
     { name = "craftax", marker = "extra == 'envs'", specifier = ">=1.4.3" },
     { name = "craftext", marker = "extra == 'envs'", editable = "vendor/craftext" },
+    { name = "flashbax", marker = "extra == 'dev'", specifier = "==0.1.3" },
+    { name = "flashbax", marker = "extra == 'replay'", specifier = "==0.1.3" },
     { name = "flax", specifier = ">=0.8.5" },
     { name = "google-tunix", marker = "extra == 'tunix'", git = "https://github.com/google/tunix.git?rev=9beef62509a623835542f5239aa50d7552decb86" },
     { name = "gymnasium", marker = "extra == 'envs'", specifier = ">=0.29.1" },
@@ -5035,13 +5092,14 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3" },
     { name = "pytest-benchmark", marker = "extra == 'dev'", specifier = ">=5.1" },
     { name = "pyyaml", specifier = ">=6.0" },
+    { name = "qwix", marker = "extra == 'lora'", specifier = "==0.1.7" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6" },
     { name = "safetensors", marker = "extra == 'interop'", specifier = ">=0.4.5" },
     { name = "sphinx", marker = "extra == 'docs'", specifier = ">=7.3" },
     { name = "sphinx-autodoc-typehints", marker = "extra == 'docs'", specifier = ">=2.1" },
     { name = "types-pyyaml", marker = "extra == 'dev'", specifier = ">=6.0" },
 ]
-provides-extras = ["tunix", "envs", "interop", "examples", "prompts", "dev", "docs"]
+provides-extras = ["tunix", "replay", "lora", "loop", "envs", "interop", "examples", "prompts", "dev", "docs"]
 
 [[package]]
 name = "typer"
