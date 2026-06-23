@@ -89,6 +89,11 @@ class AlgorithmSpec:
 
 
 def _ppo_loss(batch: PpoLossBatch) -> LossOutput:
+    """Wrap the library `ppo_loss` to match the registry `LossFunction` contract.
+
+    :param batch: PpoLossBatch containing all required tensors.
+    :returns: LossOutput with scalar loss and metric mapping.
+    """
     loss, metrics = ppo_loss(
         batch.new_log_prob,
         batch.old_log_prob,

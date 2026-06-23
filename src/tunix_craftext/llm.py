@@ -69,6 +69,11 @@ class LlmBackend(Protocol):
 
 @dataclass(frozen=True)
 class ScriptedLlmBackend:
+    """A trivial `LlmBackend` that returns a fixed scripted response.
+
+    Useful in tests and examples where deterministic model output is required.
+    """
+
     raw_text: str
     model: str = "scripted"
 
