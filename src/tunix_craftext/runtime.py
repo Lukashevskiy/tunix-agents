@@ -1,4 +1,8 @@
-"""Construction of a real vendored CrafText runtime from the canonical MVP config."""
+"""Construction of a real vendored CrafText runtime from the canonical MVP config.
+
+This module builds a concrete vendor runtime instance from validated MVP
+configuration, while preserving a stable adapter contract for training.
+"""
 
 from __future__ import annotations
 
@@ -10,12 +14,23 @@ from .prompts import ActionCatalog
 
 
 class RuntimeError(ValueError):
-    """Raised when a validated config cannot construct the selected vendor runtime."""
+    """Raised when a validated config cannot construct the selected vendor runtime.
+
+    Example:
+        >>> raise RuntimeError("message")"""
 
 
 @dataclass(frozen=True)
 class CrafTextRuntime:
-    """Opaque vendor environment/params behind the training-safe adapter boundary."""
+    """Opaque vendor environment/params behind the training-safe adapter boundary.
+
+    :ivar adapter: CrafTextAdapter[object, object, object]
+    :ivar env_params: object
+    :ivar action_count: int
+    :ivar actions: ActionCatalog
+
+    Example:
+        >>> obj = CrafTextRuntime(adapter=..., env_params=..., action_count=...)"""
 
     adapter: CrafTextAdapter[object, object, object]
     env_params: object
@@ -26,7 +41,12 @@ class CrafTextRuntime:
 def build_craftext_runtime(config: MvpRunConfig) -> CrafTextRuntime:
     """Build a non-auto-reset CrafText world selected by one validated config.
 
+    :param config: Validated `MvpRunConfig` selecting environment implementation and preset.
+    :returns: A `CrafTextRuntime` containing an adapter, env params and action catalogue.
     :raises RuntimeError: If config is not a CrafText runtime or its action cardinality is invalid.
+
+    Example:
+        >>> runtime = build_craftext_runtime(config)
     """
     try:
         if config.environment.implementation == "craftext":

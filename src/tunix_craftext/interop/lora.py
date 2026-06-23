@@ -1,4 +1,9 @@
-"""LoRA merge operations with explicit matrix layout and shape checks."""
+"""LoRA merge operations with explicit matrix layout and shape checks.
+
+This module handles LoRA adapter deltas and merges them into existing JAX
+parameter PyTrees while preserving Flax kernel orientation and avoiding
+in-place mutation.
+"""
 
 from __future__ import annotations
 
@@ -26,7 +31,13 @@ class LoraAdapter:
     alpha: float
 
     def delta(self) -> jax.Array:
-        """Return the scaled adapter delta in Flax kernel orientation as ``jax.Array``."""
+        """Return the scaled adapter delta in Flax kernel orientation as ``jax.Array``.
+
+        :returns: jax.Array
+
+        Example:
+            >>> result = adapter.delta()
+        """
         down, up = jnp.asarray(self.down), jnp.asarray(self.up)
         if down.ndim != 2 or up.ndim != 2:
             raise ConversionError("LoRA up/down tensors must both be rank 2")
@@ -38,7 +49,15 @@ class LoraAdapter:
 
 
 def _get_path(tree: ParameterTree, path: Sequence[str]) -> jax.Array:
-    """Read one normalized JAX parameter leaf from a nested tree."""
+    """Read one normalized JAX parameter leaf from a nested tree.
+
+    :param tree: ParameterTree input value
+    :param path: Sequence[str] input value
+    :returns: jax.Array
+
+    Example:
+        >>> result = _get_path(tree, path)
+    """
     current: jax.Array | ParameterTree = tree
     for name in path:
         if not isinstance(current, dict) or name not in current:
@@ -50,7 +69,16 @@ def _get_path(tree: ParameterTree, path: Sequence[str]) -> jax.Array:
 
 
 def _copy_and_set(tree: ParameterTree, path: Sequence[str], value: jax.Array) -> ParameterTree:
-    """Return a tree copy with one JAX parameter leaf replaced."""
+    """Return a tree copy with one JAX parameter leaf replaced.
+
+    :param tree: ParameterTree input value
+    :param path: Sequence[str] input value
+    :param value: jax.Array input value
+    :returns: ParameterTree
+
+    Example:
+        >>> result = _copy_and_set(tree, path, value)
+    """
     result = dict(tree)
     current: ParameterTree = result
     for name in path[:-1]:
@@ -67,7 +95,15 @@ def _copy_and_set(tree: ParameterTree, path: Sequence[str], value: jax.Array) ->
 def merge_lora_adapters(
     params: Mapping[str, ArrayLike | ParameterTreeLike], adapters: Sequence[LoraAdapter]
 ) -> ParameterTree:
-    """Return a new parameter PyTree with one or more adapters merged, never mutating input."""
+    """Return a new parameter PyTree with one or more adapters merged, never mutating input.
+
+    :param params: Mapping[str, ArrayLike | ParameterTreeLike] input value
+    :param adapters: Sequence[LoraAdapter] input value
+    :returns: ParameterTree
+
+    Example:
+        >>> result = merge_lora_adapters(params, adapters)
+    """
     merged = normalize_parameter_tree(params)
     for adapter in adapters:
         base = _get_path(merged, adapter.target)

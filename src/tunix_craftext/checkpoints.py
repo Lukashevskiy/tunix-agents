@@ -1,9 +1,9 @@
 """Versioned Orbax persistence for learner state and run provenance.
 
 The module saves trainable JAX PyTrees through Orbax and stores the small,
-human-readable compatibility record next to them.  A caller supplies the
-``TrainState`` template on restore so executable Flax/Optax functions remain
-local code rather than being serialized as opaque Python objects.
+human-readable compatibility record next to them. A caller supplies the
+TrainState template on restore so executable Flax/Optax functions remain local
+code rather than serialized as opaque Python objects.
 """
 
 from __future__ import annotations
@@ -93,7 +93,15 @@ def restore_checkpoint(
 
 
 def _load_metadata(directory: Path) -> CheckpointMetadata:
-    """Read and validate checkpoint metadata from its adjacent JSON file."""
+    """Read and validate checkpoint metadata from its adjacent JSON file.
+
+    :param directory: Existing checkpoint directory containing the metadata JSON.
+    :returns: Parsed and validated `CheckpointMetadata` instance.
+    :raises ValueError: If the metadata JSON is malformed or schema is unsupported.
+
+    Example:
+        >>> metadata = _load_metadata(directory)
+    """
     payload = json.loads((directory / _METADATA_NAME).read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise ValueError("checkpoint metadata must be a JSON object")
@@ -111,7 +119,15 @@ def _load_metadata(directory: Path) -> CheckpointMetadata:
 
 
 def _validate_metadata(metadata: CheckpointMetadata) -> None:
-    """Reject incompatible checkpoint schemas before they reach a learner."""
+    """Reject incompatible checkpoint schemas before they reach a learner.
+
+    :param metadata: CheckpointMetadata to validate.
+    :returns: None
+    :raises ValueError: If the metadata schema does not match CHECKPOINT_SCHEMA.
+
+    Example:
+        >>> _validate_metadata(metadata)
+    """
     if metadata.schema != CHECKPOINT_SCHEMA:
         raise ValueError(
             f"unsupported checkpoint schema {metadata.schema!r}; expected {CHECKPOINT_SCHEMA!r}"

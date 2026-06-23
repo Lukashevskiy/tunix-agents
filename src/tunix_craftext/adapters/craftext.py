@@ -1,4 +1,9 @@
-"""Pure, JAX-compatible boundary for CrafText and CagedCrafText environments."""
+"""Pure, JAX-compatible boundary for CrafText and CagedCrafText environments.
+
+This module defines the adapter contract and helper types required to wrap a
+vendor CrafText environment so it can be consumed by a deterministic Flax-based
+training loop. It validates action masks, terminal semantics, and resets.
+"""
 
 from __future__ import annotations
 
@@ -18,7 +23,11 @@ EnvironmentObservationT = TypeVar("EnvironmentObservationT", covariant=True)
 
 
 class AdapterContractError(ValueError):
-    """Raised when a vendor environment violates the fixed adapter boundary."""
+    """Raised when a vendor environment violates the fixed adapter boundary.
+
+    Example:
+        >>> raise AdapterContractError("message")
+    """
 
 
 class CrafTextEnvironment(Protocol[EnvironmentParamsT, EnvironmentObservationT, StateT]):
@@ -123,11 +132,23 @@ class CrafTextAdapter(Generic[ParamsT, ObservationT, StateT]):
 
     @property
     def action_count(self) -> int:
-        """Return the static discrete action cardinality exposed by this adapter."""
+        """Return the static discrete action cardinality exposed by this adapter.
+
+        :returns: int
+
+        Example:
+        >>> result = action_count()
+        """
         return self._action_count
 
     def _fallback_mask(self) -> jax.Array:
-        """Return the conservative all-actions-available mask with shape ``[A]``."""
+        """Return the conservative all-actions-available mask with shape ``[A]``.
+
+        :returns: jax.Array
+
+        Example:
+        >>> result = _fallback_mask()
+        """
         return jnp.ones((self._action_count,), dtype=bool)
 
     def _action_mask(self, info: Mapping[str, ArrayLike]) -> jax.Array:
@@ -187,4 +208,9 @@ class CagedCrafTextAdapter(CrafTextAdapter[ParamsT, ObservationT, StateT]):
 
     Constraint costs remain in the vendor observation/state or a future explicit cost adapter;
     this class guarantees only common trajectory semantics.
+    """
+    """Example:
+
+    >>> adapter = CagedCrafTextAdapter(environment, params, action_count=5)
+    >>> reset = adapter.reset(key)
     """

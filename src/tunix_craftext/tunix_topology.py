@@ -1,4 +1,8 @@
-"""Declarative Tunix role-to-mesh topology without a project-local GPU scheduler."""
+"""Declarative Tunix role-to-mesh topology without a project-local GPU scheduler.
+
+The module defines topology rules that map Tunix model roles to visible JAX
+device indices, materialize meshes, and validate role assignments explicitly.
+"""
 
 from __future__ import annotations
 
@@ -17,7 +21,10 @@ _REQUIRED_ROLES = ("actor", "rollout", "critic", "reference")
 
 
 class TopologyConfigError(ValueError):
-    """Raised when a versioned Tunix role topology is incomplete or invalid."""
+    """Raised when a versioned Tunix role topology is incomplete or invalid.
+
+    Example:
+        >>> raise TopologyConfigError("message")"""
 
 
 @dataclass(frozen=True)
@@ -35,7 +42,7 @@ class TunixTopology:
     def __post_init__(self) -> None:
         if not self.name.strip() or not self.axis_name.strip():
             raise TopologyConfigError("topology name and axis_name must be non-empty")
-        if tuple(self.role_to_device_indices) != _REQUIRED_ROLES:
+        if set(self.role_to_device_indices) != set(_REQUIRED_ROLES):
             raise TopologyConfigError(f"roles must be exactly {_REQUIRED_ROLES}")
         for role, indices in self.role_to_device_indices.items():
             if not indices or any(index < 0 for index in indices):
@@ -77,7 +84,15 @@ def load_tunix_topology(path: Path) -> TunixTopology:
 def role_to_meshes(
     topology: TunixTopology, devices: Sequence[jax.Device] | None = None
 ) -> dict[str, Mesh]:
-    """Materialize declared device indices as one named JAX mesh per Tunix role."""
+    """Materialize declared device indices as one named JAX mesh per Tunix role.
+
+    :param topology: TunixTopology input value
+    :param devices: Sequence[jax.Device] | None input value
+    :returns: dict[str, Mesh]
+
+    Example:
+        >>> result = role_to_meshes(topology, devices)
+    """
     visible_devices = tuple(jax.devices() if devices is None else devices)
     meshes: dict[str, Mesh] = {}
     for role, indices in topology.role_to_device_indices.items():
@@ -93,13 +108,19 @@ def role_to_meshes(
 
 
 def tunix_role_to_meshes(topology: TunixTopology) -> dict[object, Mesh]:
-    """Adapt a declared topology to the official Tunix `RLCluster.role_to_mesh` mapping."""
+    """Adapt a declared topology to the official Tunix `RLCluster.role_to_mesh` mapping.
+
+    :param topology: TunixTopology input value
+    :returns: dict[object, Mesh]
+
+    Example:
+    >>> result = tunix_role_to_meshes(topology)"""
     from tunix.rl.rl_cluster import Role  # type: ignore[import-untyped]
 
     meshes = role_to_meshes(topology)
     return {
-        Role.ACTOR: meshes["actor"],
-        Role.ROLLOUT: meshes["rollout"],
-        Role.CRITIC: meshes["critic"],
-        Role.REFERENCE: meshes["reference"],
+    Role.ACTOR: meshes["actor"],
+    Role.ROLLOUT: meshes["rollout"],
+    Role.CRITIC: meshes["critic"],
+    Role.REFERENCE: meshes["reference"],
     }

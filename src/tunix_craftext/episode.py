@@ -1,4 +1,9 @@
-"""Host-side prompt/LLM/environment orchestration with inspectable replay output."""
+"""Host-side prompt/LLM/environment orchestration with inspectable replay output.
+
+This module coordinates prompt rendering, model completion, action decoding, and
+environment steps while preserving replay artifacts for later inspection and
+analysis.
+"""
 
 from __future__ import annotations
 
@@ -44,6 +49,9 @@ def collect_text_episode(
     :param fallback_action_id: Required action id when ``invalid_action`` is ``"fallback"``.
     :returns: Ordered replay, including every rendered prompt and raw completion.
     :raises ValueError: If horizon is non-positive or catalog disagrees with the adapter.
+
+    Example:
+        >>> replay = collect_text_episode(adapter, renderer, backend, goal=goal, actions=actions, horizon=10, seed=0, config_path="config.yaml", commit="abc123")
     """
     if horizon <= 0:
         raise ValueError("horizon must be positive")

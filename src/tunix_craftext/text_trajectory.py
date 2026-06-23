@@ -1,4 +1,8 @@
-"""Convert inspectable host-side text replays into typed token learning batches."""
+"""Convert inspectable host-side text replays into typed token learning batches.
+
+The module validates batch and token axes explicitly and prepares replayed text
+trajectories for learning without hiding padding or shape semantics.
+"""
 
 from __future__ import annotations
 
@@ -11,7 +15,10 @@ from .replay import ReplayArtifact
 
 
 class TextTrajectoryError(ValueError):
-    """Raised when replay evidence cannot become an unambiguous token batch."""
+    """Raised when replay evidence cannot become an unambiguous token batch.
+
+    Example:
+        >>> raise TextTrajectoryError("message")"""
 
 
 @dataclass(frozen=True)
@@ -28,6 +35,10 @@ class TextTrajectoryBatch:
     :ivar action_ids: CrafText discrete action selected per host decision, shape ``[B]``.
     :ivar terminated: Environment terminal state per host decision, shape ``[B]``.
     :ivar fallback_used: Whether an explicit fallback rather than model action stepped the env.
+    
+    Example:
+        >>> batch = TextTrajectoryBatch(...)
+        >>> batch.validate()
     """
 
     token_ids: jax.Array
@@ -42,7 +53,14 @@ class TextTrajectoryBatch:
     fallback_used: jax.Array
 
     def validate(self) -> None:
-        """Validate static batch/token axes at the host boundary."""
+        """Validate static batch/token axes at the host boundary.
+
+        :returns: None
+        :raises TextTrajectoryError: If any batch or token axis shape is invalid.
+
+        Example:
+            >>> batch.validate()
+        """
         token_shape = tuple(self.token_ids.shape)
         if len(token_shape) != 2 or token_shape[1] == 0:
             raise TextTrajectoryError("token_ids must have non-empty shape [B, T]")
@@ -68,7 +86,12 @@ def text_trajectory_from_replay(artifact: ReplayArtifact) -> TextTrajectoryBatch
     Fallback steps remain in the artifact for audit but have an all-false ``policy_mask``;
     training cannot silently learn from an action that the model did not actually select.
 
+    :param artifact: ReplayArtifact containing sequential host decisions and token provenance.
+    :returns: A validated `TextTrajectoryBatch` ready for token-level learning.
     :raises TextTrajectoryError: If replay lacks token provenance or token/logprob alignment.
+
+    Example:
+        >>> batch = text_trajectory_from_replay(artifact)
     """
     if not artifact.steps:
         raise TextTrajectoryError("replay must contain at least one step")

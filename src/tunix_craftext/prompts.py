@@ -1,4 +1,12 @@
-"""Typed prompt assembly at the CrafText environment-to-model boundary."""
+"""Typed prompt assembly at the CrafText environment-to-model boundary.
+
+This module defines prompt rendering contracts, stable action catalogues, and
+wrapper logic for vendored MegaPrompts templates. It keeps prompt generation
+explicit and verifiable for downstream action decoding.
+
+Example:
+    >>> renderer = MegaPromptRenderer('my_template')
+"""
 
 from __future__ import annotations
 
@@ -10,7 +18,11 @@ ObservationT = TypeVar("ObservationT")
 
 
 class PromptContractError(ValueError):
-    """Raised when a prompt/action contract is incomplete or ambiguous."""
+    """Raised when a prompt/action contract is incomplete or ambiguous.
+
+    Example:
+        >>> raise PromptContractError("message")
+    """
 
 
 @dataclass(frozen=True)
@@ -23,6 +35,10 @@ class ActionCatalog:
     labels: tuple[str, ...]
 
     def __post_init__(self) -> None:
+        """Validate label non-emptiness and uniqueness on construction.
+
+        :raises PromptContractError: If labels are empty or duplicated.
+        """
         if not self.labels or any(not label.strip() for label in self.labels):
             raise PromptContractError("action catalog must contain non-empty labels")
         if len(self.labels) != len(set(self.labels)):
@@ -31,6 +47,8 @@ class ActionCatalog:
     def index_of(self, label: str) -> int:
         """Return a controlled action id for one model-produced label.
 
+        :param label: str input value
+        :returns: int
         :raises PromptContractError: If the label is outside the declared action space.
         """
         try:
@@ -59,7 +77,14 @@ class PromptContext(Generic[ObservationT]):
 
 @dataclass(frozen=True)
 class RenderedPrompt:
-    """Prompt text paired with the exact action space it was rendered against."""
+    """Prompt text paired with the exact action space it was rendered against.
+
+    :ivar text: str
+    :ivar actions: ActionCatalog
+    :ivar template_name: str
+
+    Example:
+        >>> obj = RenderedPrompt(text=..., actions=..., template_name=...)"""
 
     text: str
     actions: ActionCatalog
@@ -69,13 +94,24 @@ class RenderedPrompt:
 class PromptRenderer(Protocol[ObservationT]):
     """Framework-neutral renderer signature used by model/policy adapters."""
 
-    def render(self, context: PromptContext[ObservationT]) -> RenderedPrompt: ...
+    def render(self, context: PromptContext[ObservationT]) -> RenderedPrompt:
+        """Render a `PromptContext` into a `RenderedPrompt`.
+
+        :param context: PromptContext[ObservationT] with goal, observation and actions.
+        :returns: RenderedPrompt containing text and action catalogue.
+        """
+        ...
 
 
 class MegaPromptBackend(Protocol):
     """Narrow typed view of the vendored MegaPrompts renderer."""
+    def render(self, meta_info: Mapping[str, object]) -> str:
+        """Render a MegaPrompts template given meta information.
 
-    def render(self, meta_info: Mapping[str, object]) -> str: ...
+        :param meta_info: Mapping of template variables required by the template.
+        :returns: Rendered template text.
+        """
+        ...
 
 
 class MegaPromptRenderer(Generic[ObservationT]):
@@ -87,6 +123,12 @@ class MegaPromptRenderer(Generic[ObservationT]):
     """
 
     def __init__(self, config_name: str, backend: MegaPromptBackend | None = None) -> None:
+        """Create a `MegaPromptRenderer` for the given template name.
+
+        :param config_name: Template directory name under MegaPrompts' templates root.
+        :param backend: Optional test-injected backend; otherwise the vendored renderer is used.
+        :raises PromptContractError: If config_name is empty or backend cannot be loaded.
+        """
         if not config_name.strip():
             raise PromptContractError("prompt config name must be non-empty")
         self._config_name = config_name
@@ -94,6 +136,12 @@ class MegaPromptRenderer(Generic[ObservationT]):
 
     @staticmethod
     def _load_backend(config_name: str) -> MegaPromptBackend:
+        """Import and return the vendored MegaPrompts `Renderer`.
+
+        :param config_name: Template directory name used to instantiate the backend.
+        :returns: An object implementing `MegaPromptBackend`.
+        :raises PromptContractError: If the optional `megaprompt` extra is not installed.
+        """
         try:
             from megaprompt.renders import Renderer  # type: ignore[import-not-found]
         except ImportError as error:
@@ -103,7 +151,14 @@ class MegaPromptRenderer(Generic[ObservationT]):
         return Renderer(config_name=config_name)
 
     def render(self, context: PromptContext[ObservationT]) -> RenderedPrompt:
-        """Render one environment-derived prompt and preserve its action catalogue."""
+        """Render one environment-derived prompt and preserve its action catalogue.
+
+        :param context: PromptContext[ObservationT] input value
+        :returns: RenderedPrompt
+
+        Example:
+            >>> rendered = renderer.render(context)
+        """
         text = self._backend.render(
             {
                 "goal": context.goal,

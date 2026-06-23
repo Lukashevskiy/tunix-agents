@@ -1,4 +1,9 @@
-"""Typed, pure-JAX registry boundary for interchangeable RL objectives."""
+"""Typed, pure-JAX registry boundary for interchangeable RL objectives.
+
+The module declares a small registry of algorithm specifications and exposes a
+stable public interface for picking an objective by name. Each entry bundles
+pure advantage and loss functions with a fixed name for reproducible training.
+"""
 
 from __future__ import annotations
 
@@ -17,6 +22,10 @@ class LossOutput:
 
     :param loss: Scalar differentiable objective.
     :param metrics: JAX-array metrics safe to aggregate outside a compiled epoch.
+        :returns: Protocol object representing loss output.
+
+        Example:
+            >>> result = LossOutput(loss=0.1, metrics={"entropy": 0.01})
     """
 
     loss: jax.Array
@@ -25,7 +34,27 @@ class LossOutput:
 
 @struct.dataclass
 class PpoLossBatch:
-    """Flat PPO minibatch with every required old-policy field explicit."""
+    """Flat PPO minibatch with every required old-policy field explicit.
+
+    :ivar new_log_prob: jax.Array
+    :ivar old_log_prob: jax.Array
+    :ivar advantages: jax.Array
+    :ivar new_value: jax.Array
+    :ivar old_value: jax.Array
+    :ivar returns: jax.Array
+    :ivar entropy: jax.Array
+
+    Example:
+        >>> obj = PpoLossBatch(
+        ...     new_log_prob=..., 
+        ...     old_log_prob=..., 
+        ...     advantages=..., 
+        ...     new_value=..., 
+        ...     old_value=..., 
+        ...     returns=..., 
+        ...     entropy=..., 
+        ... )
+    """
 
     new_log_prob: jax.Array
     old_log_prob: jax.Array
@@ -44,7 +73,15 @@ LossFunction = Callable[[PpoLossBatch], LossOutput]
 
 @dataclass(frozen=True)
 class AlgorithmSpec:
-    """One registry entry of pure functions and its stable public name."""
+    """One registry entry of pure functions and its stable public name.
+
+    :ivar name: str
+    :ivar advantages: AdvantageFunction
+    :ivar loss: LossFunction
+
+    Example:
+        >>> obj = AlgorithmSpec(name=..., advantages=..., loss=...)
+    """
 
     name: str
     advantages: AdvantageFunction
@@ -72,7 +109,14 @@ ALGORITHM_REGISTRY: Mapping[str, AlgorithmSpec] = {PPO.name: PPO}
 
 
 def get_algorithm(name: str) -> AlgorithmSpec:
-    """Return one declared algorithm without allowing silent fallbacks."""
+    """Return one declared algorithm without allowing silent fallbacks.
+
+    :param name: str input value
+    :returns: AlgorithmSpec
+
+    Example:
+        >>> result = get_algorithm(name)
+    """
     try:
         return ALGORITHM_REGISTRY[name]
     except KeyError as error:

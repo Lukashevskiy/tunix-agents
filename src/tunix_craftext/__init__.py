@@ -1,4 +1,10 @@
-"""JAX-native contracts and adapters for CrafText training."""
+"""JAX-native contracts and adapters for CrafText training.
+
+This package exposes a compact, typed interface for transforming CrafText-family
+vendor environments into a training-safe JAX workflow. Public exports include
+protocols, runtime adapters, prompt rendering helpers, and replay/trajectory
+contracts for reproducible experiments.
+"""
 
 from .adapters import CagedCrafTextAdapter, CrafTextAdapter, EnvironmentReset, EnvironmentStep
 from .checkpoints import CheckpointMetadata, restore_checkpoint, save_checkpoint

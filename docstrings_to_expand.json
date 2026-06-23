@@ -1,0 +1,697 @@
+[
+  {
+    "path": "src/tunix_craftext/__init__.py",
+    "type": "module",
+    "line": 1,
+    "doc": "JAX-native contracts and adapters for CrafText training."
+  },
+  {
+    "path": "src/tunix_craftext/adapters/__init__.py",
+    "type": "module",
+    "line": 1,
+    "doc": "Environment boundaries that normalize CrafText-family transitions for training."
+  },
+  {
+    "path": "src/tunix_craftext/adapters/craftext.py",
+    "type": "module",
+    "line": 1,
+    "doc": "Pure, JAX-compatible boundary for CrafText and CagedCrafText environments."
+  },
+  {
+    "path": "src/tunix_craftext/adapters/craftext.py",
+    "type": "ClassDef",
+    "name": "AdapterContractError",
+    "line": 20,
+    "doc": "Raised when a vendor environment violates the fixed adapter boundary."
+  },
+  {
+    "path": "src/tunix_craftext/adapters/craftext.py",
+    "type": "ClassDef",
+    "name": "CrafTextEnvironment",
+    "line": 24,
+    "doc": "Minimal CrafText/CagedCrafText reset-step contract used by the adapter."
+  },
+  {
+    "path": "src/tunix_craftext/adapters/craftext.py",
+    "type": "FunctionDef",
+    "name": "action_count",
+    "line": 125,
+    "doc": "Return the static discrete action cardinality exposed by this adapter."
+  },
+  {
+    "path": "src/tunix_craftext/adapters/craftext.py",
+    "type": "FunctionDef",
+    "name": "_fallback_mask",
+    "line": 129,
+    "doc": "Return the conservative all-actions-available mask with shape ``[A]``."
+  },
+  {
+    "path": "src/tunix_craftext/algorithm_registry.py",
+    "type": "module",
+    "line": 1,
+    "doc": "Typed, pure-JAX registry boundary for interchangeable RL objectives."
+  },
+  {
+    "path": "src/tunix_craftext/algorithm_registry.py",
+    "type": "ClassDef",
+    "name": "PpoLossBatch",
+    "line": 27,
+    "doc": "Flat PPO minibatch with every required old-policy field explicit."
+  },
+  {
+    "path": "src/tunix_craftext/algorithm_registry.py",
+    "type": "ClassDef",
+    "name": "AlgorithmSpec",
+    "line": 46,
+    "doc": "One registry entry of pure functions and its stable public name."
+  },
+  {
+    "path": "src/tunix_craftext/algorithm_registry.py",
+    "type": "FunctionDef",
+    "name": "get_algorithm",
+    "line": 74,
+    "doc": "Return one declared algorithm without allowing silent fallbacks."
+  },
+  {
+    "path": "src/tunix_craftext/algorithms.py",
+    "type": "module",
+    "line": 1,
+    "doc": "Pure JAX PPO primitives: discounted returns and generalized advantage estimation."
+  },
+  {
+    "path": "src/tunix_craftext/algorithms.py",
+    "type": "FunctionDef",
+    "name": "ppo_loss",
+    "line": 9,
+    "doc": "Return clipped PPO scalar loss and inspectable policy/value/KL metrics."
+  },
+  {
+    "path": "src/tunix_craftext/algorithms.py",
+    "type": "FunctionDef",
+    "name": "generalized_advantage_estimation",
+    "line": 40,
+    "doc": "Compute time-major GAE advantages and returns for ``[T, B]`` arrays."
+  },
+  {
+    "path": "src/tunix_craftext/checkpoints.py",
+    "type": "module",
+    "line": 1,
+    "doc": "Versioned Orbax persistence for learner state and run provenance.\n\nThe module saves trainable JAX PyTrees through Orbax and stores the small,\nhuman-readable compatibility record next to them.  A caller supplies the\n``TrainState`` template on restore so executable Flax/Optax functions remain\nlocal code rather than being serialized as opaque Python objects."
+  },
+  {
+    "path": "src/tunix_craftext/checkpoints.py",
+    "type": "FunctionDef",
+    "name": "_load_metadata",
+    "line": 95,
+    "doc": "Read and validate checkpoint metadata from its adjacent JSON file."
+  },
+  {
+    "path": "src/tunix_craftext/checkpoints.py",
+    "type": "FunctionDef",
+    "name": "_validate_metadata",
+    "line": 113,
+    "doc": "Reject incompatible checkpoint schemas before they reach a learner."
+  },
+  {
+    "path": "src/tunix_craftext/config.py",
+    "type": "module",
+    "line": 1,
+    "doc": "Versioned, validated configuration contract for reproducible MVP runs."
+  },
+  {
+    "path": "src/tunix_craftext/config.py",
+    "type": "ClassDef",
+    "name": "ConfigError",
+    "line": 14,
+    "doc": "Raised when a run configuration violates the public schema."
+  },
+  {
+    "path": "src/tunix_craftext/config.py",
+    "type": "ClassDef",
+    "name": "RunSpec",
+    "line": 19,
+    "doc": "Run identity and deterministic seed."
+  },
+  {
+    "path": "src/tunix_craftext/config.py",
+    "type": "ClassDef",
+    "name": "EnvironmentSpec",
+    "line": 27,
+    "doc": "Vendor environment selection and fixed rollout dimensions."
+  },
+  {
+    "path": "src/tunix_craftext/config.py",
+    "type": "ClassDef",
+    "name": "PromptSpec",
+    "line": 40,
+    "doc": "Prompt renderer and template selection."
+  },
+  {
+    "path": "src/tunix_craftext/config.py",
+    "type": "ClassDef",
+    "name": "PolicySpec",
+    "line": 48,
+    "doc": "Policy implementation and invalid-action behaviour."
+  },
+  {
+    "path": "src/tunix_craftext/config.py",
+    "type": "ClassDef",
+    "name": "ArtifactSpec",
+    "line": 56,
+    "doc": "Explicit run artifacts retained for replay and documentation."
+  },
+  {
+    "path": "src/tunix_craftext/config.py",
+    "type": "ClassDef",
+    "name": "MvpRunConfig",
+    "line": 65,
+    "doc": "Canonical schema-versioned input for one reproducible MVP run."
+  },
+  {
+    "path": "src/tunix_craftext/contracts.py",
+    "type": "module",
+    "line": 1,
+    "doc": "Stable, framework-neutral data contracts at the environment/trainer boundary."
+  },
+  {
+    "path": "src/tunix_craftext/contracts.py",
+    "type": "ClassDef",
+    "name": "RolloutBatch",
+    "line": 43,
+    "doc": "A time-major `[T, B, ...]` rollout plus bootstrap values `[B]`."
+  },
+  {
+    "path": "src/tunix_craftext/contracts.py",
+    "type": "FunctionDef",
+    "name": "_shape_of",
+    "line": 67,
+    "doc": "Read static shape metadata from one NumPy/JAX leaf without materializing it on host."
+  },
+  {
+    "path": "src/tunix_craftext/contracts.py",
+    "type": "FunctionDef",
+    "name": "_validate_tree_axes",
+    "line": 75,
+    "doc": "Ensure every JAX PyTree leaf begins with the contract's declared axes."
+  },
+  {
+    "path": "src/tunix_craftext/contracts.py",
+    "type": "FunctionDef",
+    "name": "_register_contract_pytrees",
+    "line": 88,
+    "doc": "Register public contract dataclasses at their definition boundary for JIT returns."
+  },
+  {
+    "path": "src/tunix_craftext/contracts.py",
+    "type": "FunctionDef",
+    "name": "done",
+    "line": 37,
+    "doc": "Return the JAX-compatible terminal-or-truncated mask with shape ``[T, B]``."
+  },
+  {
+    "path": "src/tunix_craftext/episode.py",
+    "type": "module",
+    "line": 1,
+    "doc": "Host-side prompt/LLM/environment orchestration with inspectable replay output."
+  },
+  {
+    "path": "src/tunix_craftext/interop/__init__.py",
+    "type": "module",
+    "line": 1,
+    "doc": "Explicit, testable conversion of external neural-network weights to JAX PyTrees."
+  },
+  {
+    "path": "src/tunix_craftext/interop/lora.py",
+    "type": "module",
+    "line": 1,
+    "doc": "LoRA merge operations with explicit matrix layout and shape checks."
+  },
+  {
+    "path": "src/tunix_craftext/interop/lora.py",
+    "type": "FunctionDef",
+    "name": "_get_path",
+    "line": 40,
+    "doc": "Read one normalized JAX parameter leaf from a nested tree."
+  },
+  {
+    "path": "src/tunix_craftext/interop/lora.py",
+    "type": "FunctionDef",
+    "name": "_copy_and_set",
+    "line": 52,
+    "doc": "Return a tree copy with one JAX parameter leaf replaced."
+  },
+  {
+    "path": "src/tunix_craftext/interop/lora.py",
+    "type": "FunctionDef",
+    "name": "merge_lora_adapters",
+    "line": 67,
+    "doc": "Return a new parameter PyTree with one or more adapters merged, never mutating input."
+  },
+  {
+    "path": "src/tunix_craftext/interop/lora.py",
+    "type": "FunctionDef",
+    "name": "delta",
+    "line": 28,
+    "doc": "Return the scaled adapter delta in Flax kernel orientation as ``jax.Array``."
+  },
+  {
+    "path": "src/tunix_craftext/interop/safetensors.py",
+    "type": "module",
+    "line": 1,
+    "doc": "Optional safe loader for HuggingFace-style safetensors checkpoints."
+  },
+  {
+    "path": "src/tunix_craftext/interop/safetensors.py",
+    "type": "FunctionDef",
+    "name": "load_safetensors",
+    "line": 13,
+    "doc": "Load a safetensors file without supporting pickle-based checkpoint formats."
+  },
+  {
+    "path": "src/tunix_craftext/interop/template.py",
+    "type": "module",
+    "line": 1,
+    "doc": "Framework-neutral checkpoint-to-JAX conversion templates.\n\nTemplates make every parameter rename and layout transformation reviewable.  They do not\nattempt to infer architecture from an opaque checkpoint: silent guesses are how a model\ncan appear to load while producing nonsense."
+  },
+  {
+    "path": "src/tunix_craftext/interop/template.py",
+    "type": "ClassDef",
+    "name": "ConversionError",
+    "line": 22,
+    "doc": "The checkpoint and declared model template disagree."
+  },
+  {
+    "path": "src/tunix_craftext/interop/template.py",
+    "type": "ClassDef",
+    "name": "TensorRule",
+    "line": 27,
+    "doc": "One explicit source tensor → JAX PyTree leaf transformation."
+  },
+  {
+    "path": "src/tunix_craftext/interop/template.py",
+    "type": "ClassDef",
+    "name": "ModelTemplate",
+    "line": 43,
+    "doc": "Architecture label and a complete, versionable mapping of its tensors."
+  },
+  {
+    "path": "src/tunix_craftext/interop/template.py",
+    "type": "FunctionDef",
+    "name": "_set_path",
+    "line": 57,
+    "doc": "Set one JAX parameter leaf at a validated nested string path."
+  },
+  {
+    "path": "src/tunix_craftext/interop/template.py",
+    "type": "FunctionDef",
+    "name": "_as_jax_array",
+    "line": 68,
+    "doc": "Normalize one accepted external tensor into an immutable JAX array leaf."
+  },
+  {
+    "path": "src/tunix_craftext/interop/template.py",
+    "type": "FunctionDef",
+    "name": "normalize_parameter_tree",
+    "line": 73,
+    "doc": "Recursively normalize external parameter leaves into a JAX-only parameter tree."
+  },
+  {
+    "path": "src/tunix_craftext/learner.py",
+    "type": "module",
+    "line": 1,
+    "doc": "Minimal Flax/Optax actor-critic learner for PPO smoke updates.\n\nThis module provides a compact deterministic actor-critic network and\nhelper functions for initializing a Flax TrainState and applying a single\nclipped PPO update. It is built for lightweight smoke tests, example\nworkflows, and flat feature inputs rather than production-scale RL."
+  },
+  {
+    "path": "src/tunix_craftext/llm.py",
+    "type": "module",
+    "line": 1,
+    "doc": "Backend-neutral LLM request/response contracts for prompt-driven actions."
+  },
+  {
+    "path": "src/tunix_craftext/prompts.py",
+    "type": "module",
+    "line": 1,
+    "doc": "Typed prompt assembly at the CrafText environment-to-model boundary."
+  },
+  {
+    "path": "src/tunix_craftext/prompts.py",
+    "type": "ClassDef",
+    "name": "PromptContractError",
+    "line": 12,
+    "doc": "Raised when a prompt/action contract is incomplete or ambiguous."
+  },
+  {
+    "path": "src/tunix_craftext/prompts.py",
+    "type": "ClassDef",
+    "name": "RenderedPrompt",
+    "line": 61,
+    "doc": "Prompt text paired with the exact action space it was rendered against."
+  },
+  {
+    "path": "src/tunix_craftext/prompts.py",
+    "type": "ClassDef",
+    "name": "PromptRenderer",
+    "line": 69,
+    "doc": "Framework-neutral renderer signature used by model/policy adapters."
+  },
+  {
+    "path": "src/tunix_craftext/prompts.py",
+    "type": "ClassDef",
+    "name": "MegaPromptBackend",
+    "line": 75,
+    "doc": "Narrow typed view of the vendored MegaPrompts renderer."
+  },
+  {
+    "path": "src/tunix_craftext/prompts.py",
+    "type": "FunctionDef",
+    "name": "render",
+    "line": 105,
+    "doc": "Render one environment-derived prompt and preserve its action catalogue."
+  },
+  {
+    "path": "src/tunix_craftext/provenance.py",
+    "type": "module",
+    "line": 1,
+    "doc": "Expose source revision information to experiments and the documentation build."
+  },
+  {
+    "path": "src/tunix_craftext/provenance.py",
+    "type": "FunctionDef",
+    "name": "git_revision",
+    "line": 9,
+    "doc": "Return the checked-out revision, or a clear sentinel outside a Git checkout."
+  },
+  {
+    "path": "src/tunix_craftext/random_policy.py",
+    "type": "module",
+    "line": 1,
+    "doc": "JAX-native random policy for valid-action environment throughput baselines."
+  },
+  {
+    "path": "src/tunix_craftext/random_policy.py",
+    "type": "ClassDef",
+    "name": "ActionSamplingError",
+    "line": 9,
+    "doc": "Raised when an action mask cannot define a valid categorical distribution."
+  },
+  {
+    "path": "src/tunix_craftext/random_policy.py",
+    "type": "FunctionDef",
+    "name": "validate_action_mask",
+    "line": 30,
+    "doc": "Reject empty action rows at the non-jitted environment boundary."
+  },
+  {
+    "path": "src/tunix_craftext/replay.py",
+    "type": "module",
+    "line": 1,
+    "doc": "Versioned JSON replay artifacts for prompt-driven environment trajectories."
+  },
+  {
+    "path": "src/tunix_craftext/replay.py",
+    "type": "ClassDef",
+    "name": "ReplayStep",
+    "line": 11,
+    "doc": "One prompt/model/environment decision retained for deterministic inspection."
+  },
+  {
+    "path": "src/tunix_craftext/replay.py",
+    "type": "ClassDef",
+    "name": "ReplayArtifact",
+    "line": 30,
+    "doc": "Versioned replay with code/config provenance and ordered decision steps."
+  },
+  {
+    "path": "src/tunix_craftext/replay.py",
+    "type": "FunctionDef",
+    "name": "save_replay",
+    "line": 40,
+    "doc": "Persist a human-inspectable replay atomically."
+  },
+  {
+    "path": "src/tunix_craftext/resources.py",
+    "type": "module",
+    "line": 1,
+    "doc": "JAX mesh and placement primitives with a safe single-device default."
+  },
+  {
+    "path": "src/tunix_craftext/resources.py",
+    "type": "ClassDef",
+    "name": "ResourceConfig",
+    "line": 12,
+    "doc": "Declarative data-parallel and memory-placement policy for trainable workloads."
+  },
+  {
+    "path": "src/tunix_craftext/resources.py",
+    "type": "FunctionDef",
+    "name": "data_mesh",
+    "line": 31,
+    "doc": "Return a data-parallel mesh; ``-1`` uses all visible devices."
+  },
+  {
+    "path": "src/tunix_craftext/resources.py",
+    "type": "FunctionDef",
+    "name": "batch_sharding",
+    "line": 39,
+    "doc": "Return data-axis sharding for leading batch dimension tensors."
+  },
+  {
+    "path": "src/tunix_craftext/resources.py",
+    "type": "FunctionDef",
+    "name": "replicated_sharding",
+    "line": 44,
+    "doc": "Return replicated parameter sharding before model parallelism is enabled."
+  },
+  {
+    "path": "src/tunix_craftext/rollout.py",
+    "type": "module",
+    "line": 1,
+    "doc": "Collection primitives kept independent of a particular policy or environment API."
+  },
+  {
+    "path": "src/tunix_craftext/rollout.py",
+    "type": "ClassDef",
+    "name": "PolicyFn",
+    "line": 22,
+    "doc": "Policy signature used by the framework-neutral reference collector."
+  },
+  {
+    "path": "src/tunix_craftext/rollout.py",
+    "type": "ClassDef",
+    "name": "StepFn",
+    "line": 30,
+    "doc": "Synchronous environment signature used by the reference collector."
+  },
+  {
+    "path": "src/tunix_craftext/rollout.py",
+    "type": "ClassDef",
+    "name": "IndexedStepFn",
+    "line": 38,
+    "doc": "JAX step signature that receives the static scan index for explicit RNG selection."
+  },
+  {
+    "path": "src/tunix_craftext/rollout.py",
+    "type": "FunctionDef",
+    "name": "_stack_pytree",
+    "line": 196,
+    "doc": "Stack reference PyTrees on host, then normalize leaves to ``jax.Array`` once."
+  },
+  {
+    "path": "src/tunix_craftext/runtime.py",
+    "type": "module",
+    "line": 1,
+    "doc": "Construction of a real vendored CrafText runtime from the canonical MVP config."
+  },
+  {
+    "path": "src/tunix_craftext/runtime.py",
+    "type": "ClassDef",
+    "name": "RuntimeError",
+    "line": 12,
+    "doc": "Raised when a validated config cannot construct the selected vendor runtime."
+  },
+  {
+    "path": "src/tunix_craftext/runtime.py",
+    "type": "ClassDef",
+    "name": "CrafTextRuntime",
+    "line": 17,
+    "doc": "Opaque vendor environment/params behind the training-safe adapter boundary."
+  },
+  {
+    "path": "src/tunix_craftext/text_policy.py",
+    "type": "module",
+    "line": 1,
+    "doc": "Typed text-policy boundary from rendered prompts to discrete environment actions."
+  },
+  {
+    "path": "src/tunix_craftext/text_policy.py",
+    "type": "ClassDef",
+    "name": "TextPolicy",
+    "line": 14,
+    "doc": "A model runner that produces raw text for one fully rendered prompt."
+  },
+  {
+    "path": "src/tunix_craftext/text_policy.py",
+    "type": "ClassDef",
+    "name": "DecodeMetrics",
+    "line": 35,
+    "doc": "Observable decoder outcome counters for one inference attempt."
+  },
+  {
+    "path": "src/tunix_craftext/text_policy.py",
+    "type": "FunctionDef",
+    "name": "act",
+    "line": 75,
+    "doc": "Run one text policy and decode its result through the prompt-bound action contract."
+  },
+  {
+    "path": "src/tunix_craftext/text_trajectory.py",
+    "type": "module",
+    "line": 1,
+    "doc": "Convert inspectable host-side text replays into typed token learning batches."
+  },
+  {
+    "path": "src/tunix_craftext/text_trajectory.py",
+    "type": "ClassDef",
+    "name": "TextTrajectoryError",
+    "line": 13,
+    "doc": "Raised when replay evidence cannot become an unambiguous token batch."
+  },
+  {
+    "path": "src/tunix_craftext/text_trajectory.py",
+    "type": "FunctionDef",
+    "name": "validate",
+    "line": 44,
+    "doc": "Validate static batch/token axes at the host boundary."
+  },
+  {
+    "path": "src/tunix_craftext/tunix_adapter.py",
+    "type": "module",
+    "line": 1,
+    "doc": "Узкая граница модели Qwen/Tunix с явным происхождением локальных весов."
+  },
+  {
+    "path": "src/tunix_craftext/tunix_adapter.py",
+    "type": "ClassDef",
+    "name": "ChatTemplatingTokenizer",
+    "line": 17,
+    "doc": "Public tokenizer capability required to prepare a Qwen assistant turn."
+  },
+  {
+    "path": "src/tunix_craftext/tunix_adapter.py",
+    "type": "ClassDef",
+    "name": "SamplingTokenizer",
+    "line": 29,
+    "doc": "Tokenizer operations needed to size a static Tunix sampler cache."
+  },
+  {
+    "path": "src/tunix_craftext/tunix_adapter.py",
+    "type": "ClassDef",
+    "name": "CacheConfigLike",
+    "line": 39,
+    "doc": "Stable cache dimensions consumed by the Qwen sampler boundary."
+  },
+  {
+    "path": "src/tunix_craftext/tunix_adapter.py",
+    "type": "ClassDef",
+    "name": "SamplerOutputLike",
+    "line": 48,
+    "doc": "Public sampler result fields retained by the LLM boundary."
+  },
+  {
+    "path": "src/tunix_craftext/tunix_adapter.py",
+    "type": "ClassDef",
+    "name": "TextSampler",
+    "line": 57,
+    "doc": "Subset of Tunix sampler API required by one text completion."
+  },
+  {
+    "path": "src/tunix_craftext/tunix_adapter.py",
+    "type": "ClassDef",
+    "name": "HiddenStateModel",
+    "line": 72,
+    "doc": "Qwen model subset used to extract token features without the language head."
+  },
+  {
+    "path": "src/tunix_craftext/tunix_adapter.py",
+    "type": "FunctionDef",
+    "name": "qwen_required_cache_size",
+    "line": 115,
+    "doc": "Return Tunix's padded prompt requirement plus requested completion tokens."
+  },
+  {
+    "path": "src/tunix_craftext/tunix_adapter.py",
+    "type": "FunctionDef",
+    "name": "qwen_cache_config",
+    "line": 126,
+    "doc": "Build a Tunix KV cache contract from the pinned Qwen model configuration."
+  },
+  {
+    "path": "src/tunix_craftext/tunix_adapter.py",
+    "type": "FunctionDef",
+    "name": "qwen_mesh",
+    "line": 140,
+    "doc": "Return the single-device-compatible Tunix Qwen mesh with required axes."
+  },
+  {
+    "path": "src/tunix_craftext/tunix_adapter.py",
+    "type": "FunctionDef",
+    "name": "load_qwen_single_device_model",
+    "line": 187,
+    "doc": "Load local Qwen weights once for single-device sampling and feature extraction."
+  },
+  {
+    "path": "src/tunix_craftext/tunix_adapter.py",
+    "type": "FunctionDef",
+    "name": "qwen_chat_token_ids",
+    "line": 200,
+    "doc": "Encode one chat prompt exactly as the Tunix sampler does before padding."
+  },
+  {
+    "path": "src/tunix_craftext/tunix_adapter.py",
+    "type": "FunctionDef",
+    "name": "build_qwen_sampler",
+    "line": 206,
+    "doc": "Build the public Tunix sampler from explicit local Qwen assets."
+  },
+  {
+    "path": "src/tunix_craftext/tunix_adapter.py",
+    "type": "ClassDef",
+    "name": "QwenTunixBackend",
+    "line": 236,
+    "doc": "Single-device Tunix Qwen implementation of the typed LLM backend."
+  },
+  {
+    "path": "src/tunix_craftext/tunix_adapter.py",
+    "type": "FunctionDef",
+    "name": "complete",
+    "line": 250,
+    "doc": "Generate one raw completion and retain its latency/provenance."
+  },
+  {
+    "path": "src/tunix_craftext/tunix_topology.py",
+    "type": "module",
+    "line": 1,
+    "doc": "Declarative Tunix role-to-mesh topology without a project-local GPU scheduler."
+  },
+  {
+    "path": "src/tunix_craftext/tunix_topology.py",
+    "type": "ClassDef",
+    "name": "TopologyConfigError",
+    "line": 19,
+    "doc": "Raised when a versioned Tunix role topology is incomplete or invalid."
+  },
+  {
+    "path": "src/tunix_craftext/tunix_topology.py",
+    "type": "FunctionDef",
+    "name": "role_to_meshes",
+    "line": 77,
+    "doc": "Materialize declared device indices as one named JAX mesh per Tunix role."
+  },
+  {
+    "path": "src/tunix_craftext/tunix_topology.py",
+    "type": "FunctionDef",
+    "name": "tunix_role_to_meshes",
+    "line": 95,
+    "doc": "Adapt a declared topology to the official Tunix `RLCluster.role_to_mesh` mapping."
+  }
+]

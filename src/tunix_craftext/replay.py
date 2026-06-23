@@ -1,4 +1,9 @@
-"""Versioned JSON replay artifacts for prompt-driven environment trajectories."""
+"""Versioned JSON replay artifacts for prompt-driven environment trajectories.
+
+This module persistently records prompt/model/action trajectories with schema
+metadata and provenance so experiments can be replayed, inspected, and debugged
+after the fact.
+"""
 
 from __future__ import annotations
 
@@ -9,7 +14,22 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class ReplayStep:
-    """One prompt/model/environment decision retained for deterministic inspection."""
+    """One prompt/model/environment decision retained for deterministic inspection.
+
+    :ivar index: int
+    :ivar prompt: str
+    :ivar raw_completion: str
+    :ivar action_id: int
+    :ivar action_label: str
+    :ivar reward: float
+    :ivar terminated: bool
+    :ivar invalid_format: int
+    :ivar unknown_action: int
+    :ivar fallback_used: bool
+
+    Example:
+        >>> obj = ReplayStep(index=0, prompt="Do X", raw_completion="<action>...")
+    """
 
     index: int
     prompt: str
@@ -28,7 +48,22 @@ class ReplayStep:
 
 @dataclass(frozen=True)
 class ReplayArtifact:
-    """Versioned replay with code/config provenance and ordered decision steps."""
+    """Versioned replay with code/config provenance and ordered decision steps.
+
+    :ivar config_path: str
+    :ivar commit: str
+    :ivar backend: str
+    :ivar steps: tuple[ReplayStep, ...]
+    :ivar schema: str
+
+    Example:
+        >>> obj = ReplayArtifact(
+        ...     config_path="configs/exp.yaml",
+        ...     commit="abcd123",
+        ...     backend="scripted",
+        ...     steps=(ReplayStep(...),),
+        ... )
+    """
 
     config_path: str
     commit: str
@@ -38,10 +73,22 @@ class ReplayArtifact:
 
 
 def save_replay(path: Path, artifact: ReplayArtifact) -> None:
-    """Persist a human-inspectable replay atomically."""
+    """Persist a human-inspectable replay as atomic JSON.
+
+    The function writes a temporary file next to `path` and then renames it to
+    ensure the operation is atomic on POSIX filesystems.
+
+    :param path: Destination file path for the replay JSON.
+    :param artifact: `ReplayArtifact` instance to serialize.
+    :returns: None
+    :raises OSError: If the filesystem write or rename fails.
+
+    Example:
+        >>> save_replay(Path("out/replay.json"), artifact)
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(".tmp")
     temporary.write_text(
-        json.dumps(asdict(artifact), indent=2, ensure_ascii=False), encoding="utf-8"
+    json.dumps(asdict(artifact), indent=2, ensure_ascii=False), encoding="utf-8"
     )
     temporary.replace(path)

@@ -1,8 +1,8 @@
 """Framework-neutral checkpoint-to-JAX conversion templates.
 
-Templates make every parameter rename and layout transformation reviewable.  They do not
-attempt to infer architecture from an opaque checkpoint: silent guesses are how a model
-can appear to load while producing nonsense.
+Templates make every parameter rename and layout transformation reviewable.
+They do not attempt to infer architecture from an opaque checkpoint; instead,
+users declare explicit tensor rules and model templates.
 """
 
 from __future__ import annotations
@@ -20,12 +20,25 @@ ParameterTreeLike: TypeAlias = "Mapping[str, ArrayLike | ParameterTreeLike]"
 
 
 class ConversionError(ValueError):
-    """The checkpoint and declared model template disagree."""
+    """The checkpoint and declared model template disagree.
+
+    Example:
+        >>> raise ConversionError("message")
+    """
 
 
 @dataclass(frozen=True)
 class TensorRule:
-    """One explicit source tensor → JAX PyTree leaf transformation."""
+    """One explicit source tensor → JAX PyTree leaf transformation.
+
+    :ivar source: str
+    :ivar target: tuple[str, ...]
+    :ivar transform: str
+    :ivar expected_shape: tuple[int, ...] | None
+
+    Example:
+        >>> obj = TensorRule(source=..., target=..., transform=...)
+    """
 
     source: str
     target: tuple[str, ...]
@@ -41,7 +54,15 @@ class TensorRule:
 
 @dataclass(frozen=True)
 class ModelTemplate:
-    """Architecture label and a complete, versionable mapping of its tensors."""
+    """Architecture label and a complete, versionable mapping of its tensors.
+
+    :ivar name: str
+    :ivar rules: tuple[TensorRule, ...]
+    :ivar source_format: str
+
+    Example:
+        >>> obj = ModelTemplate(name=..., rules=..., source_format=...)
+    """
 
     name: str
     rules: tuple[TensorRule, ...]
@@ -55,7 +76,16 @@ class ModelTemplate:
 
 
 def _set_path(tree: ParameterTree, path: Sequence[str], value: jax.Array) -> None:
-    """Set one JAX parameter leaf at a validated nested string path."""
+    """Set one JAX parameter leaf at a validated nested string path.
+
+    :param tree: ParameterTree input value
+    :param path: Sequence[str] input value
+    :param value: jax.Array input value
+    :returns: None
+
+    Example:
+        >>> _set_path(tree, path, value)
+    """
     current: ParameterTree = tree
     for name in path[:-1]:
         child = current.setdefault(name, {})
@@ -66,12 +96,26 @@ def _set_path(tree: ParameterTree, path: Sequence[str], value: jax.Array) -> Non
 
 
 def _as_jax_array(value: ArrayLike) -> jax.Array:
-    """Normalize one accepted external tensor into an immutable JAX array leaf."""
+    """Normalize one accepted external tensor into an immutable JAX array leaf.
+
+    :param value: ArrayLike input value
+    :returns: jax.Array
+
+    Example:
+        >>> result = _as_jax_array(value)
+    """
     return jnp.asarray(value)
 
 
 def normalize_parameter_tree(tree: ParameterTreeLike) -> ParameterTree:
-    """Recursively normalize external parameter leaves into a JAX-only parameter tree."""
+    """Recursively normalize external parameter leaves into a JAX-only parameter tree.
+
+    :param tree: ParameterTreeLike input value
+    :returns: ParameterTree
+
+    Example:
+        >>> result = normalize_parameter_tree(tree)
+    """
     normalized: ParameterTree = {}
     for name, value in tree.items():
         if isinstance(value, Mapping):
@@ -89,6 +133,14 @@ def convert_state_dict(
     Linear kernels need an explicit `transpose_2d` rule for the common PyTorch `[out, in]`
     to Flax `[in, out]` conversion. Extra checkpoint tensors fail in strict mode, preventing
     a partial or mismatched model from masquerading as a successful conversion.
+
+    :param state_dict: Mapping[str, ArrayLike] input value
+    :param template: ModelTemplate input value
+    :param strict: bool input value
+    :returns: ParameterTree
+
+    Example:
+        >>> result = convert_state_dict(state_dict, template)
     """
     result: ParameterTree = {}
     used: set[str] = set()

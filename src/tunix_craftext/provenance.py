@@ -1,4 +1,9 @@
-"""Expose source revision information to experiments and the documentation build."""
+"""Expose source revision information to experiments and the documentation build.
+
+This module reads the current Git checkout revision and returns a clear sentinel
+when the code is not running inside a repository, making run provenance explicit
+and reproducible.
+"""
 
 from __future__ import annotations
 
@@ -7,7 +12,13 @@ from pathlib import Path
 
 
 def git_revision(root: Path | None = None) -> str:
-    """Return the checked-out revision, or a clear sentinel outside a Git checkout."""
+    """Return the checked-out revision, or a clear sentinel outside a Git checkout.
+
+    :param root: Path | None input value
+    :returns: str
+
+    Example:
+    >>> result = git_revision(root)"""
     root = root or Path.cwd()
     try:
         return subprocess.check_output(

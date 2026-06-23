@@ -1,4 +1,9 @@
-"""Collection primitives kept independent of a particular policy or environment API."""
+"""Collection primitives kept independent of a particular policy or environment API.
+
+The module defines signatures and helpers for collecting rollouts in a framework-neutral form.
+It is intended for use by external drivers that sample from policies and pass
+state through an explicit step function.
+"""
 
 from __future__ import annotations
 
@@ -24,7 +29,13 @@ class PolicyFn(Protocol[PolicyObservationT, PolicyActionT]):
 
     def __call__(
         self, observation: PolicyObservationT
-    ) -> tuple[PolicyActionT, ArrayLike, ArrayLike]: ...
+    ) -> tuple[PolicyActionT, ArrayLike, ArrayLike]:
+        """Return an action, its log-probability and value for a batched observation.
+
+        :param observation: Batched observation PyTree consumed by the policy.
+        :returns: Tuple of (action, log_prob, value).
+        """
+        ...
 
 
 class StepFn(Protocol[StateT, StepActionT, StepObservationT]):
@@ -32,7 +43,14 @@ class StepFn(Protocol[StateT, StepActionT, StepObservationT]):
 
     def __call__(
         self, state: StateT, action: StepActionT
-    ) -> tuple[StateT, StepObservationT, ArrayLike, ArrayLike, ArrayLike]: ...
+    ) -> tuple[StateT, StepObservationT, ArrayLike, ArrayLike, ArrayLike]:
+        """Step the environment synchronously for one action.
+
+        :param state: Current environment state.
+        :param action: Action selected by the policy.
+        :returns: Tuple of (next_state, next_observation, reward, terminated, truncated).
+        """
+        ...
 
 
 class IndexedStepFn(Protocol[StateT, StepActionT, StepObservationT]):
@@ -40,7 +58,15 @@ class IndexedStepFn(Protocol[StateT, StepActionT, StepObservationT]):
 
     def __call__(
         self, state: StateT, action: StepActionT, step_index: jax.Array
-    ) -> tuple[StateT, StepObservationT, ArrayLike, ArrayLike, ArrayLike]: ...
+    ) -> tuple[StateT, StepObservationT, ArrayLike, ArrayLike, ArrayLike]:
+        """JAX-compatible step accepting the scan index for RNG selection.
+
+        :param state: Current environment state PyTree.
+        :param action: Action selected by the policy.
+        :param step_index: Integer scan index used to select RNG shards.
+        :returns: Tuple of (next_state, next_observation, reward, terminated, truncated).
+        """
+        ...
 
 
 def collect_rollout(
@@ -123,6 +149,12 @@ def collect_rollout_scan(
         tuple[ObservationT, ActionT, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array],
     ]:
         state, observation = carry
+        """One step of the jax.lax.scan used by `collect_rollout_scan`.
+
+        :param carry: Tuple of (state, observation) carried across time.
+        :param _: Unused scan index.
+        :returns: New carry and a tuple of observation/action/reward/terminated/truncated/log_prob/value.
+        """
         action, log_prob, value = policy(observation)
         next_state, next_observation, reward, terminated, truncated = step(state, action)
         return (next_state, next_observation), (
@@ -161,12 +193,28 @@ def collect_rollout_scan_indexed(
 
     The index lets callers select pre-split environment keys ``[T, B, 2]`` without hidden global
     RNG state. It is the production form for real CrafText environments.
+    :param initial_state: JAX PyTree state before time zero.
+    :param initial_observation: Batched observation PyTree at time zero.
+    :param horizon: Positive static rollout length ``T``.
+    :param policy: Pure JAX policy yielding action, log-probability and critic value.
+    :param step: Indexed step function accepting the scan index.
+    :returns: Final state, final observation and time-major ``RolloutBatch`` leaves ``[T, B, ...]``.
+    :raises ValueError: If ``horizon`` is not positive.
+
+    Example:
+        >>> final_state, final_obs, batch = collect_rollout_scan_indexed(initial_state, initial_obs, horizon, policy, step)
     """
     if horizon <= 0:
         raise ValueError("horizon must be positive")
 
     def scan_step(carry: tuple[StateT, ObservationT], index: jax.Array):
         state, observation = carry
+        """One indexed scan step forwarding the provided `index` to the `step` function.
+
+        :param carry: Tuple of (state, observation).
+        :param index: Scan index used by `IndexedStepFn` for RNG selection.
+        :returns: New carry and the flattened transition fields as JAX arrays.
+        """
         action, log_prob, value = policy(observation)
         next_state, next_observation, reward, terminated, truncated = step(state, action, index)
         return (next_state, next_observation), (
@@ -194,14 +242,24 @@ def collect_rollout_scan_indexed(
 
 
 def _stack_pytree(values: list[TreeT]) -> TreeT:
-    """Stack reference PyTrees on host, then normalize leaves to ``jax.Array`` once."""
+    """Stack reference PyTrees on host, then normalize leaves to ``jax.Array`` once.
+
+    :param values: list[TreeT] input value
+    :returns: TreeT
+
+    Example:
+        >>> result = _stack_pytree(values)
+    """
     return cast(TreeT, jax.tree.map(lambda *leaves: _stack_arraylike(list(leaves)), *values))
 
 
 def _stack_arraylike(values: list[ArrayLike]) -> jax.Array:
     """Stack a host reference field and return its normalized JAX contract array.
 
-    ``collect_rollout`` is deliberately the non-jitted oracle. Host stacking avoids a series of
-    eager JAX dispatches while preserving the ``jax.Array`` output contract used for parity.
+    :param values: List of host-side array-like objects to stack along axis 0.
+    :returns: A JAX array with stacked values.
+
+    Example:
+        >>> arr = _stack_arraylike([np.array([1,2]), np.array([3,4])])
     """
     return jnp.asarray(np.stack(values))

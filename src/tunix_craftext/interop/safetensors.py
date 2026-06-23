@@ -1,4 +1,9 @@
-"""Optional safe loader for HuggingFace-style safetensors checkpoints."""
+"""Optional safe loader for HuggingFace-style safetensors checkpoints.
+
+This module provides a minimal wrapper around safetensors loading to avoid
+pickle-based formats while still producing arrays that can be normalized into
+JAX-friendly tensors.
+"""
 
 from __future__ import annotations
 
@@ -11,7 +16,13 @@ from .template import ConversionError
 
 
 def load_safetensors(path: Path) -> dict[str, np.ndarray]:
-    """Load a safetensors file without supporting pickle-based checkpoint formats."""
+    """Load a safetensors file without supporting pickle-based checkpoint formats.
+
+    :param path: Path input value
+    :returns: dict[str, np.ndarray]
+
+    Example:
+        >>> result = load_safetensors(path)"""
     try:
         from safetensors.numpy import load_file  # type: ignore[import-not-found]
     except ImportError as error:

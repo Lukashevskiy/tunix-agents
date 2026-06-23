@@ -1,4 +1,9 @@
-"""Pure JAX PPO primitives: discounted returns and generalized advantage estimation."""
+"""Pure JAX PPO primitives: discounted returns and generalized advantage estimation.
+
+This module contains low-level PPO losses and trajectory utilities that operate
+on explicit JAX arrays. It is intentionally kept small and stateless so it can
+be reused across different actor-critic training pipelines.
+"""
 
 from __future__ import annotations
 
@@ -18,7 +23,23 @@ def ppo_loss(
     entropy: jax.Array,
     entropy_coefficient: float,
 ) -> tuple[jax.Array, dict[str, jax.Array]]:
-    """Return clipped PPO scalar loss and inspectable policy/value/KL metrics."""
+    """Return clipped PPO scalar loss and inspectable policy/value/KL metrics.
+
+    :param new_log_prob: jax.Array input value
+    :param old_log_prob: jax.Array input value
+    :param advantages: jax.Array input value
+    :param new_value: jax.Array input value
+    :param old_value: jax.Array input value
+    :param returns: jax.Array input value
+    :param clip_epsilon: float input value
+    :param value_coefficient: float input value
+    :param entropy: jax.Array input value
+    :param entropy_coefficient: float input value
+    :returns: tuple[jax.Array, dict[str, jax.Array]]
+
+    Example:
+        >>> loss, metrics = ppo_loss(new_log_prob, old_log_prob, advantages, new_value, old_value, returns, 0.2, 0.5, entropy, 0.01)
+    """
     ratio = jnp.exp(new_log_prob - old_log_prob)
     policy = -jnp.mean(
         jnp.minimum(
@@ -45,7 +66,19 @@ def generalized_advantage_estimation(
     gamma: float,
     gae_lambda: float,
 ) -> tuple[jax.Array, jax.Array]:
-    """Compute time-major GAE advantages and returns for ``[T, B]`` arrays."""
+    """Compute time-major GAE advantages and returns for ``[T, B]`` arrays.
+
+    :param rewards: jax.Array input value
+    :param values: jax.Array input value
+    :param bootstrap_value: jax.Array input value
+    :param terminated: jax.Array input value
+    :param gamma: float input value
+    :param gae_lambda: float input value
+    :returns: tuple[jax.Array, jax.Array]
+
+    Example:
+        >>> advantages, returns = generalized_advantage_estimation(rewards, values, bootstrap_value, terminated, gamma=0.99, gae_lambda=0.95)
+    """
     if rewards.ndim != 2 or values.shape != rewards.shape or terminated.shape != rewards.shape:
         raise ValueError("rewards, values and terminated must all have shape [T, B]")
     if bootstrap_value.shape != rewards.shape[1:]:
@@ -74,6 +107,15 @@ def masked_token_returns(
 
     Padding tokens have return zero and reset the backward carry, allowing host-side
     text completions of unequal length to share a static learning batch.
+
+    :param rewards: Per-token reward array shaped ``[B, T]``.
+    :param token_mask: Boolean mask marking generated (non-padding) tokens shaped ``[B, T]``.
+    :param gamma: Discount factor in [0, 1].
+    :returns: Returns-to-go array shaped ``[B, T]``.
+    :raises ValueError: If input shapes are incompatible or gamma is outside [0,1].
+
+    Example:
+        >>> returns = masked_token_returns(rewards, token_mask, gamma=0.99)
     """
     if rewards.shape != token_mask.shape or rewards.ndim != 2:
         raise ValueError("rewards and token_mask must have identical shape [B, T]")
@@ -108,7 +150,22 @@ def masked_token_ppo_loss(
 ) -> tuple[jax.Array, dict[str, jax.Array]]:
     """Apply PPO only to valid token positions in ``[B, T]`` text trajectories.
 
+    :param new_log_prob: Token-wise new log-probabilities shaped ``[B, T]``.
+    :param old_log_prob: Token-wise old log-probabilities shaped ``[B, T]``.
+    :param advantages: Token-wise advantage estimates shaped ``[B, T]``.
+    :param new_value: Token-wise current value predictions shaped ``[B, T]``.
+    :param old_value: Token-wise previous value predictions shaped ``[B, T]``.
+    :param returns: Token-wise bootstrap returns shaped ``[B, T]``.
+    :param token_mask: Boolean mask selecting valid policy tokens shaped ``[B, T]``.
+    :param clip_epsilon: PPO clipping epsilon.
+    :param value_coefficient: Value loss scale.
+    :param entropy: Token-wise entropy values shaped ``[B, T]``.
+    :param entropy_coefficient: Entropy bonus scale.
+    :returns: Tuple of scalar loss and per-term metrics.
     :raises ValueError: If token fields differ in shape or no policy token is valid.
+
+    Example:
+        >>> loss, metrics = masked_token_ppo_loss(new_log_prob, old_log_prob, advantages, new_value, old_value, returns, token_mask, 0.2, 0.5, entropy, 0.01)
     """
     fields = (new_log_prob, old_log_prob, advantages, new_value, old_value, returns, entropy)
     if token_mask.ndim != 2 or any(field.shape != token_mask.shape for field in fields):
