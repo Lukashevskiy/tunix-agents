@@ -31,13 +31,14 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --locked --extra dev --extra docs --extra tunix --extra envs --extra prompts
-      - run: make verify
+      - run: make docs
+      - run: make api-docs
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
 
   deploy:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: github.repository == 'Lukashevskiy/tunix-agents' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     environment:
