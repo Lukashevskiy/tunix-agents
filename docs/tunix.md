@@ -86,6 +86,21 @@ structured metrics/checkpoints на границе update, а mpi4jax — тол
 async фазы после проверки MPI toolchain. Состояния всех четырёх интеграций зафиксированы в
 `compatibility/training-stack.yaml` и [ADR 0005](adr/0005-sync-first-training-stack.md).
 
+## Batched rollout boundary
+
+`QwenTunixBackend.complete_batch()` принимает ordered batch одинаковых `LlmRequest` и передаёт
+весь список chat prompts в **один** публичный Tunix sampler invocation. Ответы сохраняют
+cardinality и порядок input batch, а также индивидуальные generated/prompt token ids и logprobs.
+Параметры `max_new_tokens` и `temperature` должны совпадать: это static sampler contract, а не
+повод скрытно разбить запрос на последовательные вызовы. `latency_ms` в каждой строке — wall
+time общего batch вызова, его нельзя суммировать.
+
+Реальный fixture закреплённого Qwen 0.5B подтверждает batch size 2. Это bridge к
+`RLCluster` `ROLLOUT` role, но ещё не сам distributed RL workload: для последнего нужны
+trainable actor/critic/reference, `RLTrainingConfig`, `RolloutConfig` и hardware-gated cluster
+fixture. После этого batch completions будут декодироваться в `[B]` action ids и подаваться в
+`jax.vmap(CrafText.step)`.
+
 Соответствующие versioned profiles — `configs/models/gemma3_270m_instruction.yaml`
 и `configs/models/qwen25_05b_instruction.yaml`. Их зафиксированные флаги download/license
 намеренно остаются `false`: они описывают портируемый репозиторий, а не приватное состояние

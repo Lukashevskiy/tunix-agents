@@ -104,7 +104,7 @@ class TextSampler(Protocol):
 
     def __call__(
         self,
-        input_strings: str,
+        input_strings: str | Sequence[str],
         *,
         max_generation_steps: int,
         max_prompt_length: int,
@@ -114,7 +114,7 @@ class TextSampler(Protocol):
     ) -> SamplerOutputLike:
         """Produce one sampling output for the given chat prompt.
 
-        :param input_strings: Rendered chat prompt text.
+        :param input_strings: One rendered chat prompt or a static ordered prompt batch.
         :param max_generation_steps: Max generated tokens.
         :param max_prompt_length: Padded prompt window length for the sampler.
         :param temperature: Sampling temperature.
@@ -394,12 +394,37 @@ class QwenTunixBackend:
         Example:
             >>> result = complete(request)
         """
-        if request.max_new_tokens >= self._cache_size:
+        return self.complete_batch((request,))[0]
+
+    def complete_batch(self, requests: Sequence[LlmRequest]) -> tuple[LlmResponse, ...]:
+        """Complete an ordered prompt batch through one public Tunix sampler call.
+
+        Every request must have identical generation length and temperature: these
+        are static sampler parameters and varying them would silently split a
+        batch into multiple calls. Each response retains its own token and prompt
+        provenance; ``latency_ms`` is the shared whole-batch wall time, not a sum.
+
+        :param requests: Non-empty ordered requests with uniform sampler settings.
+        :returns: One response per request in matching order.
+        :raises ValueError: If the batch is empty, has incompatible settings or exceeds cache.
+        """
+        if not requests:
+            raise ValueError("requests must be non-empty")
+        max_new_tokens = requests[0].max_new_tokens
+        temperature = requests[0].temperature
+        if any(request.max_new_tokens != max_new_tokens for request in requests):
+            raise ValueError("batch requests must share max_new_tokens")
+        if any(request.temperature != temperature for request in requests):
+            raise ValueError("batch requests must share temperature")
+        if max_new_tokens >= self._cache_size:
             raise ValueError("max_new_tokens must be smaller than cache_size")
         started = perf_counter()
-        chat_prompt = format_qwen_action_prompt(self._tokenizer, request.prompt.text)
-        required_cache_size = qwen_required_cache_size(
-            self._tokenizer, chat_prompt, request.max_new_tokens
+        chat_prompts = tuple(
+            format_qwen_action_prompt(self._tokenizer, request.prompt.text) for request in requests
+        )
+        required_cache_size = max(
+            qwen_required_cache_size(self._tokenizer, chat_prompt, max_new_tokens)
+            for chat_prompt in chat_prompts
         )
         if required_cache_size > self._cache_size:
             raise ValueError(
@@ -407,31 +432,40 @@ class QwenTunixBackend:
                 f"requires at least {required_cache_size}, got {self._cache_size}"
             )
         output = self._sampler(
-            chat_prompt,
-            max_generation_steps=request.max_new_tokens,
-            max_prompt_length=required_cache_size - request.max_new_tokens,
-            temperature=request.temperature,
+            list(chat_prompts),
+            max_generation_steps=max_new_tokens,
+            max_prompt_length=required_cache_size - max_new_tokens,
+            temperature=temperature,
             seed=self._seed,
             return_logprobs=True,
         )
         raw_logprobs = output.logprobs
-        token_logprobs = (
-            tuple(float(value) for value in raw_logprobs[0]) if raw_logprobs else None
-        )
-        token_ids = tuple(int(token) for token in output.tokens[0])
-        prompt_token_ids = tuple(
-            int(token)
-            for token in output.padded_prompt_tokens[0]
-            if int(token) != self._tokenizer.pad_id()
-        )
-        return LlmResponse(
-            raw_text=output.text[0],
-            backend="tunix-single-device",
-            model=QWEN_MODEL_ID,
-            latency_ms=(perf_counter() - started) * 1_000,
-            token_logprobs=token_logprobs,
-            token_ids=token_ids,
-            prompt_token_ids=prompt_token_ids,
+        latency_ms = (perf_counter() - started) * 1_000
+        if len(output.text) != len(requests) or len(output.tokens) != len(requests):
+            raise ValueError("Tunix sampler output cardinality does not match request batch")
+        if raw_logprobs is not None and len(raw_logprobs) != len(requests):
+            raise ValueError("Tunix sampler logprob cardinality does not match request batch")
+        if len(output.padded_prompt_tokens) != len(requests):
+            raise ValueError("Tunix sampler prompt cardinality does not match request batch")
+        return tuple(
+            LlmResponse(
+                raw_text=output.text[index],
+                backend="tunix-single-device",
+                model=QWEN_MODEL_ID,
+                latency_ms=latency_ms,
+                token_logprobs=(
+                    tuple(float(value) for value in raw_logprobs[index])
+                    if raw_logprobs is not None
+                    else None
+                ),
+                token_ids=tuple(int(token) for token in output.tokens[index]),
+                prompt_token_ids=tuple(
+                    int(token)
+                    for token in output.padded_prompt_tokens[index]
+                    if int(token) != self._tokenizer.pad_id()
+                ),
+            )
+            for index in range(len(requests))
         )
 
     def hidden_states(self, request: LlmRequest) -> jax.Array:

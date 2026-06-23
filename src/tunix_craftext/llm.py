@@ -11,6 +11,7 @@ Example:
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -67,6 +68,14 @@ class LlmBackend(Protocol):
         ...
 
 
+class BatchLlmBackend(LlmBackend, Protocol):
+    """LLM backend capable of completing a static ordered prompt batch in one call."""
+
+    def complete_batch(self, requests: Sequence[LlmRequest]) -> tuple[LlmResponse, ...]:
+        """Complete all requests while preserving input order and cardinality."""
+        ...
+
+
 @dataclass(frozen=True)
 class ScriptedLlmBackend:
     """A trivial `LlmBackend` that returns a fixed scripted response.
@@ -84,3 +93,7 @@ class ScriptedLlmBackend:
         :returns: A LlmResponse with the scripted `raw_text` and zero latency.
         """
         return LlmResponse(self.raw_text, "scripted", self.model, 0.0)
+
+    def complete_batch(self, requests: Sequence[LlmRequest]) -> tuple[LlmResponse, ...]:
+        """Return one deterministic response per request in the original order."""
+        return tuple(self.complete(request) for request in requests)

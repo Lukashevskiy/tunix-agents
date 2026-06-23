@@ -38,6 +38,31 @@ def test_real_qwen_tunix_backend_generates_completion_with_provenance() -> None:
 
 @pytest.mark.integration
 @pytest.mark.skipif(not SNAPSHOT.is_dir(), reason="download the local Qwen snapshot")
+def test_real_qwen_tunix_backend_completes_two_prompts_in_one_batch() -> None:
+    """Pinned Tunix sampler accepts an ordered prompt batch with per-row provenance."""
+    backend = QwenTunixBackend(SNAPSHOT, cache_size=256)
+    requests = (
+        LlmRequest(
+            RenderedPrompt("Reply only: <action>DO</action>", ActionCatalog(("DO",)), "smoke"),
+            max_new_tokens=4,
+        ),
+        LlmRequest(
+            RenderedPrompt("Reply only: <action>DO</action>", ActionCatalog(("DO",)), "smoke"),
+            max_new_tokens=4,
+        ),
+    )
+
+    responses = backend.complete_batch(requests)
+
+    assert len(responses) == len(requests)
+    assert all(response.raw_text for response in responses)
+    assert all(response.token_ids for response in responses)
+    assert all(response.prompt_token_ids for response in responses)
+    assert all(response.token_logprobs is not None for response in responses)
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not SNAPSHOT.is_dir(), reason="download the local Qwen snapshot")
 def test_real_qwen_hidden_state_feature_bridge_has_batch_token_feature_axes() -> None:
     """Pinned Qwen exposes final hidden states without inventing a critic interface."""
     backend = QwenTunixBackend(SNAPSHOT, cache_size=256)
