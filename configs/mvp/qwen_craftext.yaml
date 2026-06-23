@@ -1,15 +1,15 @@
 schema_version: 1
 run:
   name: qwen-craftext-text-episode
-  seed: 7
+  seed: 47
 environment:
   implementation: craftext
   base_environment: Craftax-Classic-Pixels-v1
   world_preset: tiny_box_oob_no_mobs
   scenario_config: relational/achievements/easy/safe_avoid_enemy_by_radius
   instruction_index: 0
-  batch_size: 1
-  horizon: 4
+  batch_size: 32
+  horizon: 50
 prompt:
   renderer: megaprompts
   template: base

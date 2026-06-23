@@ -45,5 +45,16 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Check GitHub Pages enabled
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            try {
+              await github.rest.repos.getPages({ owner, repo });
+              core.info('GitHub Pages appears enabled for ' + owner + '/' + repo);
+            } catch (err) {
+              core.setFailed(`GitHub Pages is not enabled for ${owner}/${repo}. Enable it at https://github.com/${owner}/${repo}/settings/pages`);
+            }
       - id: deployment
         uses: actions/deploy-pages@v4
