@@ -11,6 +11,8 @@ import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+import numpy as np
+
 
 @dataclass(frozen=True)
 class ReplayStep:
@@ -23,6 +25,9 @@ class ReplayStep:
     :ivar action_label: str
     :ivar reward: float
     :ivar terminated: bool
+    :ivar truncated: bool
+    :ivar action_mask: tuple[bool, ...] | None
+    :ivar observation: object | None
     :ivar invalid_format: int
     :ivar unknown_action: int
     :ivar fallback_used: bool
@@ -38,6 +43,9 @@ class ReplayStep:
     action_label: str
     reward: float
     terminated: bool
+    truncated: bool = False
+    action_mask: tuple[bool, ...] | None = None
+    observation: object | None = None
     invalid_format: int = 0
     unknown_action: int = 0
     fallback_used: bool = False
@@ -72,6 +80,20 @@ class ReplayArtifact:
     schema: str = "tunix-craftext.replay/v3"
 
 
+def _serialize_value(value: object) -> object:
+    if isinstance(value, dict):
+        return {key: _serialize_value(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_serialize_value(item) for item in value]
+    try:
+        array = np.asarray(value)
+    except Exception:
+        return value
+    if isinstance(array, np.ndarray):
+        return array.tolist()
+    return value
+
+
 def save_replay(path: Path, artifact: ReplayArtifact) -> None:
     """Persist a human-inspectable replay as atomic JSON.
 
@@ -88,7 +110,8 @@ def save_replay(path: Path, artifact: ReplayArtifact) -> None:
     """
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(".tmp")
+    payload = _serialize_value(asdict(artifact))
     temporary.write_text(
-    json.dumps(asdict(artifact), indent=2, ensure_ascii=False), encoding="utf-8"
+        json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
     )
     temporary.replace(path)
