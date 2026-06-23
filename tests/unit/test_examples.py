@@ -22,6 +22,8 @@ def test_example_notebooks_are_valid_nbformat_with_runnable_imports() -> None:
         "06_qwen_craftext_manual_episode.ipynb": "QwenTunixBackend",
         "07_qwen_craftext_full_trajectory.ipynb": "collect_text_episode",
         "08_parallel_craftext_pipeline.ipynb": "jax.vmap",
+        "09_batched_qwen_craftext_rollout.ipynb": "collect_batched_text_rollout",
+        "10_replay_to_token_ppo.ipynb": "masked_token_ppo_loss",
     }
     for filename, required_symbol in expected.items():
         notebook = json.loads((NOTEBOOKS / filename).read_text(encoding="utf-8"))

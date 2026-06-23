@@ -25,6 +25,11 @@ replay v3 persistence.
 compile/steady-state timing. Он намеренно не выдаёт это за parallel Qwen inference: текущий
 Qwen backend single-request, а batched actor/rollout service относится к будущему RLCluster этапу.
 
+`09_batched_qwen_craftext_rollout.ipynb` показывает уже реализованный bridge: B×T Qwen/CrafText
+rollout, per-row terminal reset и export replay на каждую среду. `10_replay_to_token_ppo.ipynb`
+без повторного LLM inference преобразует этот replay в `TextTrajectoryBatch`, показывает masks,
+returns и token PPO loss mechanics.
+
 Тот же путь доступен вне Jupyter и сохраняет как raw replay, так и summary metrics:
 
 ```bash
