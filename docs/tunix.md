@@ -108,6 +108,12 @@ batch size 2. Функция делает ровно **один decision**: он
 `terminated → reset` внутри multi-turn collection. Этот следующий collector станет consumer
 `RLCluster.ROLLOUT`, когда будут созданы trainable роли actor/critic/reference.
 
+`collect_batched_text_rollout()` расширяет transport до fixed horizon `[T, B]`: после каждого
+шага сохраняется terminal transition, а `terminated | truncated` rows получают reset только для
+следующего шага (другие states/dialogs продолжаются). `replays_from_batched_rollout()` создаёт
+по одному replay v3 на environment row; каждый из них напрямую совместим с
+`text_trajectory_from_replay()` и masked token PPO learning contract.
+
 Соответствующие versioned profiles — `configs/models/gemma3_270m_instruction.yaml`
 и `configs/models/qwen25_05b_instruction.yaml`. Их зафиксированные флаги download/license
 намеренно остаются `false`: они описывают портируемый репозиторий, а не приватное состояние

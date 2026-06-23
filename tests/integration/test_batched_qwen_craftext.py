@@ -7,7 +7,11 @@ from pathlib import Path
 import jax
 import pytest
 
-from tunix_craftext.batched_rollout import collect_batched_text_decision
+from tunix_craftext.batched_rollout import (
+    collect_batched_text_decision,
+    collect_batched_text_rollout,
+    replays_from_batched_rollout,
+)
 from tunix_craftext.config import load_mvp_config
 from tunix_craftext.prompts import MegaPromptRenderer
 from tunix_craftext.runtime import build_craftext_runtime
@@ -42,3 +46,36 @@ def test_real_qwen_batch_drives_parallel_craftext_step() -> None:
     assert result.transition.reward.shape == (2,)
     assert result.transition.terminated.shape == (2,)
     assert result.fallback_used.shape == (2,)
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not SNAPSHOT.is_dir(), reason="download the local Qwen snapshot")
+def test_real_qwen_collects_two_env_two_step_rollout_and_exports_replays() -> None:
+    """The parallel path retains per-environment replay evidence for learning conversion."""
+    config = load_mvp_config(ROOT / "configs" / "mvp" / "qwen_craftext.yaml")
+    runtime = build_craftext_runtime(config)
+    rollout = collect_batched_text_rollout(
+        runtime.adapter,
+        MegaPromptRenderer(config.prompt.template),
+        QwenTunixBackend(SNAPSHOT, cache_size=2048, seed=config.run.seed),
+        actions=runtime.actions,
+        batch_size=2,
+        horizon=2,
+        seed=config.run.seed,
+        goal="Stay alive and inspect the world.",
+        max_new_tokens=8,
+        invalid_action="fallback",
+        fallback_action_id=runtime.actions.index_of("NOOP"),
+    )
+
+    replays = replays_from_batched_rollout(
+        rollout,
+        config_path="configs/mvp/qwen_craftext.yaml",
+        commit="integration",
+        backend="tunix-single-device:Qwen",
+    )
+
+    assert len(rollout.decisions) == len(rollout.reset_after_step) == 2
+    assert len(replays) == 2
+    assert all(len(replay.steps) == 2 for replay in replays)
+    assert all(step.token_ids for replay in replays for step in replay.steps)

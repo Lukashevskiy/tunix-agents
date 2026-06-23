@@ -69,6 +69,9 @@
   в одном вызове с per-row provenance; `collect_batched_text_decision` уже соединяет его с
   batched decode/fallback и `vmap(CrafText.step)`. Следующий шаг — multi-turn done-reset collector
   как consumer `RLCluster.ROLLOUT`.
+- [x] Собрать fixed-horizon parallel text rollout: `collect_batched_text_rollout` реализует
+  per-row `terminated/truncated → reset`, export в replay v3 и real Qwen/CrafText fixture
+  B=2,T=2. Этот replay можно конвертировать в `TextTrajectoryBatch` для token loss tests.
 - [ ] Сделать SFT warm-start и PPO на коротких fixed prompt rollouts.
 - [ ] Лишь после этого добавить GRPO как самостоятельный algorithm module, не как fork PPO.
 

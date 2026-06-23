@@ -104,6 +104,11 @@
       "name": "Parallel Qwen/CrafText decision transport",
       "status": "ready",
       "description": "collect_batched_text_decision соединяет batch EnvState/MegaPrompts/Qwen completion/strict decode с одним jax.vmap(CrafText.step); real two-state fixture проходит. Multi-turn done-reset collection и RLCluster actor/critic остаются следующими явными контрактами."
+    },
+    {
+      "name": "Fixed-horizon parallel text rollout",
+      "status": "ready",
+      "description": "collect_batched_text_rollout выполняет batch Qwen/CrafText decisions на horizon, сохраняет terminal transition и reset только finished rows для следующего шага; replays_from_batched_rollout экспортирует per-env replay v3, совместимый с TextTrajectoryBatch/PPO contracts. Real B=2,T=2 fixture проходит."
     }
   ]
 }
