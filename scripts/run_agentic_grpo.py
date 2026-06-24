@@ -80,6 +80,7 @@ def main(arguments: Sequence[str] | None = None) -> None:
         agentic_environment_kwargs,
     )
     from tunix_craftext.config import load_mvp_config
+    from tunix_craftext.preflight import pinned_qwen_tensor_shape, validate_agentic_grpo_preflight
     from tunix_craftext.rlcluster_workload import (
         AgenticGrpoWorkloadSpec,
         build_agentic_grpo_cluster,
@@ -103,6 +104,7 @@ def main(arguments: Sequence[str] | None = None) -> None:
         num_generations=args.num_generations,
         max_concurrency=args.num_generations,
     )
+    validate_agentic_grpo_preflight(topology, spec, pinned_qwen_tensor_shape())
     logging.info("Loading Agentic GRPO Qwen assets from %s", args.snapshot)
     assets = load_agentic_grpo_qwen_assets(args.snapshot, topology)
     cluster = build_agentic_grpo_cluster(topology, spec, assets)

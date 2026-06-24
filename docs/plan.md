@@ -40,6 +40,8 @@ task/seed -> CrafText Agentic environment -> ToolAgent -> RLCluster rollout
 - [ ] Добавить SHA256 и exact revisions каждого vendor snapshot в `vendor/manifest.json`.
 - [ ] Зафиксировать один train profile: Qwen 2.5 0.5B, tokenizer, model revision,
   licence acknowledgement, target accelerator, mesh и memory budget.
+- [x] Добавить Qwen mesh preflight: до загрузки весов проверяются head/embed/vocab
+  divisibility по role mesh, train/rollout micro-batch и prompt+generation KV cache budget.
 - [ ] Добавить exact deterministic fixture: 2 CrafText env, 8 turns, fixed seeds,
   expected tool calls/rewards/done/action masks.
 - [ ] Разделить lockfile evidence: macOS/CPU smoke и target accelerator installation.

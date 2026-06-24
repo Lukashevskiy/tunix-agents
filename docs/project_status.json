@@ -1,6 +1,11 @@
 {
   "capabilities": [
     {
+      "name": "Qwen RLCluster preflight",
+      "status": "ready",
+      "description": "До allocation Qwen weights проверяет topology role degrees, Qwen tensor divisibility, static train/rollout micro-batches и KV-cache budget; Agentic GRPO CLI вызывает preflight до model factory."
+    },
+    {
       "name": "Контракт траектории",
       "status": "ready",
       "description": "JAX PyTree-контракт нормализует ArrayLike boundary inputs в jax.Array, проверяет time-major формы [T, B, ...] всех вложенных leaves, terminal/truncation и bootstrap value до запуска learner."
