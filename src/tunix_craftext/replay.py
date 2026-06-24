@@ -30,6 +30,7 @@ class ReplayStep:
     :ivar observation: object | None
     :ivar invalid_format: int
     :ivar unknown_action: int
+    :ivar masked_action: int
     :ivar fallback_used: bool
 
     Example:
@@ -48,6 +49,7 @@ class ReplayStep:
     observation: object | None = None
     invalid_format: int = 0
     unknown_action: int = 0
+    masked_action: int = 0
     fallback_used: bool = False
     token_logprobs: tuple[float, ...] | None = None
     token_ids: tuple[int, ...] | None = None

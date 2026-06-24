@@ -77,3 +77,24 @@ Tunix не должен становиться скрытой внутренне
 получит три небольших операции: `sample`, `log_prob_and_value`, `apply_gradients`.
 Версия Tunix, сигнатуры и функциональный parity-smoke тест фиксируются в
 `compatibility/tunix.yaml`. Изменение API — отдельный ADR и compatibility PR.
+
+## Audit 2026-06-24: используемые внутренние проекты и единый pipeline
+
+Внутренний стек сейчас опирается на три vendored проекта: CrafText/Craftax environment
+baseline, CagedCrafText safety wrapper и MegaPrompts prompt assets. Снаружи core boundary
+подключает JAX/Flax/Optax/Orbax, а Tunix, Flashbax, Qwix и CLU остаются optional extras,
+закреплёнными за adapter/staging/interop/reporting слоями. Проверка согласованности не
+выявила нарушений `vendor → adapters → rollout → algorithms → learner/checkpoints`:
+обучающий путь идёт через `collect_batched_text_rollout`, `replays_from_batched_rollout`,
+`text_trajectory_from_replay`, `masked_token_returns` и `masked_token_ppo_loss`.
+Текущий action mask теперь enforced непосредственно перед `CrafTextAdapter.step`: если Tunix/Qwen
+или любой другой backend выбирает запрещённый текущим состоянием action, pipeline либо падает
+в `invalid_action="error"` режиме, либо использует явно настроенный fallback и записывает
+`masked_action`/`fallback_used` в trajectory evidence.
+
+Новый notebook `12_full_cycle_craftext_training.ipynb` фиксирует полный CrafText цикл на
+маленьком deterministic backend: rollout, replay evidence, token batch, returns и masked
+PPO update. Это не объявляет trainable Qwen/RLCluster готовым: production actor logprobs,
+critic values и distributed workload остаются следующими explicit boundaries. Будущие PPO/DPO/
+GRPO objectives должны подключаться через registry/typed batch contracts, а не менять
+MegaPrompts, CrafText adapter или rollout transport.
