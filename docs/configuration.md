@@ -20,8 +20,9 @@ fallback. Он запускается через `scripts/run_text_episode.py`; 
 
 Поддерживаемая версия схемы сейчас только `1`; изменение полей — отдельная migration/ADR.
 `build_craftext_runtime()` связывает validated `MvpRunConfig` с vendored world preset и
-`CrafTextAdapter`; реальный reset и fixed-key mini-trajectory проверены integration test. Следующий
-шаг — batched 2×8 golden trajectory и JAX scan parity.
+`CrafTextAdapter`; реальный reset, fixed-key mini-trajectory, batched rollout/replay export и
+JAX scan parity покрываются unit/integration lanes. Следующий шаг — trainable actor/critic
+config section для RLCluster workload.
 
 ```bash
 pyenv exec python -m uv sync --extra envs --extra prompts

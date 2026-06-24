@@ -69,8 +69,8 @@
   остаётся hardware-gated creation реального `RLCluster` workload.
 - [~] Добавить batch rollout boundary: Qwen/Tunix sampler уже проходит real batch-size-2 fixture
   в одном вызове с per-row provenance; `collect_batched_text_decision` уже соединяет его с
-  batched decode/fallback и `vmap(CrafText.step)`. Следующий шаг — multi-turn done-reset collector
-  как consumer `RLCluster.ROLLOUT`.
+  batched decode/action-mask fallback и `vmap(CrafText.step)`. Multi-turn done-reset collector
+  реализован как sync precursor будущего consumer `RLCluster.ROLLOUT`.
 - [x] Собрать fixed-horizon parallel text rollout: `collect_batched_text_rollout` реализует
   per-row `terminated/truncated → reset`, export в replay v3 и real Qwen/CrafText fixture
   B=2,T=2. Этот replay можно конвертировать в `TextTrajectoryBatch` для token loss tests.

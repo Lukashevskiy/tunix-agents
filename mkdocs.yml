@@ -36,11 +36,14 @@ nav:
   - Интеграция с Tunix: tunix.md
   - Промпты: prompts.md
   - Конфигурация: configuration.md
+  - Код:
+      - Обзор API: code-reference.md
+      - Автодока API: _generated/api-reference.md
+      - Типы и docstrings: code-quality.md
   - Патчи vendor: vendor-patches.md
   - План реализации: plan.md
   - Качество и perf: quality.md
   - Среда разработки: development.md
-  - Типы и docstrings: code-quality.md
   - Поставка изменений: delivery.md
   - Эксперименты: experiments.md
   - Примеры: examples.md

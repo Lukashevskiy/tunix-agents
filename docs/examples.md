@@ -15,15 +15,16 @@ pyenv exec python -m uv run jupyter lab examples/notebooks
 `base` из `EnvState`, sampling Tunix, строгий decode с видимым fallback, одно действие CrafText и
 replay v3 persistence.
 
-`07_qwen_craftext_full_trajectory.ipynb` продолжает этот пример до полного короткого episode:
-он вызывает `collect_text_episode()`, сохраняет replay с observation/action-mask/token provenance,
-рисует rewards и actions, а затем выводит ленту CrafText observation frames. Веса по-прежнему
+`07_qwen_craftext_full_trajectory.ipynb` продолжает этот пример уже через итоговый batched
+transport: `collect_batched_text_rollout()` вызывает MegaPrompts и один ordered Tunix/Qwen
+batch на decision, enforce-ит action mask/fallback перед `vmap(CrafText.step)` и сохраняет
+по одному replay на environment row через `replays_from_batched_rollout()`. Веса по-прежнему
 должны заранее и явно находиться в `artifacts/models/qwen25-05b-instruct`.
 
-`08_parallel_craftext_pipeline.ipynb` демонстрирует текущую JAX-native parallel boundary:
-батч сред через `jax.vmap`, горизонт через `jax.lax.scan`, actions/rewards `[T, B]` и отдельно
-compile/steady-state timing. Он намеренно не выдаёт это за parallel Qwen inference: текущий
-Qwen backend single-request, а batched actor/rollout service относится к будущему RLCluster этапу.
+`08_parallel_craftext_pipeline.ipynb` демонстрирует JAX-native transport, который downstream
+text notebooks используют после decode: батч сред через `jax.vmap`, горизонт через
+`jax.lax.scan`, actions/rewards `[T, B]` и отдельно compile/steady-state timing. Notebook 09/11/12
+добавляют к этому transport batched Tunix completions, replay export и token PPO smoke.
 
 `09_batched_qwen_craftext_rollout.ipynb` показывает уже реализованный bridge: B×T Qwen/CrafText
 rollout, per-row terminal reset и export replay на каждую среду. `10_replay_to_token_ppo.ipynb`
@@ -33,6 +34,10 @@ returns и token PPO loss mechanics.
 `11_end_to_end_batched_qwen_ppo.ipynb` объединяет все эти стадии в одном run: параллельные
 среды и Qwen requests, full rollout/replay, token batch, masked PPO loss и visualisation. Его
 loss — проверка формы данных: до появления RLCluster actor/critic он не выполняет update весов.
+
+`12_full_cycle_craftext_training.ipynb` — компактный scripted smoke того же полного цикла без
+частных весов: rollout → replay evidence → `TextTrajectoryBatch` → returns → masked PPO update.
+Используйте его как минимальную стартовую точку перед подключением trainable actor/critic.
 
 Тот же путь доступен вне Jupyter и сохраняет как raw replay, так и summary metrics:
 
@@ -44,5 +49,5 @@ loss — проверка формы данных: до появления RLClu
 
 ```bash
 PYTHONPATH=src .venv/bin/python scripts/visualize_trajectory.py \
-  --trajectory artifacts/trajectories/qwen-craftext-full-notebook.json
+  --trajectory artifacts/trajectories/qwen-craftext-full-notebook/env-0.json
 ```
