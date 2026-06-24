@@ -45,7 +45,9 @@
    mini-batch test; token-level masked PPO variant покрывает padded text trajectories.
 - [~] Flax actor-critic и `TrainState` с Optax schedule/gradient clipping.
 - [x] Один update на synthetic trajectory → loss finite, params change, checkpoint round-trip.
-- [ ] Запустить tiny CrafText end-to-end и сохранить trajectory/rendered prompt/metrics.
+- [~] Запустить tiny CrafText end-to-end и сохранить trajectory/rendered prompt/metrics:
+   full-cycle notebook уже связывает CrafText rollout → replay evidence → token PPO smoke
+   update; следующий шаг — real trainable Qwen/RLCluster actor/critic update с метриками.
 - [~] Добавить bounded JIT-safe Flashbax staging: typed text item-buffer проходит
   `jax.jit(add/sample)`; остаётся включить его в один synchronous collector→PPO update.
 
@@ -67,8 +69,8 @@
   остаётся hardware-gated creation реального `RLCluster` workload.
 - [~] Добавить batch rollout boundary: Qwen/Tunix sampler уже проходит real batch-size-2 fixture
   в одном вызове с per-row provenance; `collect_batched_text_decision` уже соединяет его с
-  batched decode/fallback и `vmap(CrafText.step)`. Следующий шаг — multi-turn done-reset collector
-  как consumer `RLCluster.ROLLOUT`.
+  batched decode/action-mask fallback и `vmap(CrafText.step)`. Multi-turn done-reset collector
+  реализован как sync precursor будущего consumer `RLCluster.ROLLOUT`.
 - [x] Собрать fixed-horizon parallel text rollout: `collect_batched_text_rollout` реализует
   per-row `terminated/truncated → reset`, export в replay v3 и real Qwen/CrafText fixture
   B=2,T=2. Этот replay можно конвертировать в `TextTrajectoryBatch` для token loss tests.

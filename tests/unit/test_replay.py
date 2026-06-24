@@ -12,10 +12,22 @@ def test_replay_is_versioned_and_preserves_raw_completion(tmp_path: Path) -> Non
             "config.yaml",
             "abc",
             "scripted",
-            (ReplayStep(0, "p", "<action>DO</action>", 2, "DO", 1.0, False),),
+            (
+                ReplayStep(
+                    0,
+                    "p",
+                    "<action>DO</action>",
+                    2,
+                    "DO",
+                    1.0,
+                    False,
+                    masked_action=1,
+                ),
+            ),
         ),
     )
     data = json.loads(path.read_text())
     assert data["schema"] == "tunix-craftext.replay/v3"
     assert data["steps"][0]["raw_completion"] == "<action>DO</action>"
+    assert data["steps"][0]["masked_action"] == 1
     assert data["steps"][0]["fallback_used"] is False

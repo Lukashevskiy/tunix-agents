@@ -6,10 +6,13 @@
 
 ## Статус
 
-**Foundation / contract-first.** Vendored окружения и prompt assets скопированы без
-изменений в `vendor/`; лицензии и атрибуция остались там. Локальный smoke-путь Tunix/Qwen
-уже реализован, однако полноценно распределённый RLCluster workload и GRPO остаются
-следующими этапами.
+**Sync rollout / contract-first training path.** Vendored окружения и prompt assets скопированы
+без изменений в `vendor/`; лицензии и атрибуция остались там. Итоговый локальный путь уже
+собирает `CrafText state batch → MegaPrompts → batched Tunix/Qwen → strict decode/action-mask
+fallback → CrafText vmap(step) → replay v3 → TextTrajectoryBatch → masked token PPO smoke`.
+Полноценно распределённый `RLCluster` workload, trainable actor/critic и новые objectives
+вроде DPO/GRPO остаются следующими этапами и должны подключаться через typed registry/batch
+contracts, а не менять transport среды.
 
 ## Быстрый старт
 
@@ -56,5 +59,7 @@ Material и не обновит сгенерированные страницы.
 tесты и доказательства производительности, обновление документации/статуса, intentional commit и
 сборка сайта.
 
-Прочитайте [план выполнения](docs/plan.md), [архитектуру](docs/architecture.md) и
-[стратегию тестирования/benchmark](docs/quality.md) перед расширением тренера.
+Прочитайте [план выполнения](docs/plan.md), [архитектуру](docs/architecture.md),
+[интеграцию с Tunix](docs/tunix.md), [код/API](docs/code-reference.md) и [примеры](docs/examples.md) перед расширением тренера.
+Notebook 07 показывает batched Qwen/Tunix rollout и replay export, 09/11/12 доводят тот же
+pipeline до replay→token batch→masked PPO smoke cycle.

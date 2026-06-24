@@ -8,6 +8,8 @@ checkboxes in docs/plan.md, docs/project_status.json, and artifacts/benchmarks/*
 
 from __future__ import annotations
 
+import importlib
+import inspect
 import json
 import re
 import subprocess
@@ -25,6 +27,23 @@ STATUS = DOCS / "project_status.json"
 BENCHMARKS = ROOT / "artifacts" / "benchmarks"
 TEXT_EPISODE_METRICS = ROOT / "artifacts" / "metrics"
 CHECKBOX = re.compile(r"^\s*- \[([ xX~])\]\s+(.*)$", re.MULTILINE)
+API_MODULES = (
+    "tunix_craftext.adapters.craftext",
+    "tunix_craftext.prompts",
+    "tunix_craftext.text_policy",
+    "tunix_craftext.llm",
+    "tunix_craftext.batched_rollout",
+    "tunix_craftext.replay",
+    "tunix_craftext.text_trajectory",
+    "tunix_craftext.algorithms",
+    "tunix_craftext.algorithm_registry",
+    "tunix_craftext.config",
+    "tunix_craftext.runtime",
+    "tunix_craftext.checkpoints",
+    "tunix_craftext.tunix_adapter",
+    "tunix_craftext.tunix_topology",
+    "tunix_craftext.rlcluster_workload",
+)
 
 
 def command(*args: str) -> str:
@@ -312,6 +331,65 @@ def write_page(name: str, body: str) -> None:
     (GENERATED / name).write_text(body.strip() + "\n", encoding="utf-8")
 
 
+def first_doc_paragraph(obj: object) -> str:
+    """Return the first paragraph of a docstring, collapsed for a Markdown table."""
+    doc = inspect.getdoc(obj) or ""
+    paragraph = doc.split("\n\n", 1)[0]
+    return markdown_escape(" ".join(paragraph.split())) if paragraph else "—"
+
+
+def public_api_rows(module_name: str) -> str:
+    """Render public classes/functions from one module as Markdown table rows."""
+    try:
+        module = importlib.import_module(module_name)
+    except Exception as error:  # optional dependency imports must not break docs generation
+        return f"| `{module_name}` | import failed | — | {markdown_escape(error)} |"
+    rows: list[str] = []
+    for name, obj in sorted(vars(module).items()):
+        if name.startswith("_"):
+            continue
+        if not (inspect.isclass(obj) or inspect.isfunction(obj)):
+            continue
+        if getattr(obj, "__module__", "") != module_name:
+            continue
+        kind = "class" if inspect.isclass(obj) else "function"
+        try:
+            signature = str(inspect.signature(obj))
+        except (TypeError, ValueError):
+            signature = "(...)"
+        rows.append(
+            f"| `{module_name}` | {kind} | `{name}{signature}` | {first_doc_paragraph(obj)} |"
+        )
+    return "\n".join(rows) or f"| `{module_name}` | — | — | Нет public API symbols. |"
+
+
+def generate_api_reference(built_at: str) -> None:
+    """Generate a lightweight MkDocs API reference from Python docstrings."""
+    module_sections = "\n".join(
+        f"### `{module}`\n\n"
+        "| Модуль | Тип | Symbol | Описание |\n"
+        "| --- | --- | --- | --- |\n"
+        f"{public_api_rows(module)}\n"
+        for module in API_MODULES
+    )
+    write_page(
+        "api-reference.md",
+        f"""
+# Автодока API
+
+_Автогенерация: `{built_at}` из Python docstrings в `src/tunix_craftext`.
+Генератор: `scripts/generate_dashboard.py`. Для Sphinx/autodoc HTML также используйте
+`make api-docs`._
+
+Эта страница намеренно stdlib-only, чтобы MkDocs site мог получить code reference без
+дополнительных plugins. Она перечисляет public classes/functions каждого слоя; подробные
+контракты, примеры и типы берутся из docstrings рядом с кодом.
+
+{module_sections}
+""",
+    )
+
+
 def mermaid_label(value: str, limit: int = 86) -> str:
     """Return a concise Mermaid-safe node label while retaining the task's meaning."""
     normalized = " ".join(value.replace('"', "'").split())
@@ -328,6 +406,7 @@ def generate() -> None:
     text_episode = latest_text_episode_metrics()
     text_episode_rows = text_episode_table(text_episode)
     built_at = datetime.now(UTC).isoformat()
+    generate_api_reference(built_at)
 
     phase_rows = "\n".join(
         f"| {markdown_escape(title)} | {finished}/{count} | "

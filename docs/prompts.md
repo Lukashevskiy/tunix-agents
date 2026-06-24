@@ -19,14 +19,16 @@ pyenv exec python -m uv run pytest -m integration tests/integration/test_megapro
 с action id и исходным model text для provenance. Сквозной integration smoke покрывает
 `environment-shaped state → prompt → policy → decoder → adapter.step`.
 
-`collect_text_episode()` поддерживает два явных режима ошибки: `invalid_action="error"`
-останавливает прогон, а `invalid_action="fallback"` требует явный допустимый
-`fallback_action_id`. Во втором случае replay v3 записывает `invalid_format`,
-`unknown_action`, `fallback_used`, raw completion и (если backend их выдал) per-token
-logprobs вместе с generated token ids. Поэтому fallback не может стать неявной подменой
-действия, а replay уже содержит token-level provenance для будущего PPO/SFT bridge.
+`collect_batched_text_decision()` и `collect_batched_text_rollout()` поддерживают два явных
+режима ошибки: `invalid_action="error"` останавливает прогон, а `invalid_action="fallback"`
+требует явный допустимый `fallback_action_id`. После strict decode они дополнительно enforce-ят
+текущий environment `action_mask`: masked model action либо падает, либо становится observable
+fallback. Replay v3 записывает `invalid_format`, `unknown_action`, `masked_action`,
+`fallback_used`, raw completion и (если backend их выдал) prompt/generated token ids с per-token
+logprobs. Поэтому fallback не может стать неявной подменой действия, а replay уже содержит
+token-level provenance для будущего PPO/SFT/DPO bridge.
 
-`collect_text_episode` — host-side reference pipeline: он последовательно выполняет
-`CrafText EnvState → PromptContext → RenderedPrompt → LlmBackend → strict decode_action → CrafTextAdapter.step`
-и возвращает versioned `ReplayArtifact`. Это намеренно не JIT path: LLM I/O и текстовый
-parser остаются на host, а JAX rollout используется для численного обучения после сбора.
+Итоговый host-side text pipeline выполняет
+`CrafText EnvState batch → PromptContext → RenderedPrompt → BatchLlmBackend/Tunix → strict decode/action-mask fallback → jax.vmap(CrafTextAdapter.step)`
+и возвращает per-env versioned `ReplayArtifact`. Это намеренно не JIT path для LLM I/O и
+текстового parser; JAX остаётся владельцем environment stepping, token loss и learner math.

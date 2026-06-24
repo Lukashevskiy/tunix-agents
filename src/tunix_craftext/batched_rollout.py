@@ -99,10 +99,15 @@ def collect_batched_text_decision(
     decisions: list[DecodedAction] = []
     metrics: list[DecodeMetrics] = []
     fallback: list[bool] = []
-    for prompt, response in zip(prompts, responses, strict=True):
+    for row_index, (prompt, response) in enumerate(zip(prompts, responses, strict=True)):
         decision, outcome = decode_action_outcome(prompt, response.raw_text)
+        if decision is not None and not bool(action_masks[row_index, decision.action_id]):
+            outcome = DecodeMetrics(masked_action=1)
+            decision = None
         if decision is None:
             if invalid_action == "error":
+                if outcome.masked_action:
+                    raise ValueError("model selected an action masked out by the environment")
                 decode_action(prompt, response.raw_text)
                 raise AssertionError("decode_action must raise for an invalid outcome")
             assert fallback_action_id is not None
@@ -223,6 +228,7 @@ def replays_from_batched_rollout(
                     observation=_item_at(transition.observation, environment_index),
                     invalid_format=metrics.invalid_format,
                     unknown_action=metrics.unknown_action,
+                    masked_action=metrics.masked_action,
                     fallback_used=bool(decision.fallback_used[environment_index]),
                     token_logprobs=response.token_logprobs,
                     token_ids=response.token_ids,

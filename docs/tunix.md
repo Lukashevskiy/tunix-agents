@@ -101,11 +101,11 @@ trainable actor/critic/reference, `RLTrainingConfig`, `RolloutConfig` и hardwar
 fixture. После этого batch completions будут декодироваться в `[B]` action ids и подаваться в
 `jax.vmap(CrafText.step)`.
 
-`collect_batched_text_decision()` уже реализует этот synchronous transport: host-side batch
-`EnvState → MegaPrompts → complete_batch → strict decode/fallback`, после чего выполняет один
-`jax.vmap(CrafTextAdapter.step)` по `[B]` action ids. Real Qwen+CrafText fixture подтверждает
-batch size 2. Функция делает ровно **один decision**: она намеренно не скрывает сложные semantics
-`terminated → reset` внутри multi-turn collection. Этот следующий collector станет consumer
+`collect_batched_text_decision()` уже реализует один synchronous decision transport: host-side
+batch `EnvState → MegaPrompts → complete_batch → strict decode/fallback`, после чего выполняет
+один `jax.vmap(CrafTextAdapter.step)` по `[B]` action ids. Real Qwen+CrafText fixture подтверждает
+batch size 2. Multi-turn semantics (`terminated | truncated → reset only that row`) вынесены в
+`collect_batched_text_rollout()`, который является sync precursor будущего consumer
 `RLCluster.ROLLOUT`, когда будут созданы trainable роли actor/critic/reference.
 
 `collect_batched_text_rollout()` расширяет transport до fixed horizon `[T, B]`: после каждого
@@ -113,6 +113,12 @@ batch size 2. Функция делает ровно **один decision**: он
 следующего шага (другие states/dialogs продолжаются). `replays_from_batched_rollout()` создаёт
 по одному replay v3 на environment row; каждый из них напрямую совместим с
 `text_trajectory_from_replay()` и masked token PPO learning contract.
+
+Перед каждым `CrafTextAdapter.step` итоговый text rollout сверяет decoded action с текущим
+`action_mask`. Если модель выбирает masked action, это не попадает в среду молча: transport
+либо падает в `invalid_action="error"` режиме, либо использует явный fallback и сохраняет
+`masked_action` вместе с `fallback_used` в replay evidence. Поэтому будущий learner может
+исключать такие токены из `policy_mask`, а audit может восстановить причину fallback.
 
 Соответствующие versioned profiles — `configs/models/gemma3_270m_instruction.yaml`
 и `configs/models/qwen25_05b_instruction.yaml`. Их зафиксированные флаги download/license
