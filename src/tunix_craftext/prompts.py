@@ -25,6 +25,38 @@ class PromptContractError(ValueError):
     """
 
 
+def compose_craftext_goal(
+    task_goal: str,
+    *,
+    scenario_instruction: str = "",
+    world_preset: str = "",
+    text_constraint: str = "",
+) -> str:
+    """Compose task and environment semantics into text visible to every template.
+
+    MegaPrompts templates may elect not to render optional metadata fields. This
+    function therefore retains the user-provided objective and serializes the
+    selected CrafText scenario/world/constraint into ``PromptContext.goal``.
+
+    :param task_goal: User task supplied to the rollout or agentic environment.
+    :param scenario_instruction: CrafText instruction selected by ``TextEnvState.idx``.
+    :param world_preset: Name of the reproducible Craftax world preset.
+    :param text_constraint: Optional CagedCrafText safety constraint.
+    :returns: Non-empty template-visible objective text.
+    :raises PromptContractError: If task_goal is blank.
+    """
+    if not task_goal.strip():
+        raise PromptContractError("task_goal must be non-empty")
+    lines = [f"Task objective: {task_goal.strip()}"]
+    if scenario_instruction.strip():
+        lines.append(f"Scenario instruction: {scenario_instruction.strip()}")
+    if world_preset.strip():
+        lines.append(f"World preset: {world_preset.strip()}")
+    if text_constraint.strip():
+        lines.append(f"Safety constraint: {text_constraint.strip()}")
+    return "\n".join(lines)
+
+
 @dataclass(frozen=True)
 class ActionCatalog:
     """Stable mapping between model-visible action labels and environment action ids.

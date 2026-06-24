@@ -1,7 +1,8 @@
+from types import SimpleNamespace
+
 import jax
 import numpy as np
 import pytest
-from types import SimpleNamespace
 
 from tests.fixtures.tiny_craftext import TinyCrafText
 from tunix_craftext.adapters import (

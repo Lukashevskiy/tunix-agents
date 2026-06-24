@@ -53,7 +53,7 @@
     {
       "name": "Prompt assembly boundary",
       "status": "ready",
-      "description": "Собирает typed PromptContext из goal, structured CrafText EnvState и action catalog; vendored MegaPrompts renderer проходит integration smoke и возвращает RenderedPrompt с контролируемым mapping actions."
+      "description": "Собирает typed PromptContext из user goal, selected CrafText scenario instruction, world preset, optional Caged constraint, structured EnvState и action catalog; vendored MegaPrompts renderer проходит integration smoke и возвращает RenderedPrompt с контролируемым mapping actions."
     },
     {
       "name": "Text policy and strict action decoder",

@@ -30,5 +30,11 @@ token-level provenance для будущего PPO/SFT/DPO bridge.
 
 Итоговый host-side text pipeline выполняет
 `CrafText EnvState batch → PromptContext → RenderedPrompt → BatchLlmBackend/Tunix → strict decode/action-mask fallback → jax.vmap(CrafTextAdapter.step)`
+
+Для Agentic CrafText `compose_craftext_goal()` делает user-facing objective
+template-visible: он объединяет `task.goal` с выбранной scenario instruction,
+world preset и, для CagedCrafText, textual safety constraint. Это необходимо,
+потому что MegaPrompts template может не выводить optional metadata fields сам.
+Scenario никогда не заменяет пользовательскую задачу.
 и возвращает per-env versioned `ReplayArtifact`. Это намеренно не JIT path для LLM I/O и
 текстового parser; JAX остаётся владельцем environment stepping, token loss и learner math.

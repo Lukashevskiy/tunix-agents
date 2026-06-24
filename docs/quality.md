@@ -75,6 +75,13 @@ Smoke with three repeats полезен только для проверки pip
 
 ## MVP Python compatibility gate
 
+## Обязательный CPU quality gate
+
+На каждом PR и push в `main` workflow `CPU quality gate` запускает Ruff, mypy и
+unit/fake-agentic suite на Python 3.12. Он намеренно не запускает real Qwen,
+accelerator или performance lanes: эти доказательства принадлежат отдельным
+hardware/nightly gates из roadmap.
+
 После MVP GitHub Actions workflow `MVP Python compatibility` запускается на тегах `mvp-v*` (или
 вручную) в матрице Python 3.11, 3.12 и 3.13. Он устанавливает `dev,docs` extras и запускает unit
 и integration lanes. Matrix намеренно не запускает perf: shared GitHub runners непригодны для

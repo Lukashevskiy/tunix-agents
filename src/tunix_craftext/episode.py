@@ -13,7 +13,7 @@ import jax
 
 from .adapters import CrafTextAdapter
 from .llm import LlmBackend, LlmRequest
-from .prompts import ActionCatalog, PromptContext, PromptRenderer
+from .prompts import ActionCatalog, PromptContext, PromptRenderer, compose_craftext_goal
 from .replay import ReplayArtifact, ReplayStep
 from .text_policy import DecodedAction, decode_action, decode_action_outcome
 
@@ -86,7 +86,14 @@ def collect_text_episode(
         )
         prompt = renderer.render(
             PromptContext(
-                context.instruction if context is not None else goal,
+                goal
+                if context is None
+                else compose_craftext_goal(
+                    goal,
+                    scenario_instruction=context.instruction,
+                    world_preset=context.world_preset,
+                    text_constraint=context.text_constraint,
+                ),
                 adapter.prompt_state(state),
                 actions,
                 dialog,

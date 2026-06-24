@@ -8,6 +8,7 @@ from tunix_craftext.prompts import (
     MegaPromptRenderer,
     PromptContext,
     PromptContractError,
+    compose_craftext_goal,
 )
 
 
@@ -52,3 +53,24 @@ def test_megaprompt_renderer_preserves_environment_goal_and_action_mapping() -> 
 def test_action_catalog_rejects_unknown_model_action() -> None:
     with pytest.raises(PromptContractError, match="unknown action"):
         ActionCatalog(("LEFT",)).index_of("FLY")
+
+
+def test_craftext_goal_composition_keeps_task_and_environment_context_visible() -> None:
+    prompt_goal = compose_craftext_goal(
+        "collect wood",
+        scenario_instruction="build a table",
+        world_preset="tiny_box_oob_no_mobs",
+        text_constraint="do not lose health",
+    )
+
+    assert prompt_goal.splitlines() == [
+        "Task objective: collect wood",
+        "Scenario instruction: build a table",
+        "World preset: tiny_box_oob_no_mobs",
+        "Safety constraint: do not lose health",
+    ]
+
+
+def test_craftext_goal_composition_rejects_blank_user_goal() -> None:
+    with pytest.raises(PromptContractError, match="task_goal"):
+        compose_craftext_goal("  ")

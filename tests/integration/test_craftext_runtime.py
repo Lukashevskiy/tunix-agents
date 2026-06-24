@@ -9,10 +9,22 @@ import pytest
 
 from tunix_craftext.agentic_craftext import CrafTextAgenticEnvironment, agentic_task
 from tunix_craftext.config import load_mvp_config
+from tunix_craftext.prompts import PromptContext, RenderedPrompt
 from tunix_craftext.rollout import collect_rollout, collect_rollout_scan_indexed
 from tunix_craftext.runtime import build_craftext_runtime
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+class _CapturingRenderer:
+    """Capture a real runtime prompt context without depending on a template extra."""
+
+    def __init__(self) -> None:
+        self.contexts: list[PromptContext[object]] = []
+
+    def render(self, context: PromptContext[object]) -> RenderedPrompt:
+        self.contexts.append(context)
+        return RenderedPrompt(context.goal, context.actions, "capture")
 
 
 @pytest.mark.integration
@@ -137,6 +149,28 @@ def test_agentic_environment_builds_from_serializable_task_and_mvp_config() -> N
     assert observation["question"].strip()
     assert info == {}
     assert environment.extra_kwargs == {"group_id": 3, "pair_index": 1}
+
+
+@pytest.mark.integration
+def test_real_agentic_prompt_keeps_user_goal_and_selected_craftext_context() -> None:
+    """Scenario metadata must enrich, never replace, the task supplied to GRPO."""
+    config = load_mvp_config(ROOT / "configs" / "mvp" / "tiny_craftext.yaml")
+    runtime = build_craftext_runtime(config)
+    renderer = _CapturingRenderer()
+    environment = CrafTextAgenticEnvironment(
+        agentic_task(goal="collect wood before night", seed=config.run.seed, horizon=1),
+        adapter=runtime.adapter,
+        renderer=renderer,
+        actions=runtime.actions,
+    )
+
+    observation, _ = environment.reset()
+
+    context = renderer.contexts[0]
+    assert "Task objective: collect wood before night" in observation["question"]
+    assert "Scenario instruction:" in context.goal
+    assert f"World preset: {config.environment.world_preset}" in context.goal
+    assert context.world_preset == config.environment.world_preset
 
 
 @pytest.mark.integration

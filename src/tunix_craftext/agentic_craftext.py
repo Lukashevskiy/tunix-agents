@@ -17,7 +17,13 @@ import jax
 
 from .adapters import CrafTextAdapter
 from .config import load_mvp_config
-from .prompts import ActionCatalog, MegaPromptRenderer, PromptContext, PromptRenderer
+from .prompts import (
+    ActionCatalog,
+    MegaPromptRenderer,
+    PromptContext,
+    PromptRenderer,
+    compose_craftext_goal,
+)
 from .runtime import build_craftext_runtime
 
 try:
@@ -200,7 +206,14 @@ class CrafTextAgenticEnvironment(BaseTaskEnv):
         )
         return self._renderer.render(
             PromptContext(
-                context.instruction if context is not None else self._goal,
+                self._goal
+                if context is None
+                else compose_craftext_goal(
+                    self._goal,
+                    scenario_instruction=context.instruction,
+                    world_preset=context.world_preset,
+                    text_constraint=context.text_constraint,
+                ),
                 context.env_state if context is not None else prompt_state,
                 self._actions,
                 safety="" if context is None else context.text_constraint,

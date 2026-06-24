@@ -193,13 +193,25 @@ def main() -> None:
         prompt_header = header_font.render("Prompt", True, (220, 220, 220))
         screen.blit(prompt_header, (text_x, text_y))
         text_y += prompt_header.get_height() + 8
-        render_multiline_text(screen, str(step.get("prompt", "")), body_font, (240, 240, 240), pygame.Rect(text_x, text_y, left_rect.width - 24, 240))
+        render_multiline_text(
+            screen,
+            str(step.get("prompt", "")),
+            body_font,
+            (240, 240, 240),
+            pygame.Rect(text_x, text_y, left_rect.width - 24, 240),
+        )
 
         completion_y = left_rect.top + 520
         completion_header = header_font.render("Completion", True, (220, 220, 220))
         screen.blit(completion_header, (text_x, completion_y))
         completion_y += completion_header.get_height() + 8
-        render_multiline_text(screen, str(step.get("raw_completion", "")), body_font, (240, 240, 240), pygame.Rect(text_x, completion_y, left_rect.width - 24, 340))
+        render_multiline_text(
+            screen,
+            str(step.get("raw_completion", "")),
+            body_font,
+            (240, 240, 240),
+            pygame.Rect(text_x, completion_y, left_rect.width - 24, 340),
+        )
 
         obs = step.get("observation")
         obs_image = normalize_image(obs)
@@ -211,7 +223,10 @@ def main() -> None:
             max_height = right_rect.height - 24
             scale = min(max_width / image_rect.width, max_height / image_rect.height, 1.0)
             if scale != 1.0:
-                new_size = (max(1, int(image_rect.width * scale)), max(1, int(image_rect.height * scale)))
+                new_size = (
+                    max(1, int(image_rect.width * scale)),
+                    max(1, int(image_rect.height * scale)),
+                )
                 surface = pygame.transform.smoothscale(surface, new_size)
                 image_rect = surface.get_rect(center=right_rect.center)
             screen.blit(surface, image_rect)
@@ -219,7 +234,18 @@ def main() -> None:
             screen.blit(note, (right_rect.left + 12, right_rect.bottom - 28))
         else:
             missing_text = "Observation is not renderable as an image.\nShow raw summary here."
-            render_multiline_text(screen, missing_text, body_font, (220, 220, 220), pygame.Rect(right_rect.left + 12, right_rect.top + 12, right_rect.width - 24, right_rect.height - 24))
+            render_multiline_text(
+                screen,
+                missing_text,
+                body_font,
+                (220, 220, 220),
+                pygame.Rect(
+                    right_rect.left + 12,
+                    right_rect.top + 12,
+                    right_rect.width - 24,
+                    right_rect.height - 24,
+                ),
+            )
 
         controls = "Arrows: prev/next   Home/End: first/last   Q/Esc: quit"
         controls_surface = body_font.render(controls, True, (180, 180, 200))
