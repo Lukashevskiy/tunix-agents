@@ -101,7 +101,9 @@ def build_craftext_runtime(config: MvpRunConfig) -> CrafTextRuntime:
             config_name=config.environment.scenario_config,
             jax_representation_class=DefaultJAXRepresentation,
         )
-        instruction_environment = RawInstructionWrapper(environment, scenario_handler=scenario_handler)
+        instruction_environment = RawInstructionWrapper(
+            environment, scenario_handler=scenario_handler
+        )
         adapter: CrafTextAdapter[object, object, object] = CrafTextAdapter(
             instruction_environment,
             env_params,

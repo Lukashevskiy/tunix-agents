@@ -40,6 +40,15 @@ Terminal state отделён от truncation: GAE маскирует насто
 может bootstrap-иться по выбранной политике. Это решение тестируется отдельными
 табличными примерами до первой оптимизации.
 
+## Numerical shape contracts
+
+Численные границы используют `jaxtyping` aliases из `tunix_craftext.tensor_types`:
+rollout tensors — `TimeBatch*` (`[T, B]`), text learner tensors — `TokenBatch*`
+(`[B, L]`), legal-action mask — `ActionMask` (`[B, A]`). Это делает dtype/axes
+видимыми в public signatures, не притворяясь, что opaque Craftax/CrafText vendor
+state имеет одну универсальную форму. Runtime validators остаются обязательными
+на host boundary; compiled JAX path не получает Python type checker.
+
 ## Three-layer environment adapter boundary
 
 `CraftaxAdapter` — нижний чистый boundary для любого Craftax-compatible env: он принимает

@@ -49,3 +49,17 @@ pyenv exec python -m uv run make verify
 `uv.lock` коммитится вместе с изменением зависимостей. Не заменять lockfile вручную и не делать
 `pip install` в `.venv`: это создаёт незафиксированный drift. Accelerator-specific JAX wheels
 фиксируются отдельным совместимостным изменением с платформой, backend и benchmark evidence.
+
+## Tensor contracts: jaxtyping
+
+`jaxtyping` — прямая зависимость проекта. Общие aliases лежат в
+`tunix_craftext.tensor_types`: `TimeBatchFloat`/`TimeBatchBool` означают rollout `[T, B]`,
+`TokenBatch*` — padded text batch `[B, L]`, а `ActionMask` — legal actions `[B, A]`.
+Новые numerical public APIs должны использовать эти aliases или явный `jaxtyping` shape/dtype,
+а не голый `jax.Array`.
+
+Это статический контракт, не замена boundary validation: `RolloutBatch.validate()` и
+`TextTrajectoryBatch.validate_static()` остаются явными runtime checks. Не добавляйте
+Python runtime typechecker внутрь `jit`, `vmap` или `scan`: он создаст host-side work и
+исказит performance path. Shape DSL локализован в `tensor_types.py`; для него настроено
+узкое Ruff исключение, потому что линтер не разбирает строки осей `jaxtyping`.

@@ -5,15 +5,15 @@ vendor CrafText environment so it can be consumed by a deterministic Flax-based
 training loop. It validates action masks, terminal semantics, and resets.
 """
 
-from __future__ import annotations
-
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Generic, Protocol, TypeVar
 
 import jax
 import jax.numpy as jnp
-from jax.typing import ArrayLike
+from jaxtyping import ArrayLike
+
+from ..tensor_types import JaxKey, ScalarBool, ScalarFloat, ScalarInt, SingleActionMask
 
 ParamsT = TypeVar("ParamsT")
 ObservationT = TypeVar("ObservationT")
@@ -34,7 +34,7 @@ class CrafTextEnvironment(Protocol[EnvironmentParamsT, EnvironmentObservationT, 
     """Minimal CrafText/CagedCrafText reset-step contract used by the adapter."""
 
     def reset(
-        self, key: ArrayLike, params: EnvironmentParamsT
+        self, key: JaxKey, params: EnvironmentParamsT
     ) -> tuple[EnvironmentObservationT, StateT]:
         """Reset one environment episode.
 
@@ -45,8 +45,18 @@ class CrafTextEnvironment(Protocol[EnvironmentParamsT, EnvironmentObservationT, 
         ...
 
     def step(
-        self, key: ArrayLike, state: StateT, action: ArrayLike, params: EnvironmentParamsT
-    ) -> tuple[EnvironmentObservationT, StateT, ArrayLike, ArrayLike, Mapping[str, ArrayLike]]:
+        self,
+        key: JaxKey,
+        state: StateT,
+        action: int | ScalarInt,
+        params: EnvironmentParamsT,
+    ) -> tuple[
+        EnvironmentObservationT,
+        StateT,
+        ScalarFloat,
+        ScalarBool,
+        Mapping[str, ArrayLike],
+    ]:
         """Run one vendor transition with its single ``done`` flag.
 
         :param key: Environment RNG key for this step.
@@ -69,7 +79,7 @@ class EnvironmentReset(Generic[ObservationT, StateT]):
 
     observation: ObservationT
     state: StateT
-    action_mask: jax.Array
+    action_mask: SingleActionMask
 
 
 @dataclass(frozen=True)
@@ -89,10 +99,10 @@ class EnvironmentStep(Generic[ObservationT, StateT]):
 
     observation: ObservationT
     state: StateT
-    reward: jax.Array
-    terminated: jax.Array
-    truncated: jax.Array
-    action_mask: jax.Array
+    reward: ScalarFloat
+    terminated: ScalarBool
+    truncated: ScalarBool
+    action_mask: SingleActionMask
 
 
 jax.tree_util.register_dataclass(
@@ -146,7 +156,7 @@ class CraftaxAdapter(Generic[ParamsT, ObservationT, StateT]):
         """
         return self._action_count
 
-    def _fallback_mask(self) -> jax.Array:
+    def _fallback_mask(self) -> SingleActionMask:
         """Return the conservative all-actions-available mask with shape ``[A]``.
 
         :returns: jax.Array
@@ -156,7 +166,7 @@ class CraftaxAdapter(Generic[ParamsT, ObservationT, StateT]):
         """
         return jnp.ones((self._action_count,), dtype=bool)
 
-    def _action_mask(self, info: Mapping[str, ArrayLike]) -> jax.Array:
+    def _action_mask(self, info: Mapping[str, ArrayLike]) -> SingleActionMask:
         """Extract and validate next-action availability without retaining vendor info.
 
         :param info: Vendor information mapping after one transition.
@@ -174,7 +184,7 @@ class CraftaxAdapter(Generic[ParamsT, ObservationT, StateT]):
             )
         return normalized_mask
 
-    def reset(self, key: ArrayLike) -> EnvironmentReset[ObservationT, StateT]:
+    def reset(self, key: JaxKey) -> EnvironmentReset[ObservationT, StateT]:
         """Reset CrafText and attach an all-true static action mask.
 
         :param key: Environment RNG key owned by the caller.
@@ -186,7 +196,7 @@ class CraftaxAdapter(Generic[ParamsT, ObservationT, StateT]):
         )
 
     def step(
-        self, key: ArrayLike, state: StateT, action: ArrayLike
+        self, key: JaxKey, state: StateT, action: int | ScalarInt
     ) -> EnvironmentStep[ObservationT, StateT]:
         """Step CrafText and split its single terminal flag into the training contract.
 
@@ -252,8 +262,14 @@ class CrafTextAdapter(CraftaxAdapter[ParamsT, ObservationT, StateT]):
         super().__init__(environment, params, action_count, action_mask_key)
         if instruction_index is not None and instruction_index < 0:
             raise AdapterContractError("instruction_index must be non-negative")
-        if instruction_index is not None and instructions and instruction_index >= len(instructions):
-            raise AdapterContractError("instruction_index must reference one configured instruction")
+        if (
+            instruction_index is not None
+            and instructions
+            and instruction_index >= len(instructions)
+        ):
+            raise AdapterContractError(
+                "instruction_index must reference one configured instruction"
+            )
         self._world_preset = world_preset
         self._instructions = instructions
         self._instruction_index = instruction_index
@@ -268,7 +284,7 @@ class CrafTextAdapter(CraftaxAdapter[ParamsT, ObservationT, StateT]):
         """Whether this adapter was built around a CrafText instruction wrapper."""
         return bool(self._instructions)
 
-    def reset(self, key: ArrayLike) -> EnvironmentReset[ObservationT, StateT]:
+    def reset(self, key: JaxKey) -> EnvironmentReset[ObservationT, StateT]:
         """Reset CrafText and bind the configured instruction when available."""
         if self._instruction_index is None:
             return super().reset(key)

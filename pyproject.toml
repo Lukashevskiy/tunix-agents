@@ -11,6 +11,7 @@ requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
 dependencies = [
   "jax>=0.4.30",
+  "jaxtyping>=0.3.11",
   "flax>=0.8.5",
   "optax>=0.2.3",
   "orbax-checkpoint>=0.6.4",
@@ -53,3 +54,6 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/tunix_craftext/tensor_types.py" = ["F722", "F821"]

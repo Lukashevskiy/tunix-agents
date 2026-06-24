@@ -153,7 +153,7 @@ def collect_rollout_scan(
 
         :param carry: Tuple of (state, observation) carried across time.
         :param _: Unused scan index.
-        :returns: New carry and a tuple of observation/action/reward/terminated/truncated/log_prob/value.
+        :returns: New carry and observation/action/reward/terminal/log-prob/value tuple.
         """
         action, log_prob, value = policy(observation)
         next_state, next_observation, reward, terminated, truncated = step(state, action)
@@ -202,7 +202,9 @@ def collect_rollout_scan_indexed(
     :raises ValueError: If ``horizon`` is not positive.
 
     Example:
-        >>> final_state, final_obs, batch = collect_rollout_scan_indexed(initial_state, initial_obs, horizon, policy, step)
+        >>> final_state, final_obs, batch = collect_rollout_scan_indexed(
+        ...     initial_state, initial_obs, horizon, policy, step
+        ... )
     """
     if horizon <= 0:
         raise ValueError("horizon must be positive")

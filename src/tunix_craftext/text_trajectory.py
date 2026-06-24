@@ -4,14 +4,21 @@ The module validates batch and token axes explicitly and prepares replayed text
 trajectories for learning without hiding padding or shape semantics.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 import jax
 import jax.numpy as jnp
 
 from .replay import ReplayArtifact
+from .tensor_types import (
+    BatchBool,
+    BatchInt,
+    PromptTokenBatchBool,
+    PromptTokenBatchInt,
+    TokenBatchBool,
+    TokenBatchFloat,
+    TokenBatchInt,
+)
 
 
 class TextTrajectoryError(ValueError):
@@ -41,16 +48,16 @@ class TextTrajectoryBatch:
         >>> batch.validate()
     """
 
-    token_ids: jax.Array
-    prompt_token_ids: jax.Array
-    prompt_token_mask: jax.Array
-    old_logprobs: jax.Array
-    token_mask: jax.Array
-    policy_mask: jax.Array
-    rewards: jax.Array
-    action_ids: jax.Array
-    terminated: jax.Array
-    fallback_used: jax.Array
+    token_ids: TokenBatchInt
+    prompt_token_ids: PromptTokenBatchInt
+    prompt_token_mask: PromptTokenBatchBool
+    old_logprobs: TokenBatchFloat
+    token_mask: TokenBatchBool
+    policy_mask: TokenBatchBool
+    rewards: TokenBatchFloat
+    action_ids: BatchInt
+    terminated: BatchBool
+    fallback_used: BatchBool
 
     def validate_static(self) -> None:
         """Validate static batch/token axes without reading array values.

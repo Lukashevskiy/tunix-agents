@@ -51,7 +51,10 @@ def collect_text_episode(
     :raises ValueError: If horizon is non-positive or catalog disagrees with the adapter.
 
     Example:
-        >>> replay = collect_text_episode(adapter, renderer, backend, goal=goal, actions=actions, horizon=10, seed=0, config_path="config.yaml", commit="abc123")
+        >>> replay = collect_text_episode(
+        ...     adapter, renderer, backend, goal=goal, actions=actions, horizon=10,
+        ...     seed=0, config_path="config.yaml", commit="abc123",
+        ... )
     """
     if horizon <= 0:
         raise ValueError("horizon must be positive")

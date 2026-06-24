@@ -6,8 +6,6 @@ clipped PPO update. It is built for lightweight smoke tests, example
 workflows, and flat feature inputs rather than production-scale RL.
 """
 
-from __future__ import annotations
-
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
@@ -15,6 +13,7 @@ import optax  # type: ignore[import-untyped]
 from flax.training.train_state import TrainState
 
 from .algorithms import ppo_loss
+from .tensor_types import BatchFloat, BatchInt
 
 
 class ActorCritic(nn.Module):
@@ -33,7 +32,7 @@ class ActorCritic(nn.Module):
     hidden: int = 32
 
     @nn.compact
-    def __call__(self, observation: jax.Array) -> tuple[jax.Array, jax.Array]:
+    def __call__(self, observation: jax.Array) -> tuple[jax.Array, BatchFloat]:
         """Return action logits and scalar value predictions.
 
         The policy head produces unnormalized logits for discrete action
@@ -77,10 +76,10 @@ def create_state(key: jax.Array, observation_dim: int, actions: int) -> TrainSta
 def ppo_update(
     state: TrainState,
     observations: jax.Array,
-    actions: jax.Array,
-    old_log_prob: jax.Array,
-    advantages: jax.Array,
-    returns: jax.Array,
+    actions: BatchInt,
+    old_log_prob: BatchFloat,
+    advantages: BatchFloat,
+    returns: BatchFloat,
 ) -> tuple[TrainState, dict[str, jax.Array]]:
     """Apply one clipped PPO update to a flat synthetic or encoded minibatch.
 

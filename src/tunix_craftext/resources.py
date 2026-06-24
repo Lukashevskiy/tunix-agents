@@ -23,7 +23,9 @@ class ResourceConfig:
     :ivar trajectory_placement: str
 
     Example:
-        >>> obj = ResourceConfig(data_axis_size=..., params_placement=..., optimizer_placement=...)"""
+        >>> obj = ResourceConfig(
+        ...     data_axis_size=..., params_placement=..., optimizer_placement=...
+        ... )"""
 
     data_axis_size: int = -1
     params_placement: str = "replicated"

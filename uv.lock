@@ -5020,6 +5020,7 @@ source = { editable = "." }
 dependencies = [
     { name = "flax" },
     { name = "jax" },
+    { name = "jaxtyping" },
     { name = "numpy" },
     { name = "optax" },
     { name = "orbax-checkpoint" },
@@ -5083,6 +5084,7 @@ requires-dist = [
     { name = "google-tunix", marker = "extra == 'tunix'", git = "https://github.com/google/tunix.git?rev=608733cc9d3cd0cb06ea79bfd32d8a18c27ba0dc" },
     { name = "gymnasium", marker = "extra == 'envs'", specifier = ">=0.29.1" },
     { name = "jax", specifier = ">=0.4.30" },
+    { name = "jaxtyping", specifier = ">=0.3.11" },
     { name = "jupyterlab", marker = "extra == 'examples'", specifier = ">=4.0" },
     { name = "matplotlib", marker = "extra == 'examples'", specifier = ">=3.8" },
     { name = "megaprompt", marker = "extra == 'prompts'", editable = "vendor/megaprompts" },

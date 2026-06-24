@@ -5,8 +5,6 @@ stable public interface for picking an objective by name. Each entry bundles
 pure advantage and loss functions with a fixed name for reproducible training.
 """
 
-from __future__ import annotations
-
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
@@ -14,6 +12,7 @@ import jax
 from flax import struct
 
 from .algorithms import generalized_advantage_estimation, ppo_loss
+from .tensor_types import BatchFloat
 
 
 @struct.dataclass
@@ -56,13 +55,13 @@ class PpoLossBatch:
         ... )
     """
 
-    new_log_prob: jax.Array
-    old_log_prob: jax.Array
-    advantages: jax.Array
-    new_value: jax.Array
-    old_value: jax.Array
-    returns: jax.Array
-    entropy: jax.Array
+    new_log_prob: BatchFloat
+    old_log_prob: BatchFloat
+    advantages: BatchFloat
+    new_value: BatchFloat
+    old_value: BatchFloat
+    returns: BatchFloat
+    entropy: BatchFloat
 
 
 AdvantageFunction = Callable[

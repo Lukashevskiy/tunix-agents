@@ -5,22 +5,28 @@ on explicit JAX arrays. It is intentionally kept small and stateless so it can
 be reused across different actor-critic training pipelines.
 """
 
-from __future__ import annotations
-
 import jax
 import jax.numpy as jnp
 
+from .tensor_types import (
+    BatchFloat,
+    TimeBatchBool,
+    TimeBatchFloat,
+    TokenBatchBool,
+    TokenBatchFloat,
+)
+
 
 def ppo_loss(
-    new_log_prob: jax.Array,
-    old_log_prob: jax.Array,
-    advantages: jax.Array,
-    new_value: jax.Array,
-    old_value: jax.Array,
-    returns: jax.Array,
+    new_log_prob: BatchFloat,
+    old_log_prob: BatchFloat,
+    advantages: BatchFloat,
+    new_value: BatchFloat,
+    old_value: BatchFloat,
+    returns: BatchFloat,
     clip_epsilon: float,
     value_coefficient: float,
-    entropy: jax.Array,
+    entropy: BatchFloat,
     entropy_coefficient: float,
 ) -> tuple[jax.Array, dict[str, jax.Array]]:
     """Return clipped PPO scalar loss and inspectable policy/value/KL metrics.
@@ -38,7 +44,10 @@ def ppo_loss(
     :returns: tuple[jax.Array, dict[str, jax.Array]]
 
     Example:
-        >>> loss, metrics = ppo_loss(new_log_prob, old_log_prob, advantages, new_value, old_value, returns, 0.2, 0.5, entropy, 0.01)
+        >>> loss, metrics = ppo_loss(
+        ...     new_log_prob, old_log_prob, advantages, new_value, old_value,
+        ...     returns, 0.2, 0.5, entropy, 0.01,
+        ... )
     """
     ratio = jnp.exp(new_log_prob - old_log_prob)
     policy = -jnp.mean(
@@ -59,13 +68,13 @@ def ppo_loss(
 
 
 def generalized_advantage_estimation(
-    rewards: jax.Array,
-    values: jax.Array,
-    bootstrap_value: jax.Array,
-    terminated: jax.Array,
+    rewards: TimeBatchFloat,
+    values: TimeBatchFloat,
+    bootstrap_value: BatchFloat,
+    terminated: TimeBatchBool,
     gamma: float,
     gae_lambda: float,
-) -> tuple[jax.Array, jax.Array]:
+) -> tuple[TimeBatchFloat, TimeBatchFloat]:
     """Compute time-major GAE advantages and returns for ``[T, B]`` arrays.
 
     :param rewards: jax.Array input value
@@ -77,7 +86,9 @@ def generalized_advantage_estimation(
     :returns: tuple[jax.Array, jax.Array]
 
     Example:
-        >>> advantages, returns = generalized_advantage_estimation(rewards, values, bootstrap_value, terminated, gamma=0.99, gae_lambda=0.95)
+        >>> advantages, returns = generalized_advantage_estimation(
+        ...     rewards, values, bootstrap_value, terminated, gamma=0.99, gae_lambda=0.95,
+        ... )
     """
     if rewards.ndim != 2 or values.shape != rewards.shape or terminated.shape != rewards.shape:
         raise ValueError("rewards, values and terminated must all have shape [T, B]")
@@ -101,8 +112,8 @@ def generalized_advantage_estimation(
 
 
 def masked_token_returns(
-    rewards: jax.Array, token_mask: jax.Array, gamma: float
-) -> jax.Array:
+    rewards: TokenBatchFloat, token_mask: TokenBatchBool, gamma: float
+) -> TokenBatchFloat:
     """Compute reward-to-go for padded token sequences shaped ``[B, T]``.
 
     Padding tokens have return zero and reset the backward carry, allowing host-side
@@ -136,16 +147,16 @@ def masked_token_returns(
 
 
 def masked_token_ppo_loss(
-    new_log_prob: jax.Array,
-    old_log_prob: jax.Array,
-    advantages: jax.Array,
-    new_value: jax.Array,
-    old_value: jax.Array,
-    returns: jax.Array,
-    token_mask: jax.Array,
+    new_log_prob: TokenBatchFloat,
+    old_log_prob: TokenBatchFloat,
+    advantages: TokenBatchFloat,
+    new_value: TokenBatchFloat,
+    old_value: TokenBatchFloat,
+    returns: TokenBatchFloat,
+    token_mask: TokenBatchBool,
     clip_epsilon: float,
     value_coefficient: float,
-    entropy: jax.Array,
+    entropy: TokenBatchFloat,
     entropy_coefficient: float,
 ) -> tuple[jax.Array, dict[str, jax.Array]]:
     """Apply PPO only to valid token positions in ``[B, T]`` text trajectories.
@@ -165,7 +176,10 @@ def masked_token_ppo_loss(
     :raises ValueError: If token fields differ in shape or no policy token is valid.
 
     Example:
-        >>> loss, metrics = masked_token_ppo_loss(new_log_prob, old_log_prob, advantages, new_value, old_value, returns, token_mask, 0.2, 0.5, entropy, 0.01)
+        >>> loss, metrics = masked_token_ppo_loss(
+        ...     new_log_prob, old_log_prob, advantages, new_value, old_value,
+        ...     returns, token_mask, 0.2, 0.5, entropy, 0.01,
+        ... )
     """
     fields = (new_log_prob, old_log_prob, advantages, new_value, old_value, returns, entropy)
     if token_mask.ndim != 2 or any(field.shape != token_mask.shape for field in fields):

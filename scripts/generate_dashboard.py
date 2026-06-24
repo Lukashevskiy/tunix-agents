@@ -8,8 +8,7 @@ checkboxes in docs/plan.md, docs/project_status.json, and artifacts/benchmarks/*
 
 from __future__ import annotations
 
-import importlib
-import inspect
+import ast
 import json
 import re
 import subprocess
@@ -331,34 +330,46 @@ def write_page(name: str, body: str) -> None:
     (GENERATED / name).write_text(body.strip() + "\n", encoding="utf-8")
 
 
-def first_doc_paragraph(obj: object) -> str:
+def first_doc_paragraph(doc: str | None) -> str:
     """Return the first paragraph of a docstring, collapsed for a Markdown table."""
-    doc = inspect.getdoc(obj) or ""
-    paragraph = doc.split("\n\n", 1)[0]
+    paragraph = (doc or "").split("\n\n", 1)[0]
     return markdown_escape(" ".join(paragraph.split())) if paragraph else "—"
 
 
+def _api_module_path(module_name: str) -> Path:
+    """Map one configured package module name to its source file strictly under ``src``."""
+    package, _, suffix = module_name.partition(".")
+    if package != "tunix_craftext" or not suffix:
+        raise ValueError(f"API module must be under tunix_craftext: {module_name}")
+    return ROOT / "src" / Path(*module_name.split(".")).with_suffix(".py")
+
+
+def _ast_signature(node: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
+    """Render a lightweight source-level function signature without importing its module."""
+    signature = f"({ast.unparse(node.args)})"
+    if node.returns is not None:
+        signature = f"{signature} -> {ast.unparse(node.returns)}"
+    return signature
+
+
 def public_api_rows(module_name: str) -> str:
-    """Render public classes/functions from one module as Markdown table rows."""
+    """Render public source-level classes/functions without importing optional dependencies."""
     try:
-        module = importlib.import_module(module_name)
-    except Exception as error:  # optional dependency imports must not break docs generation
-        return f"| `{module_name}` | import failed | — | {markdown_escape(error)} |"
+        source_path = _api_module_path(module_name)
+        tree = ast.parse(source_path.read_text(encoding="utf-8"), filename=str(source_path))
+    except (OSError, SyntaxError, ValueError) as error:
+        return f"| `{module_name}` | source failed | — | {markdown_escape(error)} |"
     rows: list[str] = []
-    for name, obj in sorted(vars(module).items()):
-        if name.startswith("_"):
+    for node in sorted(tree.body, key=lambda value: getattr(value, "name", "")):
+        if not isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
-        if not (inspect.isclass(obj) or inspect.isfunction(obj)):
+        if node.name.startswith("_"):
             continue
-        if getattr(obj, "__module__", "") != module_name:
-            continue
-        kind = "class" if inspect.isclass(obj) else "function"
-        try:
-            signature = str(inspect.signature(obj))
-        except (TypeError, ValueError):
-            signature = "(...)"
+        kind = "class" if isinstance(node, ast.ClassDef) else "function"
+        signature = "(...)" if kind == "class" else _ast_signature(node)
         rows.append(
-            f"| `{module_name}` | {kind} | `{name}{signature}` | {first_doc_paragraph(obj)} |"
+            f"| `{module_name}` | {kind} | `{node.name}{signature}` | "
+            f"{first_doc_paragraph(ast.get_docstring(node))} |"
         )
     return "\n".join(rows) or f"| `{module_name}` | — | — | Нет public API symbols. |"
 

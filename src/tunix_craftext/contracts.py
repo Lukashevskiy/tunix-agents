@@ -4,13 +4,13 @@ Contracts in this module express time-major rollout tensors, terminal semantics,
 and JAX-compatible batch shapes without assuming any particular vendor API.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import Generic, TypeVar
 
 import jax
 import jax.numpy as jnp
+
+from .tensor_types import BatchFloat, TimeBatchBool, TimeBatchFloat
 
 ObservationT = TypeVar("ObservationT")
 ActionT = TypeVar("ActionT")
@@ -31,14 +31,14 @@ class Transition(Generic[ObservationT, ActionT]):
 
     observation: ObservationT
     action: ActionT
-    reward: jax.Array
-    terminated: jax.Array
-    truncated: jax.Array
-    log_prob: jax.Array
-    value: jax.Array
+    reward: TimeBatchFloat
+    terminated: TimeBatchBool
+    truncated: TimeBatchBool
+    log_prob: TimeBatchFloat
+    value: TimeBatchFloat
 
     @property
-    def done(self) -> jax.Array:
+    def done(self) -> TimeBatchBool:
         """Return the JAX-compatible terminal-or-truncated mask with shape ``[T, B]``.
 
         :returns: jax.Array
@@ -59,7 +59,7 @@ class RolloutBatch(Generic[ObservationT, ActionT]):
         >>> obj = RolloutBatch(transitions=..., bootstrap_value=...)"""
 
     transitions: Transition[ObservationT, ActionT]
-    bootstrap_value: jax.Array
+    bootstrap_value: BatchFloat
 
     def validate(self) -> None:
             """Validate the mandatory time-major rollout axes without host array conversion.

@@ -5,10 +5,10 @@ action masks and can be used as a low-cost baseline for environment throughput
 and scheduler testing.
 """
 
-from __future__ import annotations
-
 import jax
 import jax.numpy as jnp
+
+from .tensor_types import ActionMask, BatchInt, BatchLegacyKey
 
 
 class ActionSamplingError(ValueError):
@@ -19,7 +19,7 @@ class ActionSamplingError(ValueError):
     """
 
 
-def sample_masked_actions(keys: jax.Array, action_mask: jax.Array) -> jax.Array:
+def sample_masked_actions(keys: BatchLegacyKey, action_mask: ActionMask) -> BatchInt:
     """Sample one valid discrete action per environment from boolean masks.
 
     :param keys: PRNG keys with shape ``[B, 2]``.
@@ -38,7 +38,7 @@ def sample_masked_actions(keys: jax.Array, action_mask: jax.Array) -> jax.Array:
     return jax.vmap(jax.random.categorical)(keys, logits).astype(jnp.int32)
 
 
-def validate_action_mask(action_mask: jax.Array) -> None:
+def validate_action_mask(action_mask: ActionMask) -> None:
     """Reject empty action rows at the non-jitted environment boundary.
 
     :param action_mask: Boolean array shaped ``[B, A]`` marking valid actions.
