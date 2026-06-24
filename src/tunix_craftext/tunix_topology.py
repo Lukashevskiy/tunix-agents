@@ -17,7 +17,9 @@ import yaml
 if TYPE_CHECKING:
     from jax.sharding import Mesh
 
-_REQUIRED_ROLES = ("actor", "rollout", "critic", "reference")
+_PPO_ROLES = ("actor", "rollout", "critic", "reference")
+_AGENTIC_GRPO_ROLES = ("actor", "rollout", "reference")
+_SUPPORTED_ROLE_SETS = (frozenset(_PPO_ROLES), frozenset(_AGENTIC_GRPO_ROLES))
 
 
 class TopologyConfigError(ValueError):
@@ -42,8 +44,10 @@ class TunixTopology:
     def __post_init__(self) -> None:
         if not self.name.strip() or not self.axis_name.strip():
             raise TopologyConfigError("topology name and axis_name must be non-empty")
-        if set(self.role_to_device_indices) != set(_REQUIRED_ROLES):
-            raise TopologyConfigError(f"roles must be exactly {_REQUIRED_ROLES}")
+        if frozenset(self.role_to_device_indices) not in _SUPPORTED_ROLE_SETS:
+            raise TopologyConfigError(
+                f"roles must be exactly {_PPO_ROLES} or {_AGENTIC_GRPO_ROLES}"
+            )
         for role, indices in self.role_to_device_indices.items():
             if not indices or any(index < 0 for index in indices):
                 raise TopologyConfigError(f"{role} must contain non-negative device indices")
@@ -81,6 +85,14 @@ def load_tunix_topology(path: Path) -> TunixTopology:
     return TunixTopology(name, axis_name, role_indices)
 
 
+def _axis_names(axis_name: str) -> tuple[str, ...]:
+    """Parse one or more comma-separated JAX mesh axes from strict config text."""
+    names = tuple(part.strip() for part in axis_name.split(","))
+    if not names or any(not name for name in names) or len(names) != len(set(names)):
+        raise TopologyConfigError("axis_name must contain unique non-empty comma-separated axes")
+    return names
+
+
 def role_to_meshes(
     topology: TunixTopology, devices: Sequence[jax.Device] | None = None
 ) -> dict[str, Mesh]:
@@ -94,6 +106,7 @@ def role_to_meshes(
         >>> result = role_to_meshes(topology, devices)
     """
     visible_devices = tuple(jax.devices() if devices is None else devices)
+    axis_names = _axis_names(topology.axis_name)
     meshes: dict[str, Mesh] = {}
     for role, indices in topology.role_to_device_indices.items():
         if max(indices) >= len(visible_devices):
@@ -101,8 +114,14 @@ def role_to_meshes(
                 f"{role} requests device {max(indices)}, only {len(visible_devices)} are visible"
             )
         selected_devices = [visible_devices[index] for index in indices]
+        if len(axis_names) > 1 and len(selected_devices) != 1:
+            raise TopologyConfigError(
+                "multi-axis topology currently requires exactly one device per role"
+            )
         meshes[role] = jax.make_mesh(
-            (len(indices),), (topology.axis_name,), devices=selected_devices
+            (len(selected_devices),) if len(axis_names) == 1 else (1,) * len(axis_names),
+            axis_names,
+            devices=selected_devices,
         )
     return meshes
 
@@ -118,9 +137,10 @@ def tunix_role_to_meshes(topology: TunixTopology) -> dict[object, Mesh]:
     from tunix.rl.rl_cluster import Role  # type: ignore[import-untyped]
 
     meshes = role_to_meshes(topology)
-    return {
-    Role.ACTOR: meshes["actor"],
-    Role.ROLLOUT: meshes["rollout"],
-    Role.CRITIC: meshes["critic"],
-    Role.REFERENCE: meshes["reference"],
+    role_names = {
+        "actor": Role.ACTOR,
+        "rollout": Role.ROLLOUT,
+        "critic": Role.CRITIC,
+        "reference": Role.REFERENCE,
     }
+    return {role_names[name]: mesh for name, mesh in meshes.items()}

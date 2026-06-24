@@ -7,6 +7,7 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
+from tunix_craftext.agentic_craftext import CrafTextAgenticEnvironment, agentic_task
 from tunix_craftext.config import load_mvp_config
 from tunix_craftext.rollout import collect_rollout, collect_rollout_scan_indexed
 from tunix_craftext.runtime import build_craftext_runtime
@@ -110,6 +111,24 @@ def test_real_craftext_collects_deterministic_batched_eight_step_trajectory() ->
     assert first_observation.shape[:2] == (horizon, batch_size)
     np.testing.assert_array_equal(first_reward, second_reward)
     np.testing.assert_array_equal(first_done, second_done)
+
+
+@pytest.mark.integration
+def test_agentic_environment_builds_from_serializable_task_and_mvp_config() -> None:
+    """The Tunix worker-facing environment builds the real runtime from primitives only."""
+    environment = CrafTextAgenticEnvironment(
+        agentic_task(goal="Stay alive and inspect the world.", seed=7, horizon=2),
+        config_path=ROOT / "configs" / "mvp" / "tiny_craftext.yaml",
+        group_id=3,
+        pair_index=1,
+    )
+
+    observation, info = environment.reset()
+
+    assert set(observation) == {"question"}
+    assert observation["question"].strip()
+    assert info == {}
+    assert environment.extra_kwargs == {"group_id": 3, "pair_index": 1}
 
 
 @pytest.mark.integration

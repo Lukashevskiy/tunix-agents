@@ -83,7 +83,7 @@
     {
       "name": "Tunix Qwen episode bridge",
       "status": "ready",
-      "description": "Official google/tunix revision, Qwen chat-template, generated token ids/logprobs, real MegaPrompts EnvState rendering, CrafText action replay, typed TextTrajectoryBatch и config-driven JSON metrics CLI проходят real integration smoke. RLCluster/value bridge остаётся следующим workload этапом."
+      "description": "Official google/tunix revision, Qwen chat-template, generated token ids/logprobs, real MegaPrompts EnvState rendering, CrafText action replay, typed TextTrajectoryBatch и config-driven JSON metrics CLI проходят real integration smoke. Это sampler/replay evidence, а не trainable RLCluster workload."
     },
     {
       "name": "JIT-safe Flashbax text staging",
@@ -109,6 +109,11 @@
       "name": "Fixed-horizon parallel text rollout",
       "status": "ready",
       "description": "collect_batched_text_rollout выполняет batch Qwen/CrafText decisions на horizon, сохраняет terminal transition и reset только finished rows для следующего шага; replays_from_batched_rollout экспортирует per-env replay v3, совместимый с TextTrajectoryBatch/PPO contracts. Real B=2,T=2 fixture проходит."
+    },
+    {
+      "name": "Agentic GRPO golden pipeline",
+      "status": "planned",
+      "description": "Tunix ToolAgent/BaseTaskEnv multi-turn contract покрыт fake-model test. Реальный serializable CrafText environment factory, RLCluster model factory, Agentic GRPOLearner CLI, one-update integration, resume и evaluation ещё не реализованы."
     }
   ]
 }

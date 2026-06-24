@@ -1,0 +1,7 @@
+schema_version: 1
+name: qwen-agentic-grpo-local
+axis_name: fsdp,tp
+roles:
+  actor: [0]
+  rollout: [0]
+  reference: [0]

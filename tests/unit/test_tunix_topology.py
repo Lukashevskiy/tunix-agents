@@ -34,6 +34,15 @@ def test_tunix_adapter_uses_official_role_enum_for_declared_meshes() -> None:
     assert all(mesh.devices.size == 1 for mesh in mapping.values())
 
 
+def test_agentic_grpo_topology_omits_the_unneeded_critic_role() -> None:
+    topology = load_tunix_topology(ROOT / "configs/topology/qwen_agentic_grpo_local.yaml")
+    mapping = tunix_role_to_meshes(topology)
+
+    assert tuple(topology.role_to_device_indices) == ("actor", "rollout", "reference")
+    assert {role.value for role in mapping} == {"actor", "rollout", "reference"}
+    assert all(mesh.axis_names == ("fsdp", "tp") for mesh in mapping.values())
+
+
 def test_topology_rejects_unknown_or_unavailable_device_indices() -> None:
     with pytest.raises(TopologyConfigError, match="roles"):
         TunixTopology("bad", "data", {"actor": (0,)})

@@ -1,128 +1,135 @@
-# Подробный план реализации
+# Golden Pipeline: Tunix Agentic GRPO + CrafText
 
-## 0. Базовая линия — сделано в этом каркасе
+## Решение
 
-- [x] Отдельный git-репозиторий и vendor snapshot CrafText, CagedCrafText, MegaPrompts.
-- [x] Лицензии исходных пакетов сохранены внутри vendor.
-- [x] Нейтральный контракт trajectory и тестируемый reference collector.
-- [x] JAX-native trajectory contracts: PyTree registration рядом с типами, JIT-safe terminal mask
-  и полная shape-проверка вложенных observation/action leaves на host boundary.
-- [x] Unit, integration и performance test lanes; MkDocs site и ADR.
+Проект прекращает развивать несколько равноправных training paths. Единственный
+product-critical путь использует публичный Tunix 0.1.7 Agentic RL API:
 
-## 1. Совместимость и измеримая baseline
+```text
+task/seed -> CrafText Agentic environment -> ToolAgent -> RLCluster rollout
+-> multi-turn trajectories -> Agentic GRPO -> checkpoints/metrics -> evaluation
+```
 
-- [~] Зафиксировать Python/JAX/JAXLIB/Tunix/Flax/Optax/Orbax в lockfile для CPU и целевого
-   accelerator, с отдельной таблицей compatibility.
-- [ ] Вынести exact source revision и SHA256 vendor-снимков в `vendor/manifest.json`.
-- [x] Написать `CrafTextAdapter.reset/step`, который возвращает статические pytree и
-   action-mask; сделать Caged-вариант тем же протоколом.
-- [ ] Создать deterministic tiny-world fixture: seed, 2 env, 8 steps, золотая
-   последовательность reward/done/allowed actions.
-- [~] Снять baseline: reset/step throughput, host→device transfer, compile time, peak HBM,
-   tokens/s и env-steps/s. Данные — JSON в `artifacts/benchmarks/`, не только console log.
+Алгоритм первого полного pipeline - **Agentic GRPO**. В закреплённом Tunix это
+готовый agentic learner с `TrajectoryCollectEngine` и `RolloutOrchestrator`.
+Он не требует отдельного trainable critic, поэтому не следует сначала строить
+локальный PPO/value-head путь, который не связан с model policy.
 
-**Gate:** две среды проходят parity fixture; baseline имеет hardware, commit, config и seed.
+Локальные `algorithms.py`, `learner.py`, Flashbax и token-PPO остаются
+исследовательскими компонентами. Они не являются production training loop и не
+должны получать новые feature-изменения, пока golden pipeline не завершён.
 
-## 2. Pure JAX collection
+## Definition Of Done
 
-- [~] Реализовать `lax.scan` collector с split PRNG per update/env/action.
-- [ ] Добавить done-reset semantics без Python ветвления; отдельно проверить terminated vs
-   truncated и action mask.
-- [ ] Сравнить reference collector с JIT collector на fixed fixture leaf-by-leaf.
-- [ ] Добавить sharding API заранее (`Mesh`/named axes), но начать с одного device.
-- [~] Профилировать compilation отдельно от steady-state и документировать warmup.
-- [~] Логировать полный host-side LLM decision path: phase trace MegaPrompts render, Qwen
-  generation, strict decode и CrafText step готов; следующий шаг — собрать baseline 10–20 repeats
-  на целевом hardware.
+Один CLI command, получивший versioned YAML и local/remote model profile,
+должен:
 
-**Gate:** exact parity дискретных полей, численная tolerance для float, не хуже baseline
-по env-step/s после warmup.
+1. создать trainable actor, rollout actor и frozen reference через `RLCluster`;
+2. собрать минимум две multi-turn CrafText траектории на один task через
+   `ToolAgent` и `craftext_step(action=...)`;
+3. выполнить хотя бы один Agentic GRPO update и доказать изменение actor weights;
+4. записать checkpoint, trajectory JSONL, metrics JSONL и evaluation artifact;
+5. восстановить checkpoint и воспроизвести следующий update на fixed fixture;
+6. пройти CPU/fake-model contract tests и hardware-gated real-model integration test.
 
-## 3. Алгоритмический минимум: PPO
+Нельзя считать pipeline готовым по notebook, standalone sampler или по одному
+`ClusterConfig`: DoD требует фактический `RLCluster`, learner и update.
 
-- [~] TDD для discounted return, GAE, advantage normalization, masks и value bootstrap.
-- [~] Чистые функции loss: policy clip, value clip, entropy, KL; каждая имеет hand-computed
-   mini-batch test; token-level masked PPO variant покрывает padded text trajectories.
-- [~] Flax actor-critic и `TrainState` с Optax schedule/gradient clipping.
-- [x] Один update на synthetic trajectory → loss finite, params change, checkpoint round-trip.
-- [~] Запустить tiny CrafText end-to-end и сохранить trajectory/rendered prompt/metrics:
-   full-cycle notebook уже связывает CrafText rollout → replay evidence → token PPO smoke
-   update; следующий шаг — real trainable Qwen/RLCluster actor/critic update с метриками.
-- [~] Добавить bounded JIT-safe Flashbax staging: typed text item-buffer проходит
-  `jax.jit(add/sample)`; остаётся включить его в один synchronous collector→PPO update.
+## 0. Audit And Reproducibility Gate
 
-**Gate:** loss tests, deterministic smoke learning, Orbax resume даёт идентичный следующий update.
+- [ ] Добавить SHA256 и exact revisions каждого vendor snapshot в `vendor/manifest.json`.
+- [ ] Зафиксировать один train profile: Qwen 2.5 0.5B, tokenizer, model revision,
+  licence acknowledgement, target accelerator, mesh и memory budget.
+- [ ] Добавить exact deterministic fixture: 2 CrafText env, 8 turns, fixed seeds,
+  expected tool calls/rewards/done/action masks.
+- [ ] Разделить lockfile evidence: macOS/CPU smoke и target accelerator installation.
+- [ ] Сделать `make verify-golden` обязательным local/CI entrypoint без implicit downloads.
 
-## 4. Tunix bridge и LLM policy
+**Gate:** fixture, model profile и dependency provenance проверяются до загрузки весов.
 
-- [~] Зафиксировать проверенный Tunix release и написать adapter только по его публичному API.
-- [~] Унифицировать tokenizer/action decoder: invalid action → observable, metric и controlled
-  fallback, никогда не silent coercion.
-- [~] Добавить Qwen local smoke через публичный Tunix sampler; single-device backend не является
-  production multi-device path.
-- [~] Реализовать Qwen chat-template и sampling/logprob/value bridge: chat-template, sampler
-  cache sizing, token ids/logprobs, typed `TextTrajectoryBatch` и invalid-action/fallback replay
-  уже проверены; Qwen feature bridge через `skip_lm_head` тоже доступен. Остаются trainable value
-  head и output-parity fixture против прямого Tunix call.
-- [ ] Построить workload path через Tunix `RLCluster` и versioned `role_to_mesh` для
-  actor/rollout/critic/reference; topology profiles и `Role → Mesh` adapter готовы,
-  остаётся hardware-gated creation реального `RLCluster` workload.
-- [~] Добавить batch rollout boundary: Qwen/Tunix sampler уже проходит real batch-size-2 fixture
-  в одном вызове с per-row provenance; `collect_batched_text_decision` уже соединяет его с
-  batched decode/action-mask fallback и `vmap(CrafText.step)`. Multi-turn done-reset collector
-  реализован как sync precursor будущего consumer `RLCluster.ROLLOUT`.
-- [x] Собрать fixed-horizon parallel text rollout: `collect_batched_text_rollout` реализует
-  per-row `terminated/truncated → reset`, export в replay v3 и real Qwen/CrafText fixture
-  B=2,T=2. Этот replay можно конвертировать в `TextTrajectoryBatch` для token loss tests.
-- [ ] Сделать SFT warm-start и PPO на коротких fixed prompt rollouts.
-- [ ] Лишь после этого добавить GRPO как самостоятельный algorithm module, не как fork PPO.
+## 1. Production Multi-turn Environment
 
-**Gate:** prompt→sample→environment→loss интеграционный тест, стабильно записываемый replay.
+- [x] Заменить nested `build_craftext_agentic_environment()` на module-level,
+  serializable `BaseTaskEnv`, который Tunix может создавать из task/config в workers.
+- [x] Реализовать task factory: scenario, seed, goal, horizon и group id -> isolated
+  CrafText environment; исключить sharing JAX state между параллельными episodes.
+- [x] Сделать `craftext_step` единственным ToolAgent tool: strict action schema,
+  legal-action validation, observable invalid action, next prompt/tool output.
+- [~] Сохранить per-turn CrafText state/action/reward/done и token provenance в Tunix trajectory.
+- [~] Подключить реальный Qwen ToolAgent fixture, не только fake `model_call`.
 
-## 4a. Model interoperability
+**Gate:** `TrajectoryCollectEngine` собирает fixed 2 x 8 multi-turn fixture и
+реальный Qwen smoke без fallback-only trajectory.
 
-- [x] Базовый versionable template для state_dict → JAX/Flax PyTree и безопасный LoRA merge.
-- [ ] Добавить архитектурные templates для выбранных Tunix-compatible моделей с output parity fixtures.
-- [ ] Добавить QLoRA/dequantization adapter с numerical tolerance tests.
-- [~] Добавить Orbax import/export и round-trip test model + optimizer + adapter metadata.
-- [~] Принять Qwix как единственный QLoRA path; extra и source contract закреплены, но
-  architecture-specific parity/gradient/checkpoint fixtures ещё не реализованы.
+## 2. Tunix RLCluster Profile
 
-## 5. Масштабирование, отчётность и release
+- [ ] Перевести topology contract с обязательных actor/rollout/critic/reference
+  на Agentic GRPO roles: actor, rollout, reference; critic допустим только для
+  отдельного будущего PPO profile.
+- [x] Создать `AgenticGrpoWorkloadSpec` и YAML profile с batch sizes, generation
+  count, sequence limits, optimizer, checkpoint root и metrics directory.
+- [~] Реализовать model factory, которая создаёт actor/reference совместимых
+  Qwen model objects и tokenizer для `RLCluster`; не использовать local sampler
+  как train runtime.
+- [ ] Создать реальный `RLCluster` и проверить placement/sharing на declared mesh.
+- [ ] Добавить output/logprob parity fixture между rollout model и train actor.
 
-- [ ] Добавить multi-device tests с порогами масштабирования и явной degradation report.
-- [ ] Добавить preemption/resume test и schema migration checkpoint.
-- [ ] CI: lint + unit на CPU; integration env lane; nightly perf with comparison against baseline.
-  MVP Python 3.11–3.13 matrix запускается отдельно на release tag `mvp-v*`.
-- [x] Генерировать docs site из config schema, benchmark JSON, git revision и Mermaid/ADR.
-- [ ] Release checklist: reproducibility card, known limitations, performance table, migration guide
-   для конфигов VERL.
-- [ ] После sync baseline спроектировать async distributed transport: bounded queue, policy
-  version/staleness, back-pressure, preemption/resume и multi-host benchmark. mpi4jax
-  подключается только при прошедшей MPI/JAX compatibility fixture; CLU — для structured metrics.
+**Gate:** hardware-gated test создаёт `RLCluster`, загружает модель и делает
+один rollout without update на target accelerator.
 
-## 5a. Расширяемость и исследовательская наблюдаемость
+## 3. Agentic GRPO Training Loop
 
-- [~] Ввести typed `AlgorithmSpec`/registry: advantage transform, pure loss и immutable metrics;
-  PPO становится первой реализацией без изменения orchestration transport contracts.
-- [ ] Добавить будущий GRPO/GSPO только по первичному источнику с отдельным group-shape contract
-  `[B, G, T]`, hand-computed fixtures и explicit reference log-probs.
-- [~] Ввести `ModelAdapter`/profile boundary: Qwen local loader и tokenizer уже отделены от core;
-  остаются chat-template, `RLCluster` profile и output parity fixture.
-- [ ] Экспортировать structured JAX metrics на epoch boundary в JSONL и optional TensorBoard.
-- [ ] Добавить явный profiler command: warmup, ограниченный trace, Perfetto artifact, compile
-  ledger с shape/dtype/mesh fingerprint и recompilation alert.
-- [ ] Добавить Chex assertions только в host boundary/unit lanes, без blocking внутри JIT loops.
+- [~] Добавить `run_agentic_grpo.py`: load profile -> task stream -> `RLCluster`
+  -> Tunix Agentic `GRPOLearner` -> train/eval.
+- [ ] Подключить `ToolAgent` и CrafText env factory к `GRPOLearner`, включая
+  group key и `num_generations >= 2` для каждого исходного task.
+- [ ] Определить terminal reward и metrics: environment return, success,
+  invalid-action rate, episode length, tool-call distribution, KL and advantage.
+- [ ] Добавить one-update integration: weights change, finite loss, valid group
+  shape, no stale-policy samples after update.
+- [ ] Добавить short fixed-task overfit/sanity run с deterministic stop condition.
 
-**Gate:** новый algorithm/model подключается registry entry и fixtures; JIT transport loop не
-меняется, а trace и metrics связываются с config/commit/mesh provenance.
+**Gate:** CLI produces a trained actor checkpoint and an eval result that differs
+from the frozen reference on the same fixed task set.
 
-## Текущая ветка реализации
+## 4. Evidence, Resume And Evaluation
 
-`main`: CrafText/Caged adapter boundary и compiled `lax.scan` collector готовы; scan
-parity/steady-state benchmark проходят. Qwen 2.5 0.5B локально загружается через публичный
-Tunix API в single-device smoke-профиле. Qwen replay уже конвертируется в typed token batch;
-Flashbax typed staging добавлен и JIT-smoke проверен. Следующий implementation slice:
-**собрать synchronous collector → Flashbax → token PPO update**, затем trainable value bridge
-и реальный `RLCluster` workload с явным `role_to_mesh`. Async distributed execution остаётся
-отдельным hardware-gated этапом после sync baseline.
+- [ ] Store versioned YAML, git revision, model revision, topology, seed and
+  package versions beside every run.
+- [ ] Export trajectories and aggregate metrics to JSONL; add TensorBoard only
+  after JSONL schema is stable.
+- [ ] Add checkpoint save/restore for RLCluster/learner state and a preemption
+  test proving the next update matches a continuous run.
+- [ ] Add deterministic evaluation command with fixed task list, success/reward
+  metrics and reference-policy comparison.
+- [ ] Record accelerator benchmark: compile/warmup, rollout tokens/s, env steps/s,
+  update time, peak memory and degradation against a declared baseline.
+
+**Gate:** rerunning the same profile produces comparable evidence and resumes
+without silently changing model, task stream or topology.
+
+## 5. CI And Release
+
+- [ ] CPU CI: lint, unit, fake-agentic trajectory and config/schema tests on every PR.
+- [ ] Accelerator CI: real Qwen `RLCluster` smoke, one GRPO update and checkpoint
+  resume on an explicitly labelled hardware runner.
+- [ ] Nightly performance lane with threshold/degradation report; do not infer
+  scale-up from macOS results.
+- [ ] Publish reproducibility card, known limitations, model licence record and
+  migration guide from the old standalone PPO experiments.
+
+## Deferred Work
+
+These items are explicitly deferred until the golden pipeline passes all gates:
+
+- custom token-level PPO/value head and Flashbax collector-to-PPO loop;
+- SFT warm start, QLoRA/Qwix, state-dict model interop extensions;
+- GRPO variants such as GSPO/DAPO beyond upstream Agentic GRPO;
+- async multi-host MPI transport, multi-device scale thresholds and full release matrix.
+
+## Current Baseline
+
+Completed evidence includes CrafText adapters, deterministic JAX collectors,
+Qwen sampler smoke, batched host-side rollout/replay, token contracts, Tunix
+topology/config validation, and a fake-model `TrajectoryCollectEngine` multi-turn
+test. None of these substitutes for the golden Agentic GRPO train workload.

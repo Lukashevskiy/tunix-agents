@@ -3,14 +3,16 @@ distribution: google-tunix
 import_package: tunix
 source:
   repository: https://github.com/google/tunix.git
-  revision: 9beef62509a623835542f5239aa50d7552decb86
+  revision: 608733cc9d3cd0cb06ea79bfd32d8a18c27ba0dc
   snapshot_version: 0.1.7
 public_api_boundary:
   ppo_config: tunix.rl.ppo.ppo_learner.PPOConfig
   ppo_learner: tunix.rl.ppo.ppo_learner.PPOLearner
   role: tunix.rl.rl_cluster.Role
-compatibility_status: pinned-awaiting-extra-install
+  tool_agent: tunix.rl.agentic.agents.tool_agent.ToolAgent
+  task_environment: tunix.rl.agentic.environments.base_environment.BaseTaskEnv
+compatibility_status: pinned-verified
 notes:
-  - Core never imports Tunix; only the future bridge extra may do so.
+  - Core never imports Tunix; Tunix adapters import it lazily under the tunix extra.
   - The legacy PyPI distribution named tunix==0.0.0 is not this project and is prohibited.
-  - Distributed workloads declare role_to_mesh through configs/topology; Tunix owns resharding.
+  - Agentic multi-turn CrafText uses ToolAgent and BaseTaskEnv; RLCluster owns model placement.

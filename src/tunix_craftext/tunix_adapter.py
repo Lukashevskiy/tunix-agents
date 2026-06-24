@@ -12,6 +12,7 @@ from time import perf_counter
 from typing import Protocol, cast
 
 import jax
+import jax.numpy as jnp
 
 from .llm import LlmRequest, LlmResponse
 
@@ -260,6 +261,15 @@ def load_qwen_tokenizer(snapshot: Path) -> SamplingTokenizer:
     )
 
 
+def load_qwen_hf_tokenizer(snapshot: Path) -> object:
+    """Load the raw local Hugging Face tokenizer needed by Tunix chat parsers."""
+    if not snapshot.is_dir():
+        raise FileNotFoundError(f"Qwen snapshot not found: {snapshot}")
+    from transformers import AutoTokenizer  # type: ignore[import-untyped]
+
+    return AutoTokenizer.from_pretrained(str(snapshot), local_files_only=True)
+
+
 def load_qwen_model(snapshot: Path) -> tuple[object, Path]:
     """Load Qwen through Tunix on its declared mesh without implicit downloads.
 
@@ -278,6 +288,27 @@ def load_qwen_model(snapshot: Path) -> tuple[object, Path]:
         model_download_path=str(snapshot),
     )
     return model, Path(resolved) if resolved is not None else snapshot
+
+
+def load_qwen_model_on_mesh(
+    snapshot: Path, mesh: jax.sharding.Mesh, *, dtype: jnp.dtype
+) -> object:
+    """Load explicit local Qwen weights on a Tunix role mesh with declared storage precision.
+
+    Agentic GRPO uses this lower-level loader for distinct actor and reference
+    copies: actor parameters are ``float32`` so optimizer updates remain
+    representable, while a frozen reference may use ``bfloat16`` storage.
+    """
+    if not snapshot.is_dir():
+        raise FileNotFoundError(f"Qwen snapshot not found: {snapshot}")
+    from tunix.models.automodel import call_model_config  # type: ignore[import-untyped]
+    from tunix.models.qwen2.params import (  # type: ignore[import-untyped]
+        create_model_from_safe_tensors,
+    )
+
+    return create_model_from_safe_tensors(
+        str(snapshot), call_model_config(QWEN_TUNIX_CONFIG_ID), mesh=mesh, dtype=dtype
+    )
 
 
 def load_qwen_single_device_model(snapshot: Path) -> HiddenStateModel:

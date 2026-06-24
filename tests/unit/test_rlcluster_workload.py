@@ -2,12 +2,18 @@
 
 from pathlib import Path
 
+import jax.numpy as jnp
 import pytest
 
+import tunix_craftext.rlcluster_workload as workload
 from tunix_craftext.rlcluster_workload import (
+    AgenticGrpoWorkloadSpec,
     RLClusterWorkloadError,
     RLClusterWorkloadSpec,
+    build_agentic_grpo_cluster,
+    build_agentic_grpo_cluster_config,
     build_rlcluster_config,
+    load_agentic_grpo_qwen_assets,
 )
 from tunix_craftext.tunix_topology import load_tunix_topology
 
@@ -30,3 +36,70 @@ def test_rlcluster_config_binds_all_roles_and_static_batch_knobs() -> None:
 def test_rlcluster_workload_rejects_invalid_static_contract() -> None:
     with pytest.raises(RLClusterWorkloadError, match="kv_cache_size"):
         RLClusterWorkloadSpec(10, 5, 4, 2, 2, 128, 8, 128)
+
+
+def test_agentic_grpo_config_has_no_critic_and_recomputes_logprobs() -> None:
+    spec = AgenticGrpoWorkloadSpec(10, 5, 4, 2, 1, 128, 8, 256, num_generations=2)
+    config = build_agentic_grpo_cluster_config(
+        load_tunix_topology(ROOT / "configs/topology/qwen_agentic_grpo_local.yaml"), spec
+    )
+
+    assert {role.value for role in config.role_to_mesh} == {"actor", "rollout", "reference"}
+    assert config.training_config.critic_optimizer is None
+    assert config.training_config.compute_logps_micro_batch_size == 2
+    assert config.rollout_config.temperature == 1.0
+
+
+def test_agentic_grpo_rejects_unsupported_generation_count_or_critic_topology() -> None:
+    with pytest.raises(RLClusterWorkloadError, match="at least two"):
+        AgenticGrpoWorkloadSpec(10, 5, 4, 2, 1, 128, 8, 256, num_generations=1)
+    with pytest.raises(RLClusterWorkloadError, match="must not declare a critic"):
+        build_agentic_grpo_cluster_config(
+            load_tunix_topology(ROOT / "configs/topology/qwen_local_smoke.yaml"),
+            AgenticGrpoWorkloadSpec(10, 5, 4, 2, 1, 128, 8, 256),
+        )
+
+
+def test_agentic_grpo_assets_use_distinct_role_meshes_and_storage_dtypes(monkeypatch) -> None:
+    calls: list[tuple[object, object]] = []
+
+    def load_model(snapshot, mesh, *, dtype):
+        calls.append((mesh, dtype))
+        return {"snapshot": snapshot, "mesh": mesh, "dtype": dtype}
+
+    monkeypatch.setattr(workload, "load_qwen_model_on_mesh", load_model)
+    monkeypatch.setattr(workload, "load_qwen_tokenizer", lambda snapshot: {"snapshot": snapshot})
+    topology = load_tunix_topology(ROOT / "configs/topology/qwen_agentic_grpo_local.yaml")
+
+    assets = load_agentic_grpo_qwen_assets(ROOT / "artifacts/models/qwen25-05b-instruct", topology)
+
+    assert len(calls) == 2
+    assert calls[0][1] == jnp.float32
+    assert calls[1][1] == jnp.bfloat16
+    assert assets.actor["mesh"] == assets.reference["mesh"]
+
+
+def test_agentic_grpo_cluster_uses_the_public_three_role_constructor(monkeypatch) -> None:
+    constructed: dict[str, object] = {}
+
+    class FakeCluster:
+        def __init__(self, **kwargs) -> None:
+            constructed.update(kwargs)
+
+    monkeypatch.setattr("tunix.rl.rl_cluster.RLCluster", FakeCluster)
+    topology = load_tunix_topology(ROOT / "configs/topology/qwen_agentic_grpo_local.yaml")
+    assets = workload.AgenticGrpoModelAssets("actor", "reference", "tokenizer")
+
+    cluster = build_agentic_grpo_cluster(
+        topology, AgenticGrpoWorkloadSpec(10, 5, 4, 2, 1, 128, 8, 256), assets
+    )
+
+    assert isinstance(cluster, FakeCluster)
+    assert constructed["actor"] == "actor"
+    assert constructed["reference"] == "reference"
+    assert constructed["tokenizer"] == "tokenizer"
+    assert {role.value for role in constructed["cluster_config"].role_to_mesh} == {
+        "actor",
+        "rollout",
+        "reference",
+    }

@@ -15,7 +15,7 @@ def test_plan_progress_counts_completed_and_pending_items() -> None:
     completed, total, phases = dashboard.plan_progress()
 
     assert 0 < completed <= total
-    assert total >= 40
+    assert total >= 20
     assert phases[0][0].startswith("0.")
 
 
@@ -28,8 +28,8 @@ def test_dashboard_generation_writes_current_project_pages() -> None:
 
     kanban = (ROOT / "docs" / "_generated" / "kanban.md").read_text(encoding="utf-8")
     assert "kanban-lane--active" in kanban
-    assert "CrafTextAdapter.reset/step" in kanban
-    assert "action-mask" in kanban
+    assert "module-level" in kanban
+    assert "craftext_step" in kanban
 
     graph = (ROOT / "docs" / "_generated" / "task-graph.md").read_text(encoding="utf-8")
     assert 'id="task-graph-data"' in graph
