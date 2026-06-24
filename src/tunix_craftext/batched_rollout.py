@@ -228,6 +228,7 @@ def replays_from_batched_rollout(
                     observation=_item_at(transition.observation, environment_index),
                     invalid_format=metrics.invalid_format,
                     unknown_action=metrics.unknown_action,
+                    masked_action=metrics.masked_action,
                     fallback_used=bool(decision.fallback_used[environment_index]),
                     token_logprobs=response.token_logprobs,
                     token_ids=response.token_ids,

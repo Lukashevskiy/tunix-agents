@@ -43,7 +43,7 @@
     {
       "name": "Runnable examples",
       "status": "ready",
-      "description": "Двенадцать самостоятельных notebooks показывают trajectory contract, CrafText adapter, model/LoRA interoperability, MegaPrompts boundary, ручной Qwen→CrafText episode, batched Qwen PPO path и полный CrafText rollout → replay → token PPO smoke training cycle."
+      "description": "Двенадцать самостоятельных notebooks согласованы с итоговым pipeline: ранние notebooks показывают отдельные boundaries, 07 уже использует batched Tunix/MegaPrompts/CrafText rollout, 08 документирует reusable JAX transport, а 09/11/12 ведут replay → token batch → PPO smoke cycle."
     },
     {
       "name": "Prompt assembly boundary",

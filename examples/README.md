@@ -13,8 +13,8 @@ Notebooks are deterministic, small and focused on one public contract.
 | `02_craftext_adapter.ipynb` | Normalize CrafText reset/step. |
 | `03_model_interop_lora.ipynb` | Convert state dict and merge LoRA. |
 | `06_qwen_craftext_manual_episode.ipynb` | Run reset → Qwen prompt → decode/fallback → CrafText step → replay. |
-| `07_qwen_craftext_full_trajectory.ipynb` | Collect a full Qwen-driven CrafText replay and visualize actions, rewards and observation frames. |
-| `08_parallel_craftext_pipeline.ipynb` | Run parallel CrafText environments with `vmap` and a compiled horizon with `lax.scan`. |
+| `07_qwen_craftext_full_trajectory.ipynb` | Collect final batched Qwen/Tunix → MegaPrompts → CrafText replays and visualize one environment trace. |
+| `08_parallel_craftext_pipeline.ipynb` | Run the JAX-parallel CrafText transport that downstream text rollout notebooks reuse before replay/token batching. |
 | `09_batched_qwen_craftext_rollout.ipynb` | Collect B×T Qwen/CrafText rollout, terminal resets and per-environment replays. |
 | `10_replay_to_token_ppo.ipynb` | Convert replay evidence to token batches, masks, returns and PPO loss inputs. |
 | `11_end_to_end_batched_qwen_ppo.ipynb` | Run the full batched Env → MegaPrompts → Qwen → replay → token PPO loss path. |
