@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import jax
 import jax.numpy as jnp
+import pytest
 
 from tunix_craftext.adapters import CrafTextAdapter
 from tunix_craftext.batched_rollout import (
@@ -71,6 +72,47 @@ def test_batched_decision_uses_one_llm_batch_and_one_vmap_environment_step() -> 
     assert result.fallback_used.tolist() == [False, True]
     assert result.transition.state.tolist() == [11, 20]
     assert result.transition.reward.tolist() == [1.0, 0.0]
+
+
+def test_batched_decision_falls_back_when_model_selects_masked_action() -> None:
+    """Environment action masks are enforced before CrafText receives a step."""
+    adapter = CrafTextAdapter(_Environment(), None, action_count=2)
+    result = collect_batched_text_decision(
+        adapter,
+        _Renderer(),
+        _Backend(),
+        states=jnp.asarray([10, 20]),
+        action_masks=jnp.asarray([[True, False], [True, True]], dtype=bool),
+        actions=ActionCatalog(("NOOP", "DO")),
+        keys=jax.random.split(jax.random.PRNGKey(0), 2),
+        goal="test",
+        max_new_tokens=4,
+        invalid_action="fallback",
+        fallback_action_id=0,
+    )
+
+    assert [decision.action_id for decision in result.actions] == [0, 0]
+    assert result.metrics[0].masked_action == 1
+    assert result.fallback_used.tolist() == [True, True]
+    assert result.transition.reward.tolist() == [0.0, 0.0]
+
+
+def test_batched_decision_rejects_masked_action_without_fallback() -> None:
+    """Masked current-state actions fail loudly when no controlled fallback is configured."""
+    adapter = CrafTextAdapter(_Environment(), None, action_count=2)
+
+    with pytest.raises(ValueError, match="masked out"):
+        collect_batched_text_decision(
+            adapter,
+            _Renderer(),
+            _Backend(),
+            states=jnp.asarray([10, 20]),
+            action_masks=jnp.asarray([[True, False], [True, True]], dtype=bool),
+            actions=ActionCatalog(("NOOP", "DO")),
+            keys=jax.random.split(jax.random.PRNGKey(0), 2),
+            goal="test",
+            max_new_tokens=4,
+        )
 
 
 def test_batched_rollout_resets_only_finished_rows_and_exports_replays() -> None:

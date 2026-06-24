@@ -54,12 +54,14 @@ class DecodeMetrics:
 
     :ivar invalid_format: int
     :ivar unknown_action: int
+    :ivar masked_action: int
 
     Example:
         >>> obj = DecodeMetrics(invalid_format=..., unknown_action=...)"""
 
     invalid_format: int = 0
     unknown_action: int = 0
+    masked_action: int = 0
 
 
 def decode_action_outcome(
