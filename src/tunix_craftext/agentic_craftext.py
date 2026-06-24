@@ -191,7 +191,22 @@ class CrafTextAgenticEnvironment(BaseTaskEnv):
 
     def _render(self) -> str:
         assert self._state is not None
-        return self._renderer.render(PromptContext(self._goal, self._state, self._actions)).text
+        has_context = bool(getattr(self._adapter, "has_instruction_context", False))
+        context = self._adapter.episode_context(self._state) if has_context else None
+        prompt_state = (
+            self._adapter.prompt_state(self._state)
+            if hasattr(self._adapter, "prompt_state")
+            else self._state
+        )
+        return self._renderer.render(
+            PromptContext(
+                context.instruction if context is not None else self._goal,
+                context.env_state if context is not None else prompt_state,
+                self._actions,
+                safety="" if context is None else context.text_constraint,
+                world_preset="" if context is None else context.world_preset,
+            )
+        ).text
 
     def _event(self, event: str, **fields: object) -> None:
         context = {

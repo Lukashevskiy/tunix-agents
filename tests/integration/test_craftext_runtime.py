@@ -21,9 +21,14 @@ def test_canonical_config_builds_real_craftext_and_resets_through_adapter() -> N
     runtime = build_craftext_runtime(config)
 
     reset = runtime.adapter.reset(jax.random.PRNGKey(config.run.seed))
+    context = runtime.adapter.episode_context(reset.state)
 
     assert runtime.action_count == 17
     assert reset.action_mask.shape == (runtime.action_count,)
+    assert runtime.adapter.has_instruction_context
+    assert context.world_preset == config.environment.world_preset
+    assert context.instruction
+    assert context.env_state is not reset.state
 
 
 @pytest.mark.integration
@@ -32,9 +37,12 @@ def test_caged_config_builds_real_runtime_and_steps_through_adapter() -> None:
     runtime = build_craftext_runtime(config)
     reset = runtime.adapter.reset(jax.random.PRNGKey(config.run.seed))
     transition = runtime.adapter.step(jax.random.PRNGKey(config.run.seed + 1), reset.state, 0)
+    context = runtime.adapter.episode_context(reset.state)
 
     assert runtime.action_count > 0
     assert transition.action_mask.shape == (runtime.action_count,)
+    assert context.instruction
+    assert context.text_constraint
 
 
 @pytest.mark.integration

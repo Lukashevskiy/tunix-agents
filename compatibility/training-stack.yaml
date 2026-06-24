@@ -16,6 +16,16 @@ architecture:
       path: rollout workers -> bounded queue -> metrics/replay -> learner update
       admission_gate: MPI compatibility fixture and multi-host hardware runner
 components:
+  jax_lm:
+    source:
+      repository: https://github.com/chuyishang/jax-lm.git
+      revision: 4284553aef2540a47762903f9c5e868994409a26
+    license: MIT
+    role: static mesh and tensor-divisibility preflight practice
+    status: practice-only-not-runtime-dependency
+    notes:
+      - Its sharding and shape-validation discipline informs preflight.py before model weights load.
+      - It is not used as an inference runtime: it does not provide the required production KV-cache or continuous batching layer.
   qwix:
     distribution: qwix
     source:

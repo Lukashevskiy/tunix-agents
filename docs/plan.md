@@ -135,3 +135,11 @@ Completed evidence includes CrafText adapters, deterministic JAX collectors,
 Qwen sampler smoke, batched host-side rollout/replay, token contracts, Tunix
 topology/config validation, and a fake-model `TrajectoryCollectEngine` multi-turn
 test. None of these substitutes for the golden Agentic GRPO train workload.
+
+The environment boundary is now explicitly layered: bare `CraftaxAdapter` owns
+only JAX transition normalization; `CrafTextAdapter` adds a vendored instruction
+wrapper, `TextEnvState` and world-preset context; `CagedCrafTextAdapter` adds the
+text constraint aligned with that instruction. MegaPrompts receives the inner
+Craftax `EnvState`, selected instruction, safety constraint and `world_preset` as
+typed context. This is verified with real CrafText/Caged reset-step integration
+tests and is a prerequisite for the golden multi-turn environment gate.

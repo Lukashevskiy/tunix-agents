@@ -88,8 +88,23 @@ def collect_batched_text_decision(
     if len(dialogs) != batch_size:
         raise ValueError("dialog must contain one tuple per batch item")
     prompts = tuple(
-        renderer.render(PromptContext(goal, _item_at(states, index), actions, dialogs[index]))
+        renderer.render(
+            PromptContext(
+                context.instruction if context is not None else goal,
+                adapter.prompt_state(state),
+                actions,
+                dialogs[index],
+                safety="" if context is None else context.text_constraint,
+                world_preset="" if context is None else context.world_preset,
+            )
+        )
         for index in range(batch_size)
+        for state in (_item_at(states, index),)
+        for context in (
+            adapter.episode_context(state)
+            if isinstance(adapter, CrafTextAdapter) and adapter.has_instruction_context
+            else None,
+        )
     )
     responses = backend.complete_batch(
         tuple(LlmRequest(prompt, max_new_tokens=max_new_tokens) for prompt in prompts)

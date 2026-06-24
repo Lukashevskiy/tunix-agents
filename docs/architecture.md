@@ -40,13 +40,20 @@ Terminal state отделён от truncation: GAE маскирует насто
 может bootstrap-иться по выбранной политике. Это решение тестируется отдельными
 табличными примерами до первой оптимизации.
 
-## CrafText adapter boundary
+## Three-layer environment adapter boundary
 
-`CrafTextAdapter` и `CagedCrafTextAdapter` принимают vendor `reset(key, params)` и
-`step(key, state, action, params)`, но отдают training-safe `EnvironmentReset` и
-`EnvironmentStep`. Они фиксируют action mask как `[A]`, переводят vendor `done` в
-`terminated` и создают явный all-false `truncated`: текущий vendor API не различает
-timeout. Vendor `info` не протекает дальше boundary.
+`CraftaxAdapter` — нижний чистый boundary для любого Craftax-compatible env: он принимает
+vendor `reset(key, params)`/`step(key, state, action, params)`, фиксирует action mask `[A]`,
+переводит `done` в `terminated` и создаёт явный all-false `truncated`. Он намеренно не знает
+ни о world presets, ни о текстовых задачах.
+
+`CrafTextAdapter` строится поверх уже созданного Craftax world preset и vendored
+`RawInstructionWrapper`. Его `TextEnvState` хранит `idx` задачи и внутренний Craftax
+`EnvState`; `episode_context()` извлекает instruction, preset provenance и именно внутренний
+`EnvState` для MegaPrompts. `CagedCrafTextAdapter` расширяет тот же context синхронным с
+instruction `text_constraint`; численная cost-динамика остаётся vendor state, а не
+неявным полем trajectory. В `PromptContext` также передаётся `world_preset`: шаблон может
+явно описать игроку геометрию/механику выбранного мира.
 
 Contract golden fixture запускает два детерминированных CrafText-shaped env на 8-step
 траекториях; real CrafText/Caged smoke test запускается только с extra `envs`. Следующий

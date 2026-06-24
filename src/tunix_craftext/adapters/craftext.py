@@ -105,10 +105,15 @@ jax.tree_util.register_dataclass(
 )
 
 
-class CrafTextAdapter(Generic[ParamsT, ObservationT, StateT]):
-    """Normalize one CrafText-family environment without mutating vendor state or info.
+class CraftaxAdapter(Generic[ParamsT, ObservationT, StateT]):
+    """Normalize a bare Craftax-compatible environment without text/task metadata.
 
-    :param environment: Vendor CrafText-compatible environment.
+    This is deliberately the lowest environment boundary.  It knows only the
+    JAX ``reset``/``step`` protocol, terminal semantics and action masks.  In
+    particular, it does not construct world presets, select instructions, or
+    interpret a CrafText ``TextEnvState``.
+
+    :param environment: Vendor Craftax-compatible environment.
     :param params: Static parameters passed to each reset and step.
     :param action_count: Static discrete action cardinality ``A``; it fixes mask shape ``[A]``.
     :param action_mask_key: Optional key in vendor info containing a boolean ``[A]`` mask.
@@ -203,14 +208,155 @@ class CrafTextAdapter(Generic[ParamsT, ObservationT, StateT]):
         )
 
 
+@dataclass(frozen=True)
+class CrafTextEpisodeContext(Generic[StateT]):
+    """Host-side task metadata paired with CrafText's underlying ``EnvState``.
+
+    :ivar world_preset: Reproducible CrafText world preset selected by the run config.
+    :ivar instruction: Instruction selected by the CrafText wrapper for this episode.
+    :ivar env_state: Underlying Craftax ``EnvState`` for prompt rendering.
+    :ivar text_constraint: Optional CagedCrafText safety constraint.
+    """
+
+    world_preset: str
+    instruction: str
+    env_state: StateT
+    text_constraint: str = ""
+
+
+class CrafTextAdapter(CraftaxAdapter[ParamsT, ObservationT, StateT]):
+    """CrafText boundary: Craftax transition contract plus instruction state.
+
+    ``CrafTextAdapter`` does not create a world itself.  The runtime constructs
+    the vendor world preset and ``RawInstructionWrapper`` first, then this
+    adapter binds their public metadata to the normalized transition contract.
+    ``prompt_state`` unwraps CrafText's ``TextEnvState.env_state`` so MegaPrompts
+    receives the structured Craftax state it expects.
+
+    :param world_preset: Name of the resolved world preset; provenance only.
+    :param instructions: Scenario rows aligned with ``TextEnvState.idx``.
+    :param instruction_index: Optional fixed scenario row used by the vendor reset.
+    """
+
+    def __init__(
+        self,
+        environment: CrafTextEnvironment[ParamsT, ObservationT, StateT],
+        params: ParamsT,
+        action_count: int,
+        action_mask_key: str = "action_mask",
+        *,
+        world_preset: str = "",
+        instructions: tuple[str, ...] = (),
+        instruction_index: int | None = None,
+    ) -> None:
+        super().__init__(environment, params, action_count, action_mask_key)
+        if instruction_index is not None and instruction_index < 0:
+            raise AdapterContractError("instruction_index must be non-negative")
+        if instruction_index is not None and instructions and instruction_index >= len(instructions):
+            raise AdapterContractError("instruction_index must reference one configured instruction")
+        self._world_preset = world_preset
+        self._instructions = instructions
+        self._instruction_index = instruction_index
+
+    @property
+    def world_preset(self) -> str:
+        """Return the CrafText world-preset provenance, if configured."""
+        return self._world_preset
+
+    @property
+    def has_instruction_context(self) -> bool:
+        """Whether this adapter was built around a CrafText instruction wrapper."""
+        return bool(self._instructions)
+
+    def reset(self, key: ArrayLike) -> EnvironmentReset[ObservationT, StateT]:
+        """Reset CrafText and bind the configured instruction when available."""
+        if self._instruction_index is None:
+            return super().reset(key)
+        observation, state = self._environment.reset(  # type: ignore[call-arg]
+            key, self._params, instruction_idx=self._instruction_index
+        )
+        return EnvironmentReset(
+            observation=observation, state=state, action_mask=self._fallback_mask()
+        )
+
+    @staticmethod
+    def prompt_state(state: StateT) -> object:
+        """Return the underlying Craftax ``EnvState`` for a CrafText prompt.
+
+        Bare test environments are accepted for backwards-compatible unit
+        fixtures.  Real CrafText wrappers expose ``env_state``.
+        """
+        return getattr(state, "env_state", state)
+
+    def episode_context(self, state: StateT) -> CrafTextEpisodeContext[object]:
+        """Resolve host-side instruction metadata for one CrafText wrapper state.
+
+        This method is intentionally host-only: conversion of a JAX scalar
+        ``idx`` to a Python index happens while rendering a text prompt, never
+        inside ``jit`` or ``scan``.
+
+        :param state: Current vendor ``TextEnvState``.
+        :returns: World preset, selected instruction and underlying ``EnvState``.
+        :raises AdapterContractError: If the adapter lacks scenario metadata.
+        """
+        if not self._instructions:
+            raise AdapterContractError("CrafText instruction metadata is not configured")
+        raw_index = getattr(state, "idx", None)
+        if raw_index is None:
+            raise AdapterContractError("CrafText state must expose instruction idx")
+        index = int(raw_index)
+        if not 0 <= index < len(self._instructions):
+            raise AdapterContractError("CrafText state instruction idx is outside configured rows")
+        return CrafTextEpisodeContext(
+            world_preset=self._world_preset,
+            instruction=self._instructions[index],
+            env_state=self.prompt_state(state),
+        )
+
+
 class CagedCrafTextAdapter(CrafTextAdapter[ParamsT, ObservationT, StateT]):
-    """CagedCrafText adapter with the same normalized contract as base CrafText.
+    """CagedCrafText boundary: CrafText instruction state plus textual constraint.
 
-    Constraint costs remain in the vendor observation/state or a future explicit cost adapter;
-    this class guarantees only common trajectory semantics.
+    Constraint costs remain in the vendor state.  This adapter exports the
+    *textual* constraint aligned with the selected instruction so that a prompt
+    renderer can state the safety requirement explicitly.
     """
-    """Example:
 
-    >>> adapter = CagedCrafTextAdapter(environment, params, action_count=5)
-    >>> reset = adapter.reset(key)
-    """
+    def __init__(
+        self,
+        environment: CrafTextEnvironment[ParamsT, ObservationT, StateT],
+        params: ParamsT,
+        action_count: int,
+        action_mask_key: str = "action_mask",
+        *,
+        world_preset: str = "",
+        instructions: tuple[str, ...] = (),
+        text_constraints: tuple[str, ...] = (),
+        instruction_index: int | None = None,
+    ) -> None:
+        if text_constraints and len(text_constraints) != len(instructions):
+            raise AdapterContractError("text_constraints must align one-to-one with instructions")
+        super().__init__(
+            environment,
+            params,
+            action_count,
+            action_mask_key,
+            world_preset=world_preset,
+            instructions=instructions,
+            instruction_index=instruction_index,
+        )
+        self._text_constraints = text_constraints
+
+    def episode_context(self, state: StateT) -> CrafTextEpisodeContext[object]:
+        """Resolve CrafText metadata and the selected Caged textual constraint."""
+        context = super().episode_context(state)
+        raw_index = getattr(state, "idx", None)
+        assert raw_index is not None  # Checked by the parent contract.
+        index = int(raw_index)
+        constraint = self._text_constraints[index] if self._text_constraints else ""
+        return CrafTextEpisodeContext(
+            world_preset=context.world_preset,
+            instruction=context.instruction,
+            env_state=context.env_state,
+            text_constraint=constraint,
+        )

@@ -74,9 +74,23 @@ def collect_text_episode(
     backend_name = "unknown"
 
     for index, key in enumerate(keys[1:]):
-        # MegaPrompts renders CrafText's structured ``EnvState`` (map, inventory,
-        # coordinates), while ``observation`` remains the numerical policy input.
-        prompt = renderer.render(PromptContext(goal, state, actions, dialog))
+        # MegaPrompts renders Craftax ``EnvState``; CrafText's instruction wrapper
+        # keeps its task metadata in the outer TextEnvState.
+        context = (
+            adapter.episode_context(state)
+            if isinstance(adapter, CrafTextAdapter) and adapter.has_instruction_context
+            else None
+        )
+        prompt = renderer.render(
+            PromptContext(
+                context.instruction if context is not None else goal,
+                adapter.prompt_state(state),
+                actions,
+                dialog,
+                safety="" if context is None else context.text_constraint,
+                world_preset="" if context is None else context.world_preset,
+            )
+        )
         response = backend.complete(LlmRequest(prompt, max_new_tokens=max_new_tokens))
         decision, metrics = decode_action_outcome(prompt, response.raw_text)
         fallback_used = False

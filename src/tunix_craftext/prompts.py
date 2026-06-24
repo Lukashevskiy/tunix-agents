@@ -66,6 +66,7 @@ class PromptContext(Generic[ObservationT]):
     :ivar actions: Stable action catalogue for this environment configuration.
     :ivar dialog: Immutable previous dialogue turns, if the prompt template uses them.
     :ivar safety: Optional safety constraint text for the current episode.
+    :ivar world_preset: Optional CrafText world preset; templates may use it to explain map rules.
     """
 
     goal: str
@@ -73,6 +74,7 @@ class PromptContext(Generic[ObservationT]):
     actions: ActionCatalog
     dialog: tuple[str, ...] = ()
     safety: str = ""
+    world_preset: str = ""
 
 
 @dataclass(frozen=True)
@@ -166,6 +168,7 @@ class MegaPromptRenderer(Generic[ObservationT]):
                 "act": list(context.actions.labels),
                 "dialog": list(context.dialog),
                 "safety": context.safety,
+                "world_preset": context.world_preset,
             }
         )
         if not text.strip():

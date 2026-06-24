@@ -35,6 +35,25 @@ uv run pytest
 pyenv exec python -m uv sync --extra envs --extra tunix --extra replay --extra dev
 ```
 
+## Внешние проекты: что мы перенимаем и где ставим границу
+
+Мы не копируем чужие training loops в core. Каждый проект имеет закреплённую роль и отдельный
+compatibility record в [`compatibility/training-stack.yaml`](compatibility/training-stack.yaml).
+
+| Источник | Практика / роль у нас | Граница применения |
+| --- | --- | --- |
+| [Google Tunix](https://github.com/google/tunix) | `RLCluster`, Agentic GRPO, role meshes, model/learner API | Golden distributed training path; не заменяет typed environment/replay contracts. |
+| [jax-lm](https://github.com/chuyishang/jax-lm) | discipline static shapes, mesh divisibility и preflight до загрузки весов | Вдохновляет `preflight.py`; **не** inference engine и не dependency. |
+| [Qwix](https://github.com/google/qwix) | QLoRA/quantized JAX–Flax experiments | Только после output-parity и trainability fixture выбранной Tunix model. |
+| [Flashbax](https://github.com/instadeepai/flashbax) | JIT-compatible bounded replay staging | Исследовательский sync path; не превращает on-policy batch в неявный off-policy replay. |
+| [CommonLoopUtils](https://github.com/google/CommonLoopUtils) | structured metrics и checkpoint loop practice | Optional reporting/checkpoint layer после стабилизации JSONL evidence. |
+| [mpi4jax](https://github.com/mpi4jax/mpi4jax) | explicit multi-host collectives | Только будущая async/multi-host фаза и только с target-hardware fixture. |
+| [Anakin paper](https://arxiv.org/abs/2104.06272) | JAX-first actor–learner: static PyTrees, compiled numerical path, host I/O вне `jit` | Архитектурный принцип для sync-first, затем async scale-out. |
+
+Vendored `CrafText`, `CagedCrafText` и `MegaPrompts` сохраняются неизменёнными в `vendor/`;
+наша работа живёт в typed adapters и runtime boundaries, поэтому upstream snapshots можно
+обновлять и проверять отдельно.
+
 ## Локальный запуск сайта
 
 Создайте локальное окружение документации один раз, затем используйте команду репозитория вместо

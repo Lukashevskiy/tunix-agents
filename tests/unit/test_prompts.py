@@ -28,7 +28,11 @@ def test_megaprompt_renderer_preserves_environment_goal_and_action_mapping() -> 
 
     rendered = MegaPromptRenderer("base", backend).render(
         PromptContext(
-            goal="collect wood", observation={"inventory": 0}, actions=catalog, safety="stay safe"
+            goal="collect wood",
+            observation={"inventory": 0},
+            actions=catalog,
+            safety="stay safe",
+            world_preset="tiny_box_oob_no_mobs",
         )
     )
 
@@ -41,6 +45,7 @@ def test_megaprompt_renderer_preserves_environment_goal_and_action_mapping() -> 
         "act": ["LEFT", "RIGHT", "DO"],
         "dialog": [],
         "safety": "stay safe",
+        "world_preset": "tiny_box_oob_no_mobs",
     }
 
 

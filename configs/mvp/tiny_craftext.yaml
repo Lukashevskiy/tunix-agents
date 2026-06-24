@@ -6,7 +6,7 @@ environment:
   implementation: craftext
   base_environment: Craftax-Classic-Pixels-v1
   world_preset: tiny_box_oob_no_mobs
-  scenario_config: relational/achievements/easy/safe_avoid_enemy_by_radius
+  scenario_config: achievements/easy/one
   instruction_index: 0
   batch_size: 2
   horizon: 8

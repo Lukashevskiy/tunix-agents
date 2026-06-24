@@ -20,9 +20,13 @@ fallback. Он запускается через `scripts/run_text_episode.py`; 
 
 Поддерживаемая версия схемы сейчас только `1`; изменение полей — отдельная migration/ADR.
 `build_craftext_runtime()` связывает validated `MvpRunConfig` с vendored world preset и
-`CrafTextAdapter`; реальный reset, fixed-key mini-trajectory, batched rollout/replay export и
-JAX scan parity покрываются unit/integration lanes. Следующий шаг — trainable actor/critic
-config section для RLCluster workload.
+instruction wrapper. Для `implementation: craftext` это `RawInstructionWrapper → CrafTextAdapter`
+и `TextEnvState`; для `caged-craftext` — `CMDPInstructionWrapper → CagedCrafTextAdapter` с
+text constraint, синхронным с выбранной instruction. `scenario_config` обязан существовать в
+dataset соответствующего implementation: Caged scenario нельзя указать для plain CrafText.
+`world_preset`, instruction и constraint затем становятся явным context MegaPrompts. Реальный
+reset, fixed-key mini-trajectory, batched rollout/replay export и JAX scan parity покрываются
+unit/integration lanes.
 
 ```bash
 pyenv exec python -m uv sync --extra envs --extra prompts

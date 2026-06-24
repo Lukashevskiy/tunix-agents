@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .adapters import CrafTextAdapter
+from .adapters import CagedCrafTextAdapter, CrafTextAdapter
 from .config import MvpRunConfig
 from .prompts import ActionCatalog
 
@@ -50,11 +50,25 @@ def build_craftext_runtime(config: MvpRunConfig) -> CrafTextRuntime:
     """
     try:
         if config.environment.implementation == "craftext":
+            from craftext.environment.craftext_wrapper import (  # type: ignore[import-not-found]
+                RawInstructionWrapper,
+            )
+            from craftext.environment.scenarious.manager import (  # type: ignore[import-not-found]
+                DefaultInstructionTransformer,
+                DefaultJAXRepresentation,
+                JaxScenarioDataHandler,
+            )
+            from craftext.environment.scenarious.processors import (  # type: ignore[import-not-found]
+                RawProcessor,
+            )
             from craftext.environment.world_presets import (  # type: ignore[import-not-found]
                 build_env_and_params,
                 build_world_preset_spec,
             )
         elif config.environment.implementation == "caged-craftext":
+            from caged_craftext.environment.caged_craftext_wrapper import (  # type: ignore[import-not-found]
+                CMDPInstructionWrapper,
+            )
             from caged_craftext.environment.world_presets import (  # type: ignore[import-not-found]
                 build_env_and_params,
                 build_world_preset_spec,
@@ -80,8 +94,39 @@ def build_craftext_runtime(config: MvpRunConfig) -> CrafTextRuntime:
         raise RuntimeError("Craftax Action enum is required for text-policy labels") from error
     if len(labels) != action_count:
         raise RuntimeError("vendor Action enum does not match environment action cardinality")
+    if config.environment.implementation == "craftext":
+        scenario_handler = JaxScenarioDataHandler(
+            scenario_processor=RawProcessor,
+            instruction_transformer=DefaultInstructionTransformer,
+            config_name=config.environment.scenario_config,
+            jax_representation_class=DefaultJAXRepresentation,
+        )
+        instruction_environment = RawInstructionWrapper(environment, scenario_handler=scenario_handler)
+        adapter: CrafTextAdapter[object, object, object] = CrafTextAdapter(
+            instruction_environment,
+            env_params,
+            action_count,
+            world_preset=spec.name,
+            instructions=tuple(scenario_handler.scenario_data.instructions_list),
+            instruction_index=config.environment.instruction_index,
+        )
+    else:
+        instruction_environment = CMDPInstructionWrapper(
+            environment, config_name=config.environment.scenario_config
+        )
+        adapter = CagedCrafTextAdapter(
+            instruction_environment,
+            env_params,
+            action_count,
+            world_preset=spec.name,
+            instructions=tuple(instruction_environment.scenario_handler.scenario_data.instructions_list),
+            text_constraints=tuple(
+                instruction_environment.scenario_handler.scenario_data.texutal_constraints_list
+            ),
+            instruction_index=config.environment.instruction_index,
+        )
     return CrafTextRuntime(
-        adapter=CrafTextAdapter(environment, env_params, action_count),
+        adapter=adapter,
         env_params=env_params,
         action_count=action_count,
         actions=ActionCatalog(labels),

@@ -1,6 +1,6 @@
 schema_version: 1
 run: {name: craftext-full, seed: 7}
-environment: {implementation: craftext, base_environment: Craftax-Classic-Pixels-v1, world_preset: default, scenario_config: relational/achievements/easy/safe_avoid_enemy_by_radius, instruction_index: 0, batch_size: 2, horizon: 8}
+environment: {implementation: craftext, base_environment: Craftax-Classic-Pixels-v1, world_preset: default, scenario_config: achievements/easy/one, instruction_index: 0, batch_size: 2, horizon: 8}
 prompt: {renderer: megaprompts, template: base}
 policy: {implementation: scripted, invalid_action: error}
 artifacts: {save_trajectory: true, save_rendered_prompt: true, save_metrics: true}

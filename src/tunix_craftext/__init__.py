@@ -6,7 +6,14 @@ protocols, runtime adapters, prompt rendering helpers, and replay/trajectory
 contracts for reproducible experiments.
 """
 
-from .adapters import CagedCrafTextAdapter, CrafTextAdapter, EnvironmentReset, EnvironmentStep
+from .adapters import (
+    CagedCrafTextAdapter,
+    CraftaxAdapter,
+    CrafTextAdapter,
+    CrafTextEpisodeContext,
+    EnvironmentReset,
+    EnvironmentStep,
+)
 from .checkpoints import CheckpointMetadata, restore_checkpoint, save_checkpoint
 from .config import ConfigError, MvpRunConfig, load_mvp_config
 from .contracts import RolloutBatch, Transition
@@ -38,7 +45,9 @@ from .tunix_topology import (
 __all__ = [
     "LoraAdapter",
     "CagedCrafTextAdapter",
+    "CraftaxAdapter",
     "CrafTextAdapter",
+    "CrafTextEpisodeContext",
     "EnvironmentReset",
     "EnvironmentStep",
     "ModelTemplate",

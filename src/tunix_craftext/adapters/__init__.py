@@ -8,7 +8,9 @@ higher-level learners can consume without leaking vendor implementation details.
 from .craftext import (
     AdapterContractError,
     CagedCrafTextAdapter,
+    CraftaxAdapter,
     CrafTextAdapter,
+    CrafTextEpisodeContext,
     EnvironmentReset,
     EnvironmentStep,
 )
@@ -16,7 +18,9 @@ from .craftext import (
 __all__ = [
     "AdapterContractError",
     "CagedCrafTextAdapter",
+    "CraftaxAdapter",
     "CrafTextAdapter",
+    "CrafTextEpisodeContext",
     "EnvironmentReset",
     "EnvironmentStep",
 ]
