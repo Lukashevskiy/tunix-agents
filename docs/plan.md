@@ -35,6 +35,38 @@ task/seed -> CrafText Agentic environment -> ToolAgent -> RLCluster rollout
 Нельзя считать pipeline готовым по notebook, standalone sampler или по одному
 `ClusterConfig`: DoD требует фактический `RLCluster`, learner и update.
 
+## Порядок исполнения после архитектурного аудита
+
+Следующие этапы исполняются строго по порядку. Они не создают второй PPO-first
+roadmap: первый production path — Agentic GRPO с ролями `actor`, `rollout` и
+`reference`; trainable critic относится только к отдельному будущему PPO profile.
+
+| Очередь | Вертикальный срез | Acceptance gate | Не делать до gate |
+| --- | --- | --- | --- |
+| 0 | Hygiene и task semantics | `ruff`, `mypy`, unit suite; real CrafText test доказывает, что prompt содержит и user goal, и scenario instruction, world preset и Caged constraint | Не менять learner/mesh ради обхода неясного task contract |
+| 1 | Deterministic golden fixture | 2 task groups × 2 generations × 8 turns, fixed seeds; expected tool calls/rewards/done/action masks экспортированы как versioned fixture | Не заявлять multi-turn environment production-ready |
+| 2 | Reproducible GRPO profile | Один YAML содержит run/model/topology/workload/evidence paths; vendor SHA256, model revision/licence, config hash и package versions лежат рядом с run | Не загружать weights по незафиксированному profile |
+| 3 | Real RLCluster rollout | Accelerator-gated fixture создаёт actor/rollout/reference, проверяет role mesh и actor–rollout token/logprob parity | Не мерить distributed throughput и не строить custom scheduler |
+| 4 | One Agentic GRPO update | Один `GRPOLearner` update меняет actor weights, loss конечен, generation groups валидны, metrics включают return/success/invalid-action/KL | Не помечать model factory или runner готовыми |
+| 5 | Evidence, resume, evaluation | Checkpoint включает learner/cluster policy version; resumed next update совпадает с continuous; fixed evaluation сравнивает actor/reference | Не выпускать “trained checkpoint” или notebook как substitute |
+| 6 | CI и performance | PR CPU gate: Ruff + mypy + unit/fake agentic; accelerator smoke и nightly benchmark имеют отдельные runners и threshold evidence | Не выводить scale-up из macOS/CPU результатов |
+
+### Первый implementation slice: task semantics и hygiene
+
+1. Исправить composition prompt: `task.goal` не должен теряться при наличии
+   `CrafTextEpisodeContext`; scenario instruction, world preset и text constraint
+   остаются явными полями prompt context.
+2. Добавить real-runtime integration test на этот prompt и negative test на
+   отсутствие/несогласованность scenario context.
+3. Устранить текущие Ruff findings и добавить обязательный PR workflow для
+   Ruff, mypy и unit/fake-agentic tests.
+4. Зафиксировать exact fixture schema и vendor/model provenance contract до
+   первого accelerator allocation.
+
+**Первый test-first критерий:** два разных `task.goal` на одном фиксированном
+scenario должны давать разные rendered prompts, но одинаковые legal action
+catalogue и deterministic initial environment state.
+
 ## 0. Audit And Reproducibility Gate
 
 - [ ] Добавить SHA256 и exact revisions каждого vendor snapshot в `vendor/manifest.json`.
