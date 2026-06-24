@@ -6,6 +6,7 @@ import asyncio
 import json
 import logging
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -24,6 +25,8 @@ from tunix_craftext.agentic_craftext import (
     build_craftext_tool_agent,
 )
 from tunix_craftext.prompts import ActionCatalog, PromptContext, RenderedPrompt
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 @dataclass(frozen=True)
@@ -53,6 +56,25 @@ class _Adapter:
             next_state,
             float(action_id + 1),
             terminated=next_state == 2,
+            action_mask=(True, False),
+        )
+
+
+class _EightTurnAdapter:
+    """Fixed eight-turn environment for the versioned Agentic GRPO fixture."""
+
+    action_count = 2
+
+    def reset(self, _key: object) -> _Reset:
+        return _Reset(state=0, action_mask=(True, True))
+
+    def step(self, _key: object, state: int, action_id: int) -> _Transition:
+        assert action_id == 0
+        next_state = state + 1
+        return _Transition(
+            state=next_state,
+            reward=float(next_state),
+            terminated=next_state == 8,
             action_mask=(True, False),
         )
 
@@ -236,3 +258,44 @@ def test_tunix_trajectory_engine_collects_a_multi_turn_craftext_episode() -> Non
     assert len(trajectory.steps) == 2
     assert [step.reward for step in trajectory.steps] == [2.0, 1.0]
     assert trajectory.steps[-1].done
+
+
+def test_versioned_agentic_fixture_covers_two_groups_two_generations_eight_turns() -> None:
+    """Lock group/task/tool semantics before a real GRPOLearner update is introduced."""
+    fixture = json.loads((ROOT / "tests/fixtures/agentic_grpo_golden_v1.json").read_text())
+
+    assert fixture["schema"] == "tunix-craftext.agentic-golden/v1"
+    action_catalog = ActionCatalog(tuple(fixture["action_labels"]))
+    observations: list[str] = []
+    for task in fixture["tasks"]:
+        for pair_index in range(fixture["generations_per_task"]):
+            environment = CrafTextAgenticEnvironment(
+                agentic_task(
+                    goal=task["goal"], seed=task["seed"], horizon=fixture["horizon"]
+                ),
+                adapter=_EightTurnAdapter(),
+                renderer=_Renderer(),
+                actions=action_catalog,
+                group_id=task["group_id"],
+                pair_index=pair_index,
+            )
+            observation, _ = environment.reset()
+            observations.append(observation["question"])
+            rewards: list[float] = []
+            done: list[bool] = []
+            masks: list[tuple[bool, bool]] = []
+            for turn, label in enumerate(fixture["tool_actions"]):
+                _, reward, terminal, info = environment.step(_action(label, f"call-{turn}"))
+                rewards.append(reward)
+                done.append(terminal)
+                assert environment._action_mask is not None
+                masks.append(tuple(bool(value) for value in environment._action_mask))
+                assert info == {"action_id": 0, "action_label": "LEFT"}
+
+            assert rewards == fixture["expected_rewards"]
+            assert done == fixture["expected_done"]
+            assert masks == [tuple(mask) for mask in fixture["expected_next_action_masks"]]
+
+    assert len(observations) == len(fixture["tasks"]) * fixture["generations_per_task"]
+    assert "goal=collect wood" in observations[0]
+    assert "goal=find water" in observations[-1]

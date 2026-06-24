@@ -118,7 +118,7 @@
     {
       "name": "Agentic GRPO golden pipeline",
       "status": "planned",
-      "description": "Tunix ToolAgent/BaseTaskEnv multi-turn contract покрыт fake-model test. Реальный serializable CrafText environment factory, RLCluster model factory, Agentic GRPOLearner CLI, one-update integration, resume и evaluation ещё не реализованы."
+      "description": "Versioned fake-agentic fixture фиксирует 2 task groups × 2 generations × 8 turns с tool/reward/done/action-mask evidence. Реальные CrafText/Qwen parity, RLCluster model factory, Agentic GRPOLearner one-update, resume и evaluation ещё не реализованы."
     }
   ]
 }

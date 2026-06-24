@@ -74,8 +74,9 @@ catalogue и deterministic initial environment state.
   licence acknowledgement, target accelerator, mesh и memory budget.
 - [x] Добавить Qwen mesh preflight: до загрузки весов проверяются head/embed/vocab
   divisibility по role mesh, train/rollout micro-batch и prompt+generation KV cache budget.
-- [ ] Добавить exact deterministic fixture: 2 CrafText env, 8 turns, fixed seeds,
-  expected tool calls/rewards/done/action masks.
+- [~] Добавить exact deterministic fixture: fake-agentic fixture покрывает 2 task groups ×
+  2 generations × 8 turns, fixed seeds, expected tool calls/rewards/done/action masks;
+  real CrafText/Qwen parity остаётся отдельным integration gate.
 - [ ] Разделить lockfile evidence: macOS/CPU smoke и target accelerator installation.
 - [ ] Сделать `make verify-golden` обязательным local/CI entrypoint без implicit downloads.
 

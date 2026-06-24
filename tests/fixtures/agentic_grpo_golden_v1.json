@@ -1,0 +1,17 @@
+{
+  "schema": "tunix-craftext.agentic-golden/v1",
+  "horizon": 8,
+  "action_labels": ["LEFT", "RIGHT"],
+  "tasks": [
+    {"group_id": 0, "goal": "collect wood", "seed": 101},
+    {"group_id": 1, "goal": "find water", "seed": 202}
+  ],
+  "generations_per_task": 2,
+  "tool_actions": ["LEFT", "LEFT", "LEFT", "LEFT", "LEFT", "LEFT", "LEFT", "LEFT"],
+  "expected_rewards": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+  "expected_done": [false, false, false, false, false, false, false, true],
+  "expected_next_action_masks": [
+    [true, false], [true, false], [true, false], [true, false],
+    [true, false], [true, false], [true, false], [true, false]
+  ]
+}
