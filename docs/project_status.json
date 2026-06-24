@@ -43,7 +43,7 @@
     {
       "name": "Runnable examples",
       "status": "ready",
-      "description": "Семь самостоятельных notebooks показывают trajectory contract, CrafText adapter, model/LoRA interoperability, MegaPrompts boundary, ручной Qwen→CrafText episode и полный Qwen-driven replay с inline visualisation rewards/actions/observations."
+      "description": "Двенадцать самостоятельных notebooks показывают trajectory contract, CrafText adapter, model/LoRA interoperability, MegaPrompts boundary, ручной Qwen→CrafText episode, batched Qwen PPO path и полный CrafText rollout → replay → token PPO smoke training cycle."
     },
     {
       "name": "Prompt assembly boundary",

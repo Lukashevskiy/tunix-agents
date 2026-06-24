@@ -45,7 +45,9 @@
    mini-batch test; token-level masked PPO variant покрывает padded text trajectories.
 - [~] Flax actor-critic и `TrainState` с Optax schedule/gradient clipping.
 - [x] Один update на synthetic trajectory → loss finite, params change, checkpoint round-trip.
-- [ ] Запустить tiny CrafText end-to-end и сохранить trajectory/rendered prompt/metrics.
+- [~] Запустить tiny CrafText end-to-end и сохранить trajectory/rendered prompt/metrics:
+   full-cycle notebook уже связывает CrafText rollout → replay evidence → token PPO smoke
+   update; следующий шаг — real trainable Qwen/RLCluster actor/critic update с метриками.
 - [~] Добавить bounded JIT-safe Flashbax staging: typed text item-buffer проходит
   `jax.jit(add/sample)`; остаётся включить его в один synchronous collector→PPO update.
 

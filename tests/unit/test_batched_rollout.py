@@ -98,3 +98,72 @@ def test_batched_rollout_resets_only_finished_rows_and_exports_replays() -> None
     )
     assert len(replays) == 2
     assert all(len(replay.steps) == 2 for replay in replays)
+
+
+def test_batched_rollout_replay_feeds_token_ppo_training_path() -> None:
+    """Replay export preserves token provenance and masks fallback rows before PPO loss."""
+    from tunix_craftext.algorithms import masked_token_ppo_loss, masked_token_returns
+    from tunix_craftext.text_trajectory import text_trajectory_from_replay
+
+    class TokenBackend(_Backend):
+        def complete_batch(self, requests):
+            self.calls += 1
+            return (
+                LlmResponse(
+                    "<action>DO</action>",
+                    "test",
+                    "test",
+                    token_ids=(11, 12),
+                    token_logprobs=(-0.2, -0.3),
+                    prompt_token_ids=(1, 2, 3),
+                ),
+                LlmResponse(
+                    "invalid",
+                    "test",
+                    "test",
+                    token_ids=(21,),
+                    token_logprobs=(-0.7,),
+                    prompt_token_ids=(4, 5),
+                ),
+            )
+
+    adapter = CrafTextAdapter(_Environment(), None, action_count=2)
+    rollout = collect_batched_text_rollout(
+        adapter,
+        _Renderer(),
+        TokenBackend(),
+        actions=ActionCatalog(("NOOP", "DO")),
+        batch_size=2,
+        horizon=1,
+        seed=0,
+        goal="test",
+        max_new_tokens=4,
+        invalid_action="fallback",
+        fallback_action_id=0,
+    )
+    replays = replays_from_batched_rollout(
+        rollout, config_path="test", commit="abc", backend="test"
+    )
+    token_batch = text_trajectory_from_replay(replays[1])
+
+    assert token_batch.fallback_used.tolist() == [True]
+    assert token_batch.policy_mask.tolist() == [[False]]
+    token_batch = text_trajectory_from_replay(replays[0])
+    returns = masked_token_returns(token_batch.rewards, token_batch.token_mask, gamma=0.99)
+    zeros = jnp.zeros_like(token_batch.old_logprobs)
+    loss, metrics = masked_token_ppo_loss(
+        token_batch.old_logprobs,
+        token_batch.old_logprobs,
+        returns,
+        zeros,
+        zeros,
+        returns,
+        token_batch.policy_mask,
+        clip_epsilon=0.2,
+        value_coefficient=0.5,
+        entropy=zeros,
+        entropy_coefficient=0.01,
+    )
+
+    assert jnp.isfinite(loss)
+    assert metrics["approx_kl"] == 0.0

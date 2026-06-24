@@ -18,5 +18,6 @@ Notebooks are deterministic, small and focused on one public contract.
 | `09_batched_qwen_craftext_rollout.ipynb` | Collect B×T Qwen/CrafText rollout, terminal resets and per-environment replays. |
 | `10_replay_to_token_ppo.ipynb` | Convert replay evidence to token batches, masks, returns and PPO loss inputs. |
 | `11_end_to_end_batched_qwen_ppo.ipynb` | Run the full batched Env → MegaPrompts → Qwen → replay → token PPO loss path. |
+| `12_full_cycle_craftext_training.ipynb` | Run CrafText rollout → replay evidence → token batch → masked PPO update as a compact full-cycle training example. |
 
 Keep examples self-contained: fix seeds, avoid private data and do not import from `tests/`.
