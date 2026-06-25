@@ -41,6 +41,10 @@ update и visualisation. Компактный Flax actor/critic пересчит
 `PromptConditionedTokenActorCritic` → full-token PPO update. Safe policy-only режим остаётся
 доступен как `token_ppo_update()`, если fallback tokens нельзя включать в обучение.
 
+`13_replay_visualization.ipynb` открывает сохранённый replay JSON, показывает summary шагов,
+reward/action timeline, prompt/completion и observation image, если replay содержит renderable
+array. Он использует те же `load_trajectory()`/`normalize_image()`, что и pygame viewer ниже.
+
 Тот же путь доступен вне Jupyter и сохраняет как raw replay, так и summary metrics:
 
 ```bash

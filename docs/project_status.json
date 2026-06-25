@@ -48,7 +48,7 @@
     {
       "name": "Runnable examples",
       "status": "ready",
-      "description": "Двенадцать самостоятельных notebooks согласованы с итоговым pipeline: ранние notebooks показывают отдельные boundaries, 07 уже использует batched Tunix/MegaPrompts/CrafText rollout, 08 документирует reusable JAX transport, а 09/11/12 ведут replay → token batch → PPO smoke cycle."
+      "description": "Тринадцать самостоятельных notebooks согласованы с итоговым pipeline: ранние notebooks показывают отдельные boundaries, 07 уже использует batched Tunix/MegaPrompts/CrafText rollout, 08 документирует reusable JAX transport, 09/11/12 ведут replay → token batch → PPO smoke cycle, а 13 визуализирует replay."
     },
     {
       "name": "Prompt assembly boundary",
