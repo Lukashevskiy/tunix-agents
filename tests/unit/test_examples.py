@@ -28,6 +28,7 @@ def test_example_notebooks_are_valid_nbformat_with_runnable_imports() -> None:
         "12_full_cycle_craftext_training.ipynb": "evaluate_separate_llm_actor_critic_ppo",
         "13_replay_visualization.ipynb": "load_trajectory",
         "14_generation_benchmark.ipynb": "build_gemma_tunix_actor",
+        "15_agentic_grpo_full_trainer.ipynb": "GRPOLearner",
     }
     for filename, required_symbol in expected.items():
         notebook = json.loads((NOTEBOOKS / filename).read_text(encoding="utf-8"))

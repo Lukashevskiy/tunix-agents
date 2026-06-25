@@ -48,7 +48,7 @@
     {
       "name": "Runnable examples",
       "status": "ready",
-      "description": "Четырнадцать самостоятельных notebooks согласованы с итоговым pipeline: ранние notebooks показывают отдельные boundaries, 07/09 используют batched Tunix/MegaPrompts/CrafText rollout, 11 оставляет compact PPO mechanics, 12 выполняет real Gemma actor + separate critic PPO evaluation, 13 визуализирует replay, 14 меряет generation pipeline."
+      "description": "Пятнадцать самостоятельных notebooks согласованы с итоговым pipeline: ранние notebooks показывают отдельные boundaries, 07/09 используют batched Tunix/MegaPrompts/CrafText rollout, 11 оставляет compact PPO mechanics, 12 выполняет real Gemma actor + separate critic PPO evaluation, 13 визуализирует replay, 14 меряет generation pipeline, 15 ведёт operator GRPO runbook от dry-run/scripted-smoke до gated GRPOLearner."
     },
     {
       "name": "Prompt assembly boundary",
@@ -143,7 +143,7 @@
     {
       "name": "Agentic GRPO golden pipeline",
       "status": "current",
-      "description": "GRPO теперь имеет два local gates без model allocation: --dry-run валидирует profile/topology/preflight/evidence, --scripted-smoke запускает CrafTextAgenticEnvironment + ToolAgent + Tunix TrajectoryCollectEngine с несколькими scripted generations и group-normalized advantages. Реальный GRPOLearner one-update остаётся accelerator/local-snapshot gated; PPO-Lag/CPO должны переиспользовать этот transport и добавить value/cost critic."
+      "description": "GRPO имеет два local gates без model allocation: --dry-run валидирует profile/topology/preflight/evidence, --scripted-smoke запускает CrafTextAgenticEnvironment + ToolAgent + Tunix TrajectoryCollectEngine с несколькими scripted generations и group-normalized advantages. Notebook 15 оформляет весь operator path и gated real GRPOLearner run; one-update остаётся accelerator/local-snapshot gated."
     }
   ]
 }
