@@ -149,6 +149,11 @@
       "name": "Agentic PPO critic bridge",
       "status": "current",
       "description": "Добавлен critic-backed Agentic PPO bridge поверх upstream Tunix AgenticRLLearner: AgenticPPOConfig, PPO-shaped TrainExample с old_values/returns, wiring actor ppo loss и critic value loss, CPU-safe tests. Hardware one-update остаётся отдельным accelerator gate."
+    },
+    {
+      "name": "Tunix checkpoint/resume boundary",
+      "status": "current",
+      "description": "Profile evidence.checkpoints теперь прокидывается в RLTrainingConfig.checkpoint_root_directory. Tunix RLCluster создаёт actor/critic role checkpoint roots и восстанавливает global_step через trainer maybe_restore/restored_global_step; hardware restart/preemption parity test остаётся открытым gate."
     }
   ]
 }

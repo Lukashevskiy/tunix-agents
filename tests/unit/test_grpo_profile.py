@@ -112,3 +112,60 @@ vendor_manifest: {ROOT / "vendor/manifest.json"}
     manifest = json.loads((evidence_root / "provenance.json").read_text(encoding="utf-8"))
     assert manifest["profile"]["name"] == "temp-profile-smoke"
     assert manifest["model"]["snapshot_exists"] is False
+
+
+def test_runner_profile_dry_run_exposes_tunix_checkpoint_root(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Profile evidence.checkpoints is the Tunix checkpoint root, not dead YAML."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "run_agentic_grpo", ROOT / "scripts/run_agentic_grpo.py"
+    )
+    runner = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(runner)
+    evidence_root = tmp_path / "run"
+    profile = tmp_path / "profile.yaml"
+    profile.write_text(
+        f"""
+schema_version: 1
+run:
+  name: dry-run-checkpoint-root
+  seed: 3
+  goal: Use craftext_step.
+environment_config: {ROOT / "configs/mvp/qwen_craftext.yaml"}
+topology_config: {ROOT / "configs/topology/qwen_agentic_grpo_local.yaml"}
+model:
+  model_id: Qwen/Qwen2.5-0.5B-Instruct
+  snapshot: {tmp_path / "missing-model"}
+  revision: local-test
+  license: apache-2.0
+workload:
+  max_steps: 1
+  eval_every_n_steps: 1
+  mini_batch_size: 2
+  train_micro_batch_size: 2
+  rollout_micro_batch_size: 1
+  max_prompt_length: 32
+  max_new_tokens: 8
+  kv_cache_size: 64
+  learning_rate: 0.00001
+  num_generations: 2
+  max_concurrency: 2
+evidence:
+  root: {evidence_root}
+  trajectories: {evidence_root / "trajectories.jsonl"}
+  metrics: {evidence_root / "metrics.jsonl"}
+  checkpoints: {evidence_root / "checkpoints"}
+  provenance: {evidence_root / "provenance.json"}
+vendor_manifest: {ROOT / "vendor/manifest.json"}
+""",
+        encoding="utf-8",
+    )
+
+    runner.main(["--profile", str(profile), "--dry-run"])
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["workload"]["checkpoint_root_directory"] == str(evidence_root / "checkpoints")

@@ -94,6 +94,15 @@ local safetensors snapshot: trainable actor хранится в `float32`, а fr
 публичный `RLCluster`; этим загрузка весов отделена от cluster construction и остаётся
 hardware-gated.
 
+На одном GPU с 12GB VRAM это следует считать smoke/bring-up режимом, а не обещанной
+training-конфигурацией. Qwen 0.5B GRPO держит actor + rollout/reference роли на одном
+устройстве и может упереться в KV-cache, optimizer state и temporary logits; поэтому
+профиль должен начинаться с маленьких `max_new_tokens`, `kv_cache_size`,
+`mini_batch_size=2`, `train_micro_batch_size=2`, `rollout_micro_batch_size=1`.
+Agentic PPO тяжелее GRPO, потому что добавляет critic model/trainer; для 12GB первым
+реалистичным sanity path является Gemma 270M или LoRA/Qwix-only update, а не full
+Qwen actor+critic в fp32.
+
 Для PPO path добавлены `load_ppo_qwen_assets()`, `load_ppo_gemma_assets()` и
 `build_ppo_cluster()`. Они создают actor/reference/tokenizer и обязательный critic model до
 вызова public `RLCluster(actor=..., critic=..., reference=..., tokenizer=...)`. Qwen critic

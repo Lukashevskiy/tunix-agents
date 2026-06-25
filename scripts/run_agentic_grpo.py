@@ -50,6 +50,12 @@ def parse_args(arguments: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--max-prompt-length", type=int, default=1024)
     parser.add_argument("--kv-cache-size", type=int, default=2048)
     parser.add_argument("--learning-rate", type=float, default=1e-5)
+    parser.add_argument(
+        "--checkpoint-root",
+        type=Path,
+        default=None,
+        help="Optional Tunix checkpoint root; profile runs default to evidence.checkpoints.",
+    )
     parser.add_argument("--skip-jit", action="store_true")
     parser.add_argument(
         "--dry-run",
@@ -96,6 +102,7 @@ def main(arguments: Sequence[str] | None = None) -> None:
         args.max_prompt_length = profile.workload.max_prompt_length
         args.kv_cache_size = profile.workload.kv_cache_size
         args.learning_rate = profile.workload.learning_rate
+        args.checkpoint_root = profile.evidence.checkpoints
         profile.evidence.provenance.parent.mkdir(parents=True, exist_ok=True)
         profile.evidence.provenance.write_text(
             json.dumps(
@@ -128,6 +135,7 @@ def main(arguments: Sequence[str] | None = None) -> None:
         args.max_new_tokens,
         args.kv_cache_size,
         args.learning_rate,
+        checkpoint_root_directory=args.checkpoint_root,
         num_generations=args.num_generations,
         max_concurrency=args.num_generations,
     )
@@ -157,6 +165,9 @@ def main(arguments: Sequence[str] | None = None) -> None:
                         "mini_batch_size": spec.mini_batch_size,
                         "num_generations": spec.num_generations,
                         "max_new_tokens": spec.max_new_tokens,
+                        "checkpoint_root_directory": str(spec.checkpoint_root_directory)
+                        if spec.checkpoint_root_directory
+                        else None,
                     },
                 },
                 indent=2,

@@ -36,6 +36,7 @@ class RLClusterWorkloadSpec:
     max_new_tokens: int
     kv_cache_size: int
     learning_rate: float = 1e-5
+    checkpoint_root_directory: Path | None = None
 
     def __post_init__(self) -> None:
         """Reject impossible static batch/cache contracts before accelerator allocation."""
@@ -116,6 +117,9 @@ def build_rlcluster_config(topology: TunixTopology, spec: RLClusterWorkloadSpec)
         mini_batch_size=spec.mini_batch_size,
         train_micro_batch_size=spec.train_micro_batch_size,
         rollout_micro_batch_size=spec.rollout_micro_batch_size,
+        checkpoint_root_directory=str(spec.checkpoint_root_directory)
+        if spec.checkpoint_root_directory is not None
+        else None,
     )
     rollout = RolloutConfig(
         max_prompt_length=spec.max_prompt_length,
@@ -156,6 +160,9 @@ def build_agentic_grpo_cluster_config(
         train_micro_batch_size=spec.train_micro_batch_size,
         rollout_micro_batch_size=spec.rollout_micro_batch_size,
         compute_logps_micro_batch_size=spec.train_micro_batch_size,
+        checkpoint_root_directory=str(spec.checkpoint_root_directory)
+        if spec.checkpoint_root_directory is not None
+        else None,
     )
     rollout = RolloutConfig(
         max_prompt_length=spec.max_prompt_length,

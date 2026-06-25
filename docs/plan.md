@@ -175,8 +175,10 @@ from the frozen reference on the same fixed task set.
   package versions beside every run.
 - [ ] Export trajectories and aggregate metrics to JSONL; add TensorBoard only
   after JSONL schema is stable.
-- [ ] Add checkpoint save/restore for RLCluster/learner state and a preemption
-  test proving the next update matches a continuous run.
+- [~] Add checkpoint save/restore for RLCluster/learner state: profile
+  `evidence.checkpoints` now reaches Tunix `RLTrainingConfig`, which creates
+  role-specific actor/critic checkpoint roots; hardware restart/preemption test
+  proving the next update matches a continuous run remains open.
 - [ ] Add deterministic evaluation command with fixed task list, success/reward
   metrics and reference-policy comparison.
 - [ ] Record accelerator benchmark: compile/warmup, rollout tokens/s, env steps/s,

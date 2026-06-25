@@ -26,7 +26,17 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_rlcluster_config_binds_all_roles_and_static_batch_knobs() -> None:
-    spec = RLClusterWorkloadSpec(10, 5, 4, 2, 2, 128, 8, 256)
+    spec = RLClusterWorkloadSpec(
+        10,
+        5,
+        4,
+        2,
+        2,
+        128,
+        8,
+        256,
+        checkpoint_root_directory=ROOT / "artifacts/runs/test/checkpoints",
+    )
     config = build_rlcluster_config(
         load_tunix_topology(ROOT / "configs/topology/qwen_local_smoke.yaml"), spec
     )
@@ -35,6 +45,7 @@ def test_rlcluster_config_binds_all_roles_and_static_batch_knobs() -> None:
         "actor", "rollout", "critic", "reference"
     }
     assert config.training_config.mini_batch_size == 4
+    assert config.training_config.checkpoint_root_directory.endswith("test/checkpoints")
     assert config.rollout_config.return_logprobs is True
 
 
@@ -44,7 +55,18 @@ def test_rlcluster_workload_rejects_invalid_static_contract() -> None:
 
 
 def test_agentic_grpo_config_has_no_critic_and_recomputes_logprobs() -> None:
-    spec = AgenticGrpoWorkloadSpec(10, 5, 4, 2, 1, 128, 8, 256, num_generations=2)
+    spec = AgenticGrpoWorkloadSpec(
+        10,
+        5,
+        4,
+        2,
+        1,
+        128,
+        8,
+        256,
+        checkpoint_root_directory=ROOT / "artifacts/runs/grpo/checkpoints",
+        num_generations=2,
+    )
     config = build_agentic_grpo_cluster_config(
         load_tunix_topology(ROOT / "configs/topology/qwen_agentic_grpo_local.yaml"), spec
     )
@@ -52,6 +74,7 @@ def test_agentic_grpo_config_has_no_critic_and_recomputes_logprobs() -> None:
     assert {role.value for role in config.role_to_mesh} == {"actor", "rollout", "reference"}
     assert config.training_config.critic_optimizer is None
     assert config.training_config.compute_logps_micro_batch_size == 2
+    assert config.training_config.checkpoint_root_directory.endswith("grpo/checkpoints")
     assert config.rollout_config.temperature == 1.0
 
 
