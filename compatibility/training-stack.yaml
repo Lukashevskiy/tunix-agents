@@ -27,6 +27,18 @@ components:
       - Its sharding and shape-validation discipline informs preflight.py before model weights load.
       - It is not used as an inference runtime: it does not provide the required production KV-cache or continuous batching layer.
       - LLM actor work follows its implementation hygiene: small tested adapters, explicit model/profile boundary and static-shape tests before heavyweight runs.
+  jax_toolbox:
+    source:
+      repository: https://github.com/NVIDIA/JAX-Toolbox.git
+      revision: main-2026-06-26-review
+    license: Apache-2.0
+    role: NVIDIA GPU container, profiling and JAX-vLLM rollout offloading practice
+    status: practice-source-and-future-container-baseline
+    notes:
+      - Public JAX containers, hardware CI badges and framework-specific Dockerfiles guide our future accelerator images.
+      - Nsight Systems and nsys-jax practice informs PhaseProfiler, JSON evidence and future NVTX ranges.
+      - jax-inference-offloading is a future async rollout pattern: JAX trainer keeps learning while vLLM owns continuous-batched inference, with explicit control-plane handshake and direct GPU data plane.
+      - It is not a runtime dependency of the CPU MVP and does not replace Tunix RLCluster contracts.
   qwix:
     distribution: qwix
     source:

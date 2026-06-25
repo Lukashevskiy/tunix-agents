@@ -44,6 +44,7 @@ nav:
   - Патчи vendor: vendor-patches.md
   - План реализации: plan.md
   - Качество и perf: quality.md
+  - Профилирование: profiling.md
   - Среда разработки: development.md
   - Поставка изменений: delivery.md
   - Эксперименты: experiments.md

@@ -85,6 +85,7 @@ compatibility record в [`compatibility/training-stack.yaml`](compatibility/trai
 | --- | --- | --- |
 | [Google Tunix](https://github.com/google/tunix) | `RLCluster`, Agentic GRPO, role meshes, model/learner API | Golden distributed training path; не заменяет typed environment/replay contracts. |
 | [jax-lm](https://github.com/chuyishang/jax-lm) | discipline static shapes, mesh divisibility и preflight до загрузки весов | Вдохновляет `preflight.py`; **не** inference engine и не dependency. |
+| [NVIDIA JAX-Toolbox](https://github.com/NVIDIA/JAX-Toolbox) | NVIDIA JAX containers, GPU CI matrix, Nsight/`nsys-jax` profiling, JAX↔vLLM rollout offloading pattern | Practice source для accelerator images/profiling/async rollout design; не runtime dependency CPU MVP и не замена Tunix/RLCluster. |
 | [Qwix](https://github.com/google/qwix) | QLoRA/quantized JAX–Flax experiments | Только после output-parity и trainability fixture выбранной Tunix model. |
 | [Flashbax](https://github.com/instadeepai/flashbax) | JIT-compatible bounded replay staging | Исследовательский sync path; не превращает on-policy batch в неявный off-policy replay. |
 | [CommonLoopUtils](https://github.com/google/CommonLoopUtils) | structured metrics и checkpoint loop practice | Optional reporting/checkpoint layer после стабилизации JSONL evidence. |

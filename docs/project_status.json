@@ -48,7 +48,7 @@
     {
       "name": "Runnable examples",
       "status": "ready",
-      "description": "Тринадцать самостоятельных notebooks согласованы с итоговым pipeline: ранние notebooks показывают отдельные boundaries, 07 уже использует batched Tunix/MegaPrompts/CrafText rollout, 08 документирует reusable JAX transport, 09/11/12 ведут replay → token batch → PPO smoke cycle, а 13 визуализирует replay."
+      "description": "Тринадцать самостоятельных notebooks согласованы с итоговым pipeline: ранние notebooks показывают отдельные boundaries, 07/09 используют batched Tunix/MegaPrompts/CrafText rollout, 11/12 ведут replay → real actor scoring → token batch → PPO smoke cycle, а 13 визуализирует replay."
     },
     {
       "name": "Prompt assembly boundary",
@@ -103,7 +103,12 @@
     {
       "name": "Phase-traced Qwen/CrafText performance evidence",
       "status": "ready",
-      "description": "Versioned text-pipeline benchmark измеряет отдельно MegaPrompts render, Qwen/Tunix generation, strict decode и CrafText step, сохраняет raw per-decision trace и median/p95. Повторы изолируются по process boundary, чтобы native failure становился evidence, а не потерянным run."
+      "description": "Versioned text-pipeline benchmark и PhaseProfiler измеряют MegaPrompts render, Qwen/Tunix generation, actor scoring, strict decode, CrafText step и PPO update; JSON artifacts совместимы с будущим nsys-jax/NVTX accelerator lane."
+    },
+    {
+      "name": "NVIDIA JAX-Toolbox practice record",
+      "status": "ready",
+      "description": "JAX-Toolbox добавлен в compatibility/readme как источник практик для NVIDIA containers, GPU CI, Nsight/nsys-jax profiling и будущего JAX↔vLLM rollout offloading; не является runtime dependency CPU MVP."
     },
     {
       "name": "Batched Qwen/Tunix completion bridge",

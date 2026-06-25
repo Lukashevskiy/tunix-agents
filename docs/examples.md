@@ -36,10 +36,10 @@ returns и token PPO loss mechanics.
 update и visualisation. Компактный Flax actor/critic пересчитывает `new_logprobs` и values;
 `full_token_ppo_update()` учится по всем generated tokens из `token_mask`.
 
-`12_full_cycle_craftext_training.ipynb` — компактный scripted smoke того же полного цикла без
-частных весов: rollout → replay evidence → `TextTrajectoryBatch` → returns →
-`PromptConditionedTokenActorCritic` → full-token PPO update. Safe policy-only режим остаётся
-доступен как `token_ppo_update()`, если fallback tokens нельзя включать в обучение.
+`12_full_cycle_craftext_training.ipynb` — real-model notebook того же полного цикла: Qwen/Tunix
+rollout → replay evidence → `TextTrajectoryBatch` → real `TunixCausalLmActor.score_tokens()` →
+phase profile JSON → full-token PPO smoke update. Веса всё ещё должны лежать локально и явно;
+notebook не скачивает snapshot и не включает offline/mock fallback backend.
 
 `13_replay_visualization.ipynb` открывает сохранённый replay JSON, показывает summary шагов,
 reward/action timeline, prompt/completion и observation image, если replay содержит renderable

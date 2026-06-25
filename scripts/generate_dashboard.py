@@ -38,6 +38,7 @@ API_MODULES = (
     "tunix_craftext.algorithm_registry",
     "tunix_craftext.config",
     "tunix_craftext.runtime",
+    "tunix_craftext.profiling",
     "tunix_craftext.checkpoints",
     "tunix_craftext.tunix_adapter",
     "tunix_craftext.tunix_actor",
