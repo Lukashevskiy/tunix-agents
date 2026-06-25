@@ -1,10 +1,10 @@
 schema_version: 1
 name: gemma3-270m-instruction-smoke
 architecture: gemma3
-model_id: gemma-3-270m-it
-source: kaggle
+model_id: google/gemma-3-270m-it
+source: gcs
 tokenizer_source: model
-purpose: tunix-bridge-smoke
+purpose: tunix-llm-actor-backbone
 weights_downloaded: false
 license_acknowledged: false
 resource_profile:

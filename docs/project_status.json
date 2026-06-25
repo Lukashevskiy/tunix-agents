@@ -91,6 +91,11 @@
       "description": "Official google/tunix revision, Qwen chat-template, generated token ids/logprobs, real MegaPrompts EnvState rendering, CrafText action replay, typed TextTrajectoryBatch и config-driven JSON metrics CLI проходят real integration smoke. Это sampler/replay evidence, а не trainable RLCluster workload."
     },
     {
+      "name": "LLM actor backbone contract",
+      "status": "ready",
+      "description": "Добавлен strict ModelProfile loader и production-shaped LlmActor boundary: generate_batch для rollout, score_tokens для token logprobs/critic values/entropy. Gemma3 270M profile зафиксирован как маленький Tunix backbone candidate; jax-lm используется как practice source, не runtime dependency."
+    },
+    {
       "name": "JIT-safe Flashbax text staging",
       "status": "ready",
       "description": "Typed Flashbax item-buffer принимает и семплирует fixed-shape TextTrajectoryBatch внутри jax.jit; он предназначен для bounded current-policy staging synchronous PPO window, а не для неявного off-policy replay. Qwix/CLU/mpi4jax зафиксированы в versioned training-stack contract для следующих этапов."

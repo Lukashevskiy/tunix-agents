@@ -26,6 +26,7 @@ components:
     notes:
       - Its sharding and shape-validation discipline informs preflight.py before model weights load.
       - It is not used as an inference runtime: it does not provide the required production KV-cache or continuous batching layer.
+      - LLM actor work follows its implementation hygiene: small tested adapters, explicit model/profile boundary and static-shape tests before heavyweight runs.
   qwix:
     distribution: qwix
     source:
