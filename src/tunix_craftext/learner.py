@@ -13,7 +13,7 @@ import optax  # type: ignore[import-untyped]
 from flax.training.train_state import TrainState
 
 from .algorithms import masked_token_ppo_loss, masked_token_returns, ppo_loss
-from .tensor_types import BatchFloat, BatchInt, TokenBatchFloat
+from .tensor_types import BatchFloat, BatchInt, TokenBatchBool, TokenBatchFloat
 from .text_trajectory import TextTrajectoryBatch
 
 
@@ -254,7 +254,69 @@ def token_ppo_update(
     :param entropy_coefficient: Entropy bonus scale.
     :returns: Updated TrainState and metrics dictionary.
     """
+    return _token_ppo_update_with_mask(
+        state,
+        batch,
+        learning_mask=batch.policy_mask,
+        gamma=gamma,
+        clip_epsilon=clip_epsilon,
+        value_coefficient=value_coefficient,
+        entropy_coefficient=entropy_coefficient,
+        mode="policy",
+    )
+
+
+def full_token_ppo_update(
+    state: TrainState,
+    batch: TextTrajectoryBatch,
+    *,
+    gamma: float = 0.99,
+    clip_epsilon: float = 0.2,
+    value_coefficient: float = 0.5,
+    entropy_coefficient: float = 0.01,
+) -> tuple[TrainState, dict[str, jax.Array]]:
+    """Apply PPO to every generated token, including fallback-marked rows.
+
+    This mode uses ``batch.token_mask`` rather than ``batch.policy_mask``. Padding
+    remains excluded, but every real generated token contributes to actor,
+    critic and entropy terms. Use it for full-token imitation/RL smoke tests
+    where fallback completions are intentionally part of the training signal.
+
+    :param state: Current token actor-critic TrainState.
+    :param batch: Token trajectory batch produced from replay evidence.
+    :param gamma: Discount for token reward-to-go.
+    :param clip_epsilon: PPO clipping epsilon.
+    :param value_coefficient: Value loss scale.
+    :param entropy_coefficient: Entropy bonus scale.
+    :returns: Updated TrainState and metrics dictionary.
+    """
+    return _token_ppo_update_with_mask(
+        state,
+        batch,
+        learning_mask=batch.token_mask,
+        gamma=gamma,
+        clip_epsilon=clip_epsilon,
+        value_coefficient=value_coefficient,
+        entropy_coefficient=entropy_coefficient,
+        mode="full-token",
+    )
+
+
+def _token_ppo_update_with_mask(
+    state: TrainState,
+    batch: TextTrajectoryBatch,
+    *,
+    learning_mask: TokenBatchBool,
+    gamma: float,
+    clip_epsilon: float,
+    value_coefficient: float,
+    entropy_coefficient: float,
+    mode: str,
+) -> tuple[TrainState, dict[str, jax.Array]]:
+    """Apply one token PPO update with an explicit learning mask."""
     batch.validate_static()
+    if tuple(learning_mask.shape) != tuple(batch.token_ids.shape):
+        raise ValueError("learning_mask must have shape [B, T]")
     returns = masked_token_returns(batch.rewards, batch.token_mask, gamma)
 
     def loss_fn(params):
@@ -269,7 +331,7 @@ def token_ppo_update(
             new_value=values,
             old_value=old_values,
             returns=returns,
-            token_mask=batch.policy_mask,
+            token_mask=learning_mask,
             clip_epsilon=clip_epsilon,
             value_coefficient=value_coefficient,
             entropy=entropy,
@@ -277,4 +339,9 @@ def token_ppo_update(
         )
 
     (loss, metrics), grads = jax.value_and_grad(loss_fn, has_aux=True)(state.params)
-    return state.apply_gradients(grads=grads), {**metrics, "loss": loss}
+    return state.apply_gradients(grads=grads), {
+        **metrics,
+        "loss": loss,
+        "learned_tokens": jnp.sum(learning_mask.astype(jnp.float32)),
+        "learning_mode": jnp.asarray(0 if mode == "policy" else 1, dtype=jnp.int32),
+    }

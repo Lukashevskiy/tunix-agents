@@ -87,20 +87,22 @@ replays = replays_from_batched_rollout(
 import jax
 
 from tunix_craftext.algorithms import masked_token_returns
-from tunix_craftext.learner import create_token_state, token_ppo_update
+from tunix_craftext.learner import create_token_state, full_token_ppo_update, token_ppo_update
 from tunix_craftext.text_trajectory import text_trajectory_from_replay
 
 batch = text_trajectory_from_replay(replays[0])
 returns = masked_token_returns(batch.rewards, batch.token_mask, gamma=0.99)
 state = create_token_state(jax.random.PRNGKey(0), token_bucket_count=512)
-state, metrics = token_ppo_update(state, batch, gamma=0.99)
+state, metrics = full_token_ppo_update(state, batch, gamma=0.99)
 ```
 
-`policy_mask` исключает padding и fallback decisions. Это защищает PPO update от silent learning
-из не-модельного действия. `token_ppo_update()` внутри вызывает `masked_token_ppo_loss`, но уже
-передаёт туда пересчитанные actor `new_logprobs`, critic values и entropy.
-`PromptConditionedTokenActorCritic` отвечает за локальный smoke; production learner заменит этот
-компактный bridge на Qwen/RLCluster actor/value path, не меняя replay или rollout contracts.
+`full_token_ppo_update()` использует `batch.token_mask`: все generated tokens входят в actor,
+critic и entropy terms, padding исключён, fallback-marked rows не выкидываются. Для safety-first
+запусков остаётся `token_ppo_update()`, который использует `batch.policy_mask` и исключает
+fallback decisions. Обе функции внутри вызывают `masked_token_ppo_loss`, но передают туда
+пересчитанные actor `new_logprobs`, critic values и entropy. `PromptConditionedTokenActorCritic`
+отвечает за локальный smoke; production learner заменит этот компактный bridge на Qwen/RLCluster
+actor/value path, не меняя replay или rollout contracts.
 
 ## Algorithm registry для PPO/DPO/GRPO
 

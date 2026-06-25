@@ -5,6 +5,7 @@ import pytest
 from tunix_craftext.learner import (
     create_state,
     create_token_state,
+    full_token_ppo_update,
     ppo_update,
     token_actor_critic_outputs,
     token_ppo_update,
@@ -78,3 +79,30 @@ def test_token_ppo_update_rejects_fallback_only_policy_batch() -> None:
 
     with pytest.raises(ValueError, match="token_mask"):
         token_ppo_update(state, _token_batch(fallback=True))
+
+
+def test_full_token_ppo_update_learns_from_all_generated_tokens_including_fallback() -> None:
+    state = create_token_state(jax.random.PRNGKey(3), token_bucket_count=16, hidden=8)
+    batch = _token_batch(fallback=True)
+
+    updated, metrics = full_token_ppo_update(state, batch)
+
+    assert bool(jnp.isfinite(metrics["loss"]))
+    assert float(metrics["learned_tokens"]) == float(jnp.sum(batch.token_mask))
+    assert int(metrics["learning_mode"]) == 1
+    assert not bool(
+        jnp.allclose(
+            state.params["Embed_0"]["embedding"],
+            updated.params["Embed_0"]["embedding"],
+        )
+    )
+
+
+def test_policy_token_ppo_reports_only_policy_masked_tokens() -> None:
+    state = create_token_state(jax.random.PRNGKey(4), token_bucket_count=16, hidden=8)
+    batch = _token_batch()
+
+    _, metrics = token_ppo_update(state, batch)
+
+    assert float(metrics["learned_tokens"]) == float(jnp.sum(batch.policy_mask))
+    assert int(metrics["learning_mode"]) == 0

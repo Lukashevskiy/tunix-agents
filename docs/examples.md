@@ -32,14 +32,14 @@ rollout, per-row terminal reset и export replay на каждую среду. `
 returns и token PPO loss mechanics.
 
 `11_end_to_end_batched_qwen_ppo.ipynb` объединяет все эти стадии в одном run: параллельные
-среды и Qwen requests, full rollout/replay, token batch, trainable token actor-critic PPO
-update и visualisation. Компактный Flax actor/critic пересчитывает `new_logprobs` и values,
-но не заменяет production Qwen/RLCluster actor/value path.
+среды и Qwen requests, full rollout/replay, token batch, full-token trainable actor-critic PPO
+update и visualisation. Компактный Flax actor/critic пересчитывает `new_logprobs` и values;
+`full_token_ppo_update()` учится по всем generated tokens из `token_mask`.
 
 `12_full_cycle_craftext_training.ipynb` — компактный scripted smoke того же полного цикла без
 частных весов: rollout → replay evidence → `TextTrajectoryBatch` → returns →
-`PromptConditionedTokenActorCritic` → masked PPO update. Используйте его как минимальную
-стартовую точку перед подключением production Qwen actor/critic.
+`PromptConditionedTokenActorCritic` → full-token PPO update. Safe policy-only режим остаётся
+доступен как `token_ppo_update()`, если fallback tokens нельзя включать в обучение.
 
 Тот же путь доступен вне Jupyter и сохраняет как raw replay, так и summary metrics:
 

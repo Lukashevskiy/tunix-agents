@@ -83,7 +83,7 @@
     {
       "name": "PPO learner и Orbax resume",
       "status": "ready",
-      "description": "Flax action actor-critic и prompt-conditioned token actor-critic покрыты TDD: token bridge пересчитывает trainable new_logprobs, critic values и делает masked PPO update по TextTrajectoryBatch. Orbax сохраняет params, optimizer state и step с версионируемым metadata record; restore подтверждён идентичным следующим update."
+      "description": "Flax action actor-critic и prompt-conditioned token actor-critic покрыты TDD: token bridge пересчитывает trainable new_logprobs, critic values и поддерживает два PPO режима — policy-mask update и full-token update по всем generated tokens. Orbax сохраняет params, optimizer state и step с metadata; restore подтверждён идентичным следующим update."
     },
     {
       "name": "Tunix Qwen episode bridge",
