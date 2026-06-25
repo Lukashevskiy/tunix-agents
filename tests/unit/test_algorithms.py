@@ -1,6 +1,6 @@
 import jax.numpy as jnp
 
-from tunix_craftext.algorithms import (
+from tunix_craftext.research.algorithms import (
     generalized_advantage_estimation,
     masked_token_ppo_loss,
     masked_token_returns,

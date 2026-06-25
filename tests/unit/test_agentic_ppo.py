@@ -55,6 +55,7 @@ class _FakeCluster:
             rollout_config=SimpleNamespace(max_prompt_length=4, max_tokens_to_generate=3),
         )
         self.metrics: list[tuple[dict, object, object]] = []
+        self.actor_logprob_calls = 0
 
     def get_ref_per_token_logps(self, **kwargs):
         del kwargs
@@ -62,6 +63,7 @@ class _FakeCluster:
 
     def get_actor_per_token_logps(self, **kwargs):
         del kwargs
+        self.actor_logprob_calls += 1
         return jnp.full((1, 3), -0.5, dtype=jnp.float32)
 
     def get_values(self, **kwargs):
@@ -145,3 +147,62 @@ def test_agentic_ppo_process_results_adds_values_and_returns(monkeypatch) -> Non
     assert example.policy_version.tolist() == [4]
     assert bool(jnp.all(jnp.isfinite(example.returns)))
     assert learner.rl_cluster.metrics
+
+
+def test_agentic_ppo_process_results_rejects_grouped_grpo_trajectories() -> None:
+    learner = object.__new__(AgenticPPOLearner)
+    learner.rl_cluster = _FakeCluster()
+    learner.algo_config = AgenticPPOConfig(max_response_length=3, beta=0.0)
+
+    with pytest.raises(ValueError, match="one trajectory per prompt group"):
+        learner._process_results([object(), object()])
+
+
+def test_agentic_ppo_process_results_requires_policy_version(monkeypatch) -> None:
+    learner = object.__new__(AgenticPPOLearner)
+    learner.rl_cluster = _FakeCluster()
+    learner.algo_config = AgenticPPOConfig(max_response_length=3, beta=0.0)
+    monkeypatch.setattr(learner, "_compute_rewards", lambda **kwargs: np.asarray([0.0]))
+
+    trajectory = SimpleNamespace(
+        traj={
+            "conversation_text": [{"role": "assistant", "content": "move"}],
+            "prompt_tokens": np.asarray([9, 8], dtype=np.int32),
+            "conversation_tokens": np.asarray([5, 6, 2], dtype=np.int32),
+            "conversation_masks": np.asarray([1, 1, 1], dtype=np.int32),
+            "trajectory_reward": 0.0,
+            "original_input": {"prompts": ["task"]},
+        }
+    )
+
+    with pytest.raises(ValueError, match="policy_version"):
+        learner._process_results([trajectory])
+
+
+def test_agentic_ppo_can_recompute_old_logprobs_from_actor(monkeypatch) -> None:
+    learner = object.__new__(AgenticPPOLearner)
+    learner.rl_cluster = _FakeCluster()
+    learner.algo_config = AgenticPPOConfig(
+        max_response_length=3,
+        beta=0.0,
+        use_rollout_logps=False,
+    )
+    monkeypatch.setattr(learner, "_compute_rewards", lambda **kwargs: np.asarray([0.0]))
+
+    trajectory = SimpleNamespace(
+        traj={
+            "conversation_text": [{"role": "assistant", "content": "move"}],
+            "prompt_tokens": np.asarray([9, 8], dtype=np.int32),
+            "conversation_tokens": np.asarray([5, 6, 2], dtype=np.int32),
+            "conversation_masks": np.asarray([1, 1, 1], dtype=np.int32),
+            "old_logprobs": np.asarray([-9.0, -9.0, -9.0], dtype=np.float32),
+            "policy_version": 4,
+            "trajectory_reward": 0.0,
+            "original_input": {"prompts": ["task"]},
+        }
+    )
+
+    [example] = learner._process_results([trajectory])
+
+    assert learner.rl_cluster.actor_logprob_calls == 1
+    assert example.old_per_token_logps.tolist() == [[-0.5, -0.5, -0.5]]

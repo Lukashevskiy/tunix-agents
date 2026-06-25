@@ -2,7 +2,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from tunix_craftext.learner import (
+from tunix_craftext.research.learner import (
     create_state,
     create_token_state,
     full_token_ppo_update,

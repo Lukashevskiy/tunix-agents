@@ -14,7 +14,7 @@
 | Prompt/model boundary | `tunix_craftext.prompts`, `tunix_craftext.text_policy`, `tunix_craftext.llm`, `tunix_craftext.llm_actor`, `tunix_craftext.tunix_actor`, `tunix_craftext.tunix_adapter` | `EnvState` становится `RenderedPrompt`, LLM actor генерирует ordered completions и пересчитывает token scores/values, strict decoder не принимает неизвестные labels. |
 | Rollout transport | `tunix_craftext.rollout`, `tunix_craftext.batched_rollout`, `tunix_craftext.contracts` | Численные trajectories остаются `[T, B, ...]`; text rollout enforce-ит `action_mask` перед `CrafTextAdapter.step` и экспортирует per-env replay. |
 | Replay/training batch | `tunix_craftext.replay`, `tunix_craftext.text_trajectory`, `tunix_craftext.flashbax_replay` | Replay v3 хранит prompt/completion/action/reward/token evidence, `masked_action`, fallback и преобразуется в fixed-shape token batches. |
-| Objectives/learner | `tunix_craftext.algorithms`, `tunix_craftext.algorithm_registry`, `tunix_craftext.learner`, `tunix_craftext.checkpoints` | PPO/returns/loss functions чистые и JAX-friendly; будущие DPO/GRPO должны добавляться через typed registry/batch contracts. |
+| Research objectives/learner | `tunix_craftext.research.algorithms`, `tunix_craftext.research.algorithm_registry`, `tunix_craftext.research.learner`, `tunix_craftext.checkpoints` | PPO/returns/loss functions чистые и JAX-friendly, но это research/smoke слой; production GRPO/PPO идёт через Tunix Agentic `RLCluster`. |
 | Profiling evidence | `tunix_craftext.profiling` | Phase-level wall-time, optional NVTX ranges и JSON artifacts для prompt/LLM/env/replay/update stages. |
 | Model/cluster interoperability | `tunix_craftext.interop`, `tunix_craftext.tunix_topology`, `tunix_craftext.rlcluster_workload` | LoRA/state-dict conversion, declared Tunix role→mesh mapping и hardware-gated RLCluster config отделены от core rollout. |
 
@@ -122,7 +122,7 @@ Gemma builder намеренно требует уже существующий 
 ## Replay → token batch → real actor/critic PPO evaluation
 
 ```python
-from tunix_craftext.llm_ppo import evaluate_separate_llm_actor_critic_ppo
+from tunix_craftext.research.llm_ppo import evaluate_separate_llm_actor_critic_ppo
 from tunix_craftext.text_trajectory import text_trajectory_from_replay
 
 batch = text_trajectory_from_replay(replays[0])
@@ -154,7 +154,7 @@ Qwen/Gemma/RLCluster actor/value path, не меняя replay или rollout con
 ## Algorithm registry для PPO/DPO/GRPO
 
 ```python
-from tunix_craftext.algorithm_registry import get_algorithm
+from tunix_craftext.research.algorithm_registry import get_algorithm
 
 ppo = get_algorithm("ppo")
 print(ppo.name)

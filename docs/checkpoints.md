@@ -16,7 +16,7 @@ from pathlib import Path
 import jax
 
 from tunix_craftext.checkpoints import CheckpointMetadata, restore_checkpoint, save_checkpoint
-from tunix_craftext.learner import create_state
+from tunix_craftext.research.learner import create_state
 
 state = create_state(jax.random.PRNGKey(0), observation_dim=3, actions=2)
 metadata = CheckpointMetadata(

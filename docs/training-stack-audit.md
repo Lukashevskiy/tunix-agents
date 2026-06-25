@@ -12,8 +12,9 @@ Production-направление проекта — **Tunix Agentic GRPO first*
 
 Локальный `algorithms.py` / `learner.py` / `llm_ppo.py` стек полезен как TDD-слой для форм,
 масок, GAE, token-level losses и notebook education, но это больше не основной trainer.
-Его нужно маркировать как `research/smoke` и не использовать как acceptance gate для
-production RLCluster обучения.
+Он физически вынесен в `tunix_craftext.research`; старые top-level пути остались только как
+thin compatibility shims. Этот слой нельзя использовать как acceptance gate для production
+RLCluster обучения.
 
 ## Карта текущих слоёв
 
@@ -24,7 +25,7 @@ production RLCluster обучения.
 | Agentic GRPO | `agentic_grpo_smoke.py`, `scripts/run_agentic_grpo.py`, `configs/grpo/qwen_agentic_local.yaml` | текущий golden path до heavy update | Довести до real one-update на accelerator/local snapshot. |
 | Agentic PPO | `agentic_ppo.py`, `tests/unit/test_agentic_ppo.py` | current extension lane | Добавить hardware-gated one-update actor+critic, затем cost critic для PPO-Lag/CPO. |
 | Tunix LLM backend | `tunix_adapter.py`, `tunix_actor.py`, `llm_actor.py`, `model_profile.py` | смешанный production/research bridge | Разбить большой adapter на loaders, sampler backend, scoring и model profile modules. |
-| Local PPO mechanics | `algorithms.py`, `algorithm_registry.py`, `learner.py`, `llm_ppo.py`, `checkpoints.py` | research/smoke | Перенести в `tunix_craftext/research/` или `tunix_craftext/smoke/` после migration imports. |
+| Local PPO mechanics | `research/algorithms.py`, `research/algorithm_registry.py`, `research/learner.py`, `research/llm_ppo.py`, `checkpoints.py` | research/smoke | Уже вынесено из production namespace; старые top-level пути оставлены как thin compatibility shims. |
 | Replay staging | `flashbax_replay.py`, `replay.py`, `text_trajectory.py` | reusable staging | Оставить, но документационно ограничить on-policy/bounded staging. |
 | Local rollout examples | `rollout.py`, `batched_rollout.py`, `episode.py`, `random_policy.py` | reference/examples | Оставить для env/perf/contracts; не считать RLCluster trainer. |
 | Interop | `interop/*` | support module | Оставить отдельно; Qwix/LoRA integration делать здесь. |
@@ -75,8 +76,9 @@ GRPO реализуется не через локальный PPO loss, а че
 
 ### 2. Локальный PPO research stack
 
-`algorithms.py`, `learner.py`, `llm_ppo.py` и `checkpoints.py` проверяют математику и формы:
-GAE, clipped PPO, full-token update, mask semantics, local Flax/Optax/Orbax checkpoint restore.
+`research/algorithms.py`, `research/learner.py`, `research/llm_ppo.py` и `checkpoints.py`
+проверяют математику и формы: GAE, clipped PPO, full-token update, mask semantics,
+local Flax/Optax/Orbax checkpoint restore.
 Это ценно для TDD, но не заменяет Tunix Agentic PPO, потому что не владеет реальным
 distributed actor/reference/critic lifecycle.
 
@@ -93,8 +95,10 @@ distributed actor/reference/critic lifecycle.
 
 ## Что не стоит вырезать прямо сейчас
 
-- `learner.py`, `algorithms.py`, `llm_ppo.py`: нужны notebook 10/11/12 и unit tests для loss
-  contracts. Их лучше переносить только вместе с compatibility imports.
+- `research/learner.py`, `research/algorithms.py`, `research/llm_ppo.py`: нужны notebook
+  10/11/12 и unit tests для loss contracts. Они уже не production modules; старые
+  `tunix_craftext.learner`, `tunix_craftext.algorithms` и `tunix_craftext.llm_ppo`
+  остаются только для совместимости.
 - `rollout.py`, `batched_rollout.py`, `episode.py`: нужны reference/perf/env evidence.
 - `flashbax_replay.py`: нужен для будущего bounded staging и синхронного PPO window.
 - `checkpoints.py`: локальный Orbax smoke остаётся regression test для optimizer-state restore,
@@ -106,9 +110,9 @@ distributed actor/reference/critic lifecycle.
 
 1. Создать `src/tunix_craftext/training/`:
    `agentic_grpo.py`, `agentic_ppo.py`, `workload.py`, `topology.py`, `preflight.py`.
-2. Создать `src/tunix_craftext/research/`:
+2. `src/tunix_craftext/research/` уже содержит:
    `algorithms.py`, `learner.py`, `llm_ppo.py`, `algorithm_registry.py`.
-3. Оставить compatibility imports в старых путях на один-два цикла:
+3. Compatibility imports в старых путях оставить на один-два цикла:
    `from tunix_craftext.research.learner import ...`.
 4. Разбить `tunix_adapter.py`:
    `tunix_loaders.py`, `tunix_sampler.py`, `tunix_scoring.py`, `model_profiles.py`.

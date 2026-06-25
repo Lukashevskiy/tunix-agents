@@ -6,7 +6,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from tunix_craftext.algorithm_registry import PpoLossBatch, get_algorithm
+from tunix_craftext.research.algorithm_registry import PpoLossBatch, get_algorithm
 
 
 def test_ppo_registry_loss_is_jittable_and_returns_metric_pytree() -> None:

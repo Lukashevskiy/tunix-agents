@@ -7,7 +7,7 @@ import jax.numpy as jnp
 import pytest
 
 from tunix_craftext.checkpoints import CheckpointMetadata, restore_checkpoint, save_checkpoint
-from tunix_craftext.learner import create_state, ppo_update
+from tunix_craftext.research.learner import create_state, ppo_update
 
 
 def test_checkpoint_round_trip_restores_optimizer_and_metadata(tmp_path) -> None:

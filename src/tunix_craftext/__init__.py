@@ -20,15 +20,15 @@ from .contracts import RolloutBatch, Transition
 from .episode import collect_text_episode
 from .interop import LoraAdapter, ModelTemplate, TensorRule, convert_state_dict, merge_lora_adapters
 from .llm import LlmBackend, LlmRequest, LlmResponse, ScriptedLlmBackend
-from .llm_ppo import (
-    LlmPpoEvaluation,
-    evaluate_llm_actor_critic_ppo,
-    evaluate_separate_llm_actor_critic_ppo,
-)
 from .profiling import PhaseProfiler, ProfileEvent, block_until_ready, save_profile
 from .prompts import ActionCatalog, MegaPromptRenderer, PromptContext, RenderedPrompt
 from .random_policy import ActionSamplingError, sample_masked_actions, validate_action_mask
 from .replay import ReplayArtifact, ReplayStep, save_replay
+from .research.llm_ppo import (
+    LlmPpoEvaluation,
+    evaluate_llm_actor_critic_ppo,
+    evaluate_separate_llm_actor_critic_ppo,
+)
 from .rollout import collect_rollout, collect_rollout_scan
 from .runtime import CrafTextRuntime, build_craftext_runtime
 from .text_policy import (

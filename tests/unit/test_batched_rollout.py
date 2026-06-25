@@ -144,7 +144,7 @@ def test_batched_rollout_resets_only_finished_rows_and_exports_replays() -> None
 
 def test_batched_rollout_replay_feeds_token_ppo_training_path() -> None:
     """Replay export preserves token provenance and masks fallback rows before PPO loss."""
-    from tunix_craftext.algorithms import masked_token_ppo_loss, masked_token_returns
+    from tunix_craftext.research.algorithms import masked_token_ppo_loss, masked_token_returns
     from tunix_craftext.text_trajectory import text_trajectory_from_replay
 
     class TokenBackend(_Backend):

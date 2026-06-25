@@ -138,7 +138,7 @@
     {
       "name": "PPO/GRPO training stack audit",
       "status": "ready",
-      "description": "docs/training-stack-audit.md фиксирует production path Tunix Agentic GRPO/PPO, отделяет локальный algorithms/learner/llm_ppo слой как research/smoke, задаёт безопасный migration plan и вычищает tracked Jupyter checkpoints из индекса."
+      "description": "docs/training-stack-audit.md фиксирует production path Tunix Agentic GRPO/PPO, а локальный algorithms/learner/llm_ppo слой физически вынесен в tunix_craftext.research с thin compatibility shims. Guard tests запрещают production imports из research и повторное попадание Jupyter checkpoints в индекс."
     },
     {
       "name": "Tunix PPO RLCluster bridge",
