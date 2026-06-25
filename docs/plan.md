@@ -39,7 +39,9 @@ task/seed -> CrafText Agentic environment -> ToolAgent -> RLCluster rollout
 
 Следующие этапы исполняются строго по порядку. Они не создают второй PPO-first
 roadmap: первый production path — Agentic GRPO с ролями `actor`, `rollout` и
-`reference`; trainable critic относится только к отдельному будущему PPO profile.
+`reference`; trainable critic теперь оформлен отдельным Agentic PPO extension
+lane поверх upstream `AgenticRLLearner`, но его hardware one-update gate не
+смешивается с GRPO acceptance gates.
 
 | Очередь | Вертикальный срез | Acceptance gate | Не делать до gate |
 | --- | --- | --- | --- |
@@ -120,7 +122,7 @@ catalogue и deterministic initial environment state.
 
 - [ ] Перевести topology contract с обязательных actor/rollout/critic/reference
   на Agentic GRPO roles: actor, rollout, reference; critic допустим только для
-  отдельного будущего PPO profile.
+  отдельного Agentic PPO/PPO-Lag/CPO profile.
 - [x] Создать `AgenticGrpoWorkloadSpec` и YAML profile с batch sizes, generation
   count, sequence limits, optimizer, checkpoint root, metrics directory и
   pre-allocation evidence manifest.
@@ -147,6 +149,25 @@ catalogue и deterministic initial environment state.
 
 **Gate:** CLI produces a trained actor checkpoint and an eval result that differs
 from the frozen reference on the same fixed task set.
+
+## 3.5. Agentic PPO / Critic Extension Lane
+
+- [x] Добавить `tunix_craftext.agentic_ppo`: `AgenticPPOConfig`,
+  `AgenticPPOTrainExample` и `AgenticPPOLearner` поверх upstream Tunix
+  `AgenticRLLearner`, не через обычный text-only `PPOLearner`.
+- [x] Подключить registered Tunix `ppo` actor loss и `ppo` value loss к
+  `actor_trainer` и `critic_trainer`; отсутствие critic в `RLCluster` — hard error.
+- [x] Преобразовать agentic trajectory в PPO train example с rollout/actor
+  logprobs, reference logprobs, critic values, GAE advantages, returns и
+  policy version.
+- [ ] Добавить hardware-gated one-update test: actor и critic weights меняются,
+  loss конечен, `update_actor()` и `update_critic()` вызываются одним base loop.
+- [ ] Расширить этот lane до PPO-Lag/CPO: cost critic, cost returns,
+  lagrange multiplier/projection objective и checkpoint metadata.
+
+**Gate:** один Agentic PPO update на target accelerator проходит через тот же
+`ToolAgent + CrafTextAgenticEnvironment + TrajectoryCollectEngine` transport и
+создаёт checkpoint actor/reference/reward critic.
 
 ## 4. Evidence, Resume And Evaluation
 

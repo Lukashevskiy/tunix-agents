@@ -119,6 +119,17 @@ agentic rollout/tool/reward/grouping semantics до critic-free `GRPOLearner` з
 PPO-Lag/CPO слои должны переиспользовать этот transport и добавить value/cost critic, а не
 переписывать CrafText environment loop.
 
+Для critic-backed agentic path добавлен проектный bridge `tunix_craftext.agentic_ppo`.
+Он не использует обычный text-only `PPOLearner`: вместо этого наследуется от upstream
+Tunix `AgenticRLLearner`, то есть сохраняет тот же async `RolloutOrchestrator`,
+`TrajectoryCollectEngine`, `ToolAgent` и `BaseTaskEnv` transport. `AgenticPPOLearner`
+подключает registered Tunix `ppo` actor loss и `ppo` value loss, требует critic model
+в `RLCluster`, а `_process_results()` превращает agentic trajectory в PPO-shaped
+`AgenticPPOTrainExample` с `old_per_token_logps`, critic `old_values`, GAE
+`advantages/returns` и `policy_version`. Базовый Tunix loop после этого сам вызывает
+`update_actor()` и `update_critic()`. Следующий hardware-gated gate — один реальный
+Agentic PPO update на Qwen/Gemma actor/reference/critic assets.
+
 `tests/integration/test_tunix_topology_hardware.py` намеренно hardware-gated: он пропускает
 тест на системах с менее чем четырьмя видимыми устройствами и проверяет четырехустройственный
 профиль на accelerator runner. Это проверяет declaration placement, а не масштабную производительность;
