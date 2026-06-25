@@ -16,7 +16,10 @@ from tunix_craftext.tunix_actor import (
     LinearValueHead,
     build_gemma_tunix_actor_from_components,
     causal_lm_actor_scores,
+    causal_lm_actor_token_scores,
+    causal_lm_critic_values,
     init_linear_value_head,
+    merge_actor_critic_scores,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -119,6 +122,38 @@ def test_causal_lm_actor_scores_generated_tokens_and_masks_padding() -> None:
     assert float(scores.entropy[1, 1]) == 0.0
 
 
+def test_actor_and_critic_scores_are_separate_then_merge_at_objective_boundary() -> None:
+    head = LinearValueHead(
+        kernel=jnp.array([0.5, 0.25, 1.0], dtype=jnp.float32),
+        bias=jnp.asarray(-0.1, dtype=jnp.float32),
+    )
+    prompt_token_ids = jnp.array([[4, 5, 0], [7, 0, 0]], dtype=jnp.int32)
+    prompt_token_mask = jnp.array([[True, True, False], [True, False, False]])
+    token_ids = jnp.array([[6, 8], [9, 0]], dtype=jnp.int32)
+    token_mask = jnp.array([[True, True], [True, False]])
+
+    actor_scores = causal_lm_actor_token_scores(
+        _FakeCausalLm(),
+        prompt_token_ids=prompt_token_ids,
+        prompt_token_mask=prompt_token_mask,
+        token_ids=token_ids,
+        token_mask=token_mask,
+    )
+    critic_values = causal_lm_critic_values(
+        _FakeCausalLm(),
+        head,
+        prompt_token_ids=prompt_token_ids,
+        prompt_token_mask=prompt_token_mask,
+        token_ids=token_ids,
+        token_mask=token_mask,
+    )
+    merged = merge_actor_critic_scores(actor_scores, critic_values, token_ids)
+
+    assert merged.token_logprobs.shape == token_ids.shape
+    assert merged.values.shape == token_ids.shape
+    assert float(merged.values[1, 1]) == 0.0
+
+
 def test_gemma_tunix_actor_generates_and_scores_from_explicit_components() -> None:
     actor = build_gemma_tunix_actor_from_components(
         profile_path=ROOT / "configs/models/gemma3_270m_instruction.yaml",
@@ -144,6 +179,33 @@ def test_gemma_tunix_actor_generates_and_scores_from_explicit_components() -> No
         "<action>LEFT</action> #1",
     ]
     assert scores.token_logprobs.shape == (2, 2)
+
+
+def test_gemma_tunix_actor_exposes_separate_critic_role() -> None:
+    actor = build_gemma_tunix_actor_from_components(
+        profile_path=ROOT / "configs/models/gemma3_270m_instruction.yaml",
+        backend=_FakeBatchBackend(),
+        model=_FakeCausalLm(),
+        value_head=LinearValueHead(
+            kernel=jnp.array([0.2, 0.1, 0.0], dtype=jnp.float32),
+            bias=jnp.asarray(0.0, dtype=jnp.float32),
+        ),
+    )
+    actor_scores = actor.score_actor_tokens(
+        prompt_token_ids=jnp.array([[1, 2]], dtype=jnp.int32),
+        prompt_token_mask=jnp.array([[True, True]]),
+        token_ids=jnp.array([[5, 6]], dtype=jnp.int32),
+        token_mask=jnp.ones((1, 2), dtype=bool),
+    )
+    critic_values = actor.critic().score_values(
+        prompt_token_ids=jnp.array([[1, 2]], dtype=jnp.int32),
+        prompt_token_mask=jnp.array([[True, True]]),
+        token_ids=jnp.array([[5, 6]], dtype=jnp.int32),
+        token_mask=jnp.ones((1, 2), dtype=bool),
+    )
+
+    assert actor_scores.token_logprobs.shape == (1, 2)
+    assert critic_values.values.shape == (1, 2)
 
 
 def test_gemma_tunix_actor_rejects_qwen_profile() -> None:

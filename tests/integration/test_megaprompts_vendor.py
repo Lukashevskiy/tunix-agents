@@ -48,7 +48,7 @@ def test_vendored_megaprompt_renders_real_craftext_structured_state() -> None:
     reset = runtime.adapter.reset(jax.random.PRNGKey(config.run.seed))
 
     rendered = MegaPromptRenderer(config.prompt.template).render(
-        PromptContext("stay alive", reset.state, runtime.actions)
+        PromptContext("stay alive", runtime.adapter.prompt_state(reset.state), runtime.actions)
     )
 
     assert "You are at coord" in rendered.text

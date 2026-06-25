@@ -1,8 +1,8 @@
-"""Tunix/Qwen adapter boundary with explicit local weight provenance.
+"""Tunix Qwen/Gemma adapter boundary with explicit local weight provenance.
 
-This module exposes a narrow typed interface for loading the Qwen model via
-Tunix, preparing tokenizer and sampler assets, and building a deterministic
-single-device sampler for prompt-driven inference.
+This module exposes a narrow typed interface for loading local models via Tunix,
+preparing tokenizer and sampler assets, and building deterministic single-device
+samplers for prompt-driven inference.
 """
 from __future__ import annotations
 
@@ -18,10 +18,12 @@ from .llm import LlmRequest, LlmResponse
 
 QWEN_MODEL_ID = "Qwen/Qwen2.5-0.5B-Instruct"
 QWEN_TUNIX_CONFIG_ID = "qwen2.5-0.5b"
+GEMMA_MODEL_ID = "google/gemma-3-270m-it"
+GEMMA_TUNIX_CONFIG_ID = "gemma3_270m_it"
 
 
 class ChatTemplatingTokenizer(Protocol):
-    """Public tokenizer capability required to prepare a Qwen assistant turn."""
+    """Public tokenizer capability required to prepare a model assistant turn."""
 
     def apply_chat_template(
         self,
@@ -67,7 +69,7 @@ class SamplingTokenizer(ChatTemplatingTokenizer, Protocol):
 
 
 class CacheConfigLike(Protocol):
-    """Stable cache dimensions consumed by the Qwen sampler boundary.
+    """Stable cache dimensions consumed by a Tunix sampler boundary.
 
     :ivar cache_size: int
     :ivar num_layers: int
@@ -127,7 +129,7 @@ class TextSampler(Protocol):
 
 
 class HiddenStateModel(Protocol):
-    """Qwen model subset used to extract token features without the language head."""
+    """Causal LM subset used to extract token features without the language head."""
 
     def __call__(
         self,
@@ -154,6 +156,11 @@ QWEN_ACTION_SYSTEM_PROMPT = (
     "You are a CrafText agent. Choose exactly one action from the action catalogue in the "
     "user message. Your complete response is one XML action element containing that exact action "
     "name. Never output the placeholder word LABEL and do not add an explanation."
+)
+
+GEMMA_ACTION_SYSTEM_PROMPT = (
+    "You are a CrafText agent. Choose exactly one action from the action catalogue. "
+    "Return only one XML action element, for example <action>NOOP</action>."
 )
 
 
@@ -199,6 +206,13 @@ def qwen_required_cache_size(
     Example:
         >>> cache_size = qwen_required_cache_size(tokenizer, chat_prompt, max_new_tokens)
     """
+    return required_cache_size(tokenizer, chat_prompt, max_new_tokens)
+
+
+def required_cache_size(
+    tokenizer: SamplingTokenizer, chat_prompt: str, max_new_tokens: int
+) -> int:
+    """Return Tunix's padded prompt requirement plus requested completion tokens."""
     if max_new_tokens <= 0:
         raise ValueError("max_new_tokens must be positive")
     input_tokens = len(tokenizer.encode(chat_prompt)) + int(bool(tokenizer.bos_id()))
@@ -228,6 +242,20 @@ def qwen_cache_config(cache_size: int) -> CacheConfigLike:
     )
 
 
+def gemma_cache_config(cache_size: int) -> CacheConfigLike:
+    """Build a Tunix KV cache contract from the pinned Gemma3 model configuration."""
+    if cache_size <= 0:
+        raise ValueError("cache_size must be positive")
+    from tunix.generate.sampler import CacheConfig  # type: ignore[import-untyped]
+    from tunix.models.automodel import call_model_config  # type: ignore[import-untyped]
+
+    config = call_model_config(GEMMA_TUNIX_CONFIG_ID)
+    return cast(
+        CacheConfigLike,
+        CacheConfig(cache_size, config.num_layers, config.num_kv_heads, config.head_dim),
+    )
+
+
 def qwen_mesh() -> jax.sharding.Mesh:
     """Return the single-device-compatible Tunix Qwen mesh with required axes.
 
@@ -237,6 +265,27 @@ def qwen_mesh() -> jax.sharding.Mesh:
         >>> mesh = qwen_mesh()
     """
     return jax.make_mesh((1, 1), ("fsdp", "tp"))
+
+
+def format_gemma_action_prompt(
+    tokenizer: ChatTemplatingTokenizer, prompt_text: str
+) -> str:
+    """Apply Gemma's chat template to one already-rendered action prompt."""
+    if not prompt_text.strip():
+        raise ValueError("prompt_text must be non-empty")
+    rendered = tokenizer.apply_chat_template(
+        [
+            {
+                "role": "user",
+                "content": f"{GEMMA_ACTION_SYSTEM_PROMPT}\n\n{prompt_text}",
+            }
+        ],
+        add_generation_prompt=True,
+        tokenize=False,
+    )
+    if not isinstance(rendered, str) or not rendered.strip():
+        raise ValueError("Gemma chat template must return non-empty text")
+    return rendered
 
 
 def load_qwen_tokenizer(snapshot: Path) -> SamplingTokenizer:
@@ -255,6 +304,28 @@ def load_qwen_tokenizer(snapshot: Path) -> SamplingTokenizer:
         Tokenizer(
             tokenizer_type="huggingface",
             tokenizer_path=str(snapshot),
+            add_bos=False,
+            add_eos=False,
+        ),
+    )
+
+
+def load_gemma_tokenizer(snapshot: Path) -> SamplingTokenizer:
+    """Load a local Gemma SentencePiece tokenizer through Tunix.
+
+    :param snapshot: Local Gemma snapshot directory containing a SentencePiece model.
+    :returns: Tunix tokenizer adapter with Gemma chat-template fallback.
+    :raises FileNotFoundError: If the snapshot or tokenizer model is missing.
+    """
+    if not snapshot.is_dir():
+        raise FileNotFoundError(f"Gemma snapshot not found: {snapshot}")
+    from tunix.generate.tokenizer_adapter import Tokenizer  # type: ignore[import-untyped]
+
+    return cast(
+        SamplingTokenizer,
+        Tokenizer(
+            tokenizer_type="sentencepiece",
+            tokenizer_path=str(_gemma_tokenizer_path(snapshot)),
             add_bos=False,
             add_eos=False,
         ),
@@ -332,6 +403,27 @@ def load_qwen_single_device_model(snapshot: Path) -> HiddenStateModel:
     return cast(HiddenStateModel, create_model_from_safe_tensors(str(snapshot), config, mesh=None))
 
 
+def load_gemma_single_device_model(snapshot: Path) -> HiddenStateModel:
+    """Load local Gemma weights once for sampling and actor/critic scoring.
+
+    :param snapshot: Path input value
+    :returns: HiddenStateModel
+    :raises FileNotFoundError: If the Gemma snapshot is missing.
+    """
+    if not snapshot.is_dir():
+        raise FileNotFoundError(f"Gemma snapshot not found: {snapshot}")
+    from tunix.models.automodel import call_model_config  # type: ignore[import-untyped]
+    from tunix.models.gemma3.params_safetensors import (  # type: ignore[import-untyped]
+        create_model_from_safe_tensors,
+    )
+
+    config = call_model_config(GEMMA_TUNIX_CONFIG_ID)
+    return cast(
+        HiddenStateModel,
+        create_model_from_safe_tensors(str(snapshot), config, mesh=None),
+    )
+
+
 def qwen_chat_token_ids(tokenizer: SamplingTokenizer, chat_prompt: str) -> tuple[int, ...]:
     """Encode one chat prompt exactly as the Tunix sampler does before padding.
 
@@ -342,6 +434,12 @@ def qwen_chat_token_ids(tokenizer: SamplingTokenizer, chat_prompt: str) -> tuple
     Example:
         >>> result = qwen_chat_token_ids(tokenizer, chat_prompt)
     """
+    bos = (tokenizer.bos_id(),) if tokenizer.bos_id() else ()
+    return (*bos, *(int(token) for token in tokenizer.encode(chat_prompt)))
+
+
+def gemma_chat_token_ids(tokenizer: SamplingTokenizer, chat_prompt: str) -> tuple[int, ...]:
+    """Encode one Gemma chat prompt exactly as the Tunix sampler does before padding."""
     bos = (tokenizer.bos_id(),) if tokenizer.bos_id() else ()
     return (*bos, *(int(token) for token in tokenizer.encode(chat_prompt)))
 
@@ -391,6 +489,36 @@ def build_qwen_single_device_sampler(
     return cast(
         TextSampler,
         Sampler(model, tokenizer or load_qwen_tokenizer(snapshot), qwen_cache_config(cache_size)),
+    )
+
+
+def build_gemma_single_device_sampler(
+    snapshot: Path,
+    cache_size: int,
+    tokenizer: SamplingTokenizer | None = None,
+    model: HiddenStateModel | None = None,
+) -> TextSampler:
+    """Build a working unsharded Tunix sampler for local Gemma inference.
+
+    :param snapshot: Local snapshot directory with Gemma weights and tokenizer.
+    :param cache_size: Integer cache size used to build the KV cache.
+    :param tokenizer: Optional pre-built SamplingTokenizer to avoid reloading.
+    :param model: Optional HiddenStateModel to avoid reloading weights.
+    :returns: A `TextSampler` suitable for single-device sampling.
+    :raises FileNotFoundError: If the snapshot directory is missing.
+    """
+    if not snapshot.is_dir():
+        raise FileNotFoundError(f"Gemma snapshot not found: {snapshot}")
+    from tunix.generate.sampler import Sampler  # type: ignore[import-untyped]
+
+    model = model or load_gemma_single_device_model(snapshot)
+    return cast(
+        TextSampler,
+        Sampler(
+            model,
+            tokenizer or load_gemma_tokenizer(snapshot),
+            gemma_cache_config(cache_size),
+        ),
     )
 
 
@@ -520,3 +648,133 @@ class QwenTunixBackend:
             input_tokens, positions, cache=None, attention_mask=None, skip_lm_head=True
         )
         return hidden_states
+
+
+class GemmaTunixBackend:
+    """Single-device Tunix Gemma implementation of the typed LLM backend."""
+
+    def __init__(self, snapshot: Path, cache_size: int = 512, seed: int = 0) -> None:
+        """Create a `GemmaTunixBackend` backed by explicit local Tunix assets.
+
+        :param snapshot: Directory with local Gemma weights/tokenizer.
+        :param cache_size: KV cache size for the sampler.
+        :param seed: RNG seed used by the sampler.
+        :raises FileNotFoundError: If the required snapshot/tokenizer is missing.
+        :raises ValueError: If `cache_size` is too small.
+        """
+        if cache_size < 2:
+            raise ValueError("cache_size must reserve at least one prompt and one completion token")
+        self._tokenizer = load_gemma_tokenizer(snapshot)
+        self._model = load_gemma_single_device_model(snapshot)
+        self._sampler = build_gemma_single_device_sampler(
+            snapshot, cache_size, self._tokenizer, self._model
+        )
+        self._cache_size = cache_size
+        self._seed = seed
+
+    def complete(self, request: LlmRequest) -> LlmResponse:
+        """Generate one raw completion and retain its latency/provenance."""
+        return self.complete_batch((request,))[0]
+
+    def complete_batch(self, requests: Sequence[LlmRequest]) -> tuple[LlmResponse, ...]:
+        """Complete an ordered Gemma prompt batch through one Tunix sampler call."""
+        if not requests:
+            raise ValueError("requests must be non-empty")
+        max_new_tokens = requests[0].max_new_tokens
+        temperature = requests[0].temperature
+        if any(request.max_new_tokens != max_new_tokens for request in requests):
+            raise ValueError("batch requests must share max_new_tokens")
+        if any(request.temperature != temperature for request in requests):
+            raise ValueError("batch requests must share temperature")
+        if max_new_tokens >= self._cache_size:
+            raise ValueError("max_new_tokens must be smaller than cache_size")
+        started = perf_counter()
+        chat_prompts = tuple(
+            format_gemma_action_prompt(self._tokenizer, request.prompt.text)
+            for request in requests
+        )
+        required = max(
+            required_cache_size(self._tokenizer, chat_prompt, max_new_tokens)
+            for chat_prompt in chat_prompts
+        )
+        if required > self._cache_size:
+            raise ValueError(
+                "cache_size is too small for the padded Gemma prompt and completion: "
+                f"requires at least {required}, got {self._cache_size}"
+            )
+        output = self._sampler(
+            list(chat_prompts),
+            max_generation_steps=max_new_tokens,
+            max_prompt_length=required - max_new_tokens,
+            temperature=temperature,
+            seed=self._seed,
+            return_logprobs=True,
+        )
+        raw_logprobs = output.logprobs
+        latency_ms = (perf_counter() - started) * 1_000
+        if len(output.text) != len(requests) or len(output.tokens) != len(requests):
+            raise ValueError("Tunix sampler output cardinality does not match request batch")
+        if raw_logprobs is not None and len(raw_logprobs) != len(requests):
+            raise ValueError("Tunix sampler logprob cardinality does not match request batch")
+        if len(output.padded_prompt_tokens) != len(requests):
+            raise ValueError("Tunix sampler prompt cardinality does not match request batch")
+        return tuple(
+            LlmResponse(
+                raw_text=output.text[index],
+                backend="tunix-single-device:Gemma",
+                model=GEMMA_MODEL_ID,
+                latency_ms=latency_ms,
+                token_logprobs=(
+                    tuple(float(value) for value in raw_logprobs[index])
+                    if raw_logprobs is not None
+                    else None
+                ),
+                token_ids=tuple(int(token) for token in output.tokens[index]),
+                prompt_token_ids=_non_pad_tokens(
+                    output.padded_prompt_tokens[index], self._tokenizer
+                ),
+            )
+            for index in range(len(requests))
+        )
+
+    def hidden_states(self, request: LlmRequest) -> jax.Array:
+        """Return Gemma final hidden states ``[1, T, D]`` for one rendered chat prompt."""
+        chat_prompt = format_gemma_action_prompt(self._tokenizer, request.prompt.text)
+        token_ids = gemma_chat_token_ids(self._tokenizer, chat_prompt)
+        input_tokens = jax.numpy.asarray([token_ids], dtype=jax.numpy.int32)
+        positions = jax.numpy.arange(input_tokens.shape[1], dtype=jax.numpy.int32)[None, :]
+        hidden_states, _ = self._model(
+            input_tokens, positions, cache=None, attention_mask=None, skip_lm_head=True
+        )
+        return hidden_states
+
+
+def _gemma_tokenizer_path(snapshot: Path) -> Path:
+    candidates = (
+        snapshot / "tokenizer.model",
+        snapshot / "tokenizer_gemma3.model",
+        snapshot / "spiece.model",
+    )
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    raise FileNotFoundError(
+        "Gemma SentencePiece tokenizer not found; expected one of "
+        + ", ".join(candidate.name for candidate in candidates)
+    )
+
+
+def _safe_pad_id(tokenizer: SamplingTokenizer) -> int | None:
+    try:
+        return int(tokenizer.pad_id())
+    except ValueError:
+        return None
+
+
+def _non_pad_tokens(tokens: Sequence[int], tokenizer: SamplingTokenizer) -> tuple[int, ...]:
+    pad_id = _safe_pad_id(tokenizer)
+    return tuple(
+        int(token)
+        for token in tokens
+        if pad_id is None or int(token) != pad_id
+    )

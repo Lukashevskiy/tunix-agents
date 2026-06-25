@@ -33,17 +33,24 @@ returns и token PPO loss mechanics.
 
 `11_end_to_end_batched_qwen_ppo.ipynb` объединяет все эти стадии в одном run: параллельные
 среды и Qwen requests, full rollout/replay, token batch, full-token trainable actor-critic PPO
-update и visualisation. Компактный Flax actor/critic пересчитывает `new_logprobs` и values;
-`full_token_ppo_update()` учится по всем generated tokens из `token_mask`.
+update и visualisation. Компактный Flax actor/critic остаётся учебным механическим контуром для
+проверки shapes/update, а не production LLM actor.
 
-`12_full_cycle_craftext_training.ipynb` — real-model notebook того же полного цикла: Qwen/Tunix
-rollout → replay evidence → `TextTrajectoryBatch` → real `TunixCausalLmActor.score_tokens()` →
-phase profile JSON → full-token PPO smoke update. Веса всё ещё должны лежать локально и явно;
-notebook не скачивает snapshot и не включает offline/mock fallback backend.
+`12_full_cycle_craftext_training.ipynb` — real-model Gemma/Tunix notebook без smoke learner:
+Gemma rollout → replay evidence → `TextTrajectoryBatch` → separate actor token scoring →
+separate `TunixValueCritic` values → `evaluate_separate_llm_actor_critic_ppo()` with checked
+returns/advantages/loss → phase profile JSON. Веса должны лежать локально и явно в
+`artifacts/models/gemma3-270m-it`; notebook не скачивает snapshot и не включает offline/mock
+fallback backend.
 
 `13_replay_visualization.ipynb` открывает сохранённый replay JSON, показывает summary шагов,
 reward/action timeline, prompt/completion и observation image, если replay содержит renderable
 array. Он использует те же `load_trajectory()`/`normalize_image()`, что и pygame viewer ниже.
+
+`14_generation_benchmark.ipynb` отдельно меряет Gemma generation pipeline: prompt/render →
+batched Tunix generation → strict decode/fallback → CrafText step. Он сохраняет
+`artifacts/benchmarks/gemma-generation-notebook.json` и profile JSON для сравнения batch size,
+horizon и repeats.
 
 Тот же путь доступен вне Jupyter и сохраняет как raw replay, так и summary metrics:
 

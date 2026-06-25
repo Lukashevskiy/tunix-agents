@@ -8,11 +8,13 @@
 
 **Sync rollout / contract-first training path.** Vendored окружения и prompt assets скопированы
 без изменений в `vendor/`; лицензии и атрибуция остались там. Итоговый локальный путь уже
-собирает `CrafText state batch → MegaPrompts → batched Tunix/Qwen → strict decode/action-mask
-fallback → CrafText vmap(step) → replay v3 → TextTrajectoryBatch → masked token PPO smoke`.
-Полноценно распределённый `RLCluster` workload, trainable actor/critic и новые objectives
-вроде DPO/GRPO остаются следующими этапами и должны подключаться через typed registry/batch
-contracts, а не менять transport среды.
+собирает `CrafText state batch → MegaPrompts → batched Tunix Qwen/Gemma → strict
+decode/action-mask fallback → CrafText vmap(step) → replay v3 → TextTrajectoryBatch`.
+Для LLM-RL пути уже есть реальный Tunix actor boundary: Gemma/Qwen пересчитывают token
+logprobs/entropy, отдельный critic role считает values, а PPO objective проверяет returns,
+advantages и loss без toy learner в финальном notebook. Полноценно распределённый `RLCluster`
+workload, trainable LoRA/Qwix actor/critic update и async rollout остаются следующими этапами и
+должны подключаться через typed registry/batch contracts, а не менять transport среды.
 
 ## Быстрый старт
 
@@ -123,6 +125,7 @@ tесты и доказательства производительности, 
 Прочитайте [план выполнения](docs/plan.md), [архитектуру](docs/architecture.md),
 [интеграцию с Tunix](docs/tunix.md), [код/API](docs/code-reference.md) и [примеры](docs/examples.md) перед расширением тренера.
 Notebook 07 показывает batched Qwen/Tunix rollout и replay export, 09/11/12 доводят тот же
-pipeline до replay→token batch→masked PPO smoke cycle. Реальный actor boundary теперь живёт в
-`tunix_craftext.tunix_actor`: Qwen/Gemma actor пересчитывает token logprobs, entropy и critic
-values поверх собранных LLM tokens без скрытой загрузки весов.
+pipeline до replay→token batch→real actor/critic PPO evaluation. Notebook 12 теперь
+Gemma-first: `GemmaTunixBackend` генерирует rollout, actor пересчитывает token logprobs/entropy,
+`TunixValueCritic` отдельно считает values, и `evaluate_separate_llm_actor_critic_ppo()` проверяет
+returns/advantages/loss. Notebook 14 отдельно меряет generation pipeline по batch/horizon/repeats.

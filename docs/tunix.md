@@ -12,10 +12,9 @@ pyenv exec python -m uv sync --all-extras
 ```
 
 Публичная граница намеренно узкая: Agentic `GRPOLearner`, `RLCluster` и
-явный Qwen loader/sampler boundary в `tunix_adapter.py`. Локальный снимок Qwen 2.5
-0.5B может sample-иться через `QwenTunixBackend`; это smoke-профиль интеграции, а не
-замена архитектуры обучения. Наши контракты environment/prompt/replay остаются
-framework-neutral.
+явные Qwen/Gemma loader/sampler boundaries в `tunix_adapter.py`. Локальный снимок Qwen 2.5
+0.5B может sample-иться через `QwenTunixBackend`; локальный Gemma3 270M snapshot — через
+`GemmaTunixBackend`. Наши контракты environment/prompt/replay остаются framework-neutral.
 
 Перед каждым вызовом Qwen backend применяет заявленный tokenizer chat template
 и вычисляет статическую ёмкость кеша, требуемую для power-of-two padding prompt в Tunix.
@@ -32,17 +31,17 @@ framework-neutral.
 
 `masked_token_returns()` и `masked_token_ppo_loss()` соответствуют чистому JAX loss
 boundary: они работают только с корректными `[B, T]` токенами и игнорируют padding/
-fallback mask позиции. Для локального полного цикла `PromptConditionedTokenActorCritic`
-уже пересчитывает trainable `new_logprobs` и critic values поверх `TextTrajectoryBatch`.
-Есть два явных режима: `token_ppo_update()` учится только по `policy_mask`, а
-`full_token_ppo_update()` учится по всем generated tokens из `token_mask`. Второй режим нужен
-для полноценного PPO smoke, где fallback completions намеренно становятся обучающим сигналом.
-Это компактный Flax bridge, а не production Qwen value bridge.
+fallback mask позиции. Для production-shaped LLM path `TunixCausalLmActor.score_actor_tokens()`
+пересчитывает actor `new_logprobs` и entropy, `TunixValueCritic.score_values()` отдельно считает
+critic values, а `evaluate_separate_llm_actor_critic_ppo()` объединяет эти роли только на
+objective boundary. Компактный `PromptConditionedTokenActorCritic` остаётся unit/notebook smoke
+для проверки mechanics update, но notebook 12 больше не использует его как финальный контур.
 
-Для production критика `QwenTunixBackend.hidden_states()` открывает финальные
-`[B, T, D]` признаки закреплённой модели через публичный Qwen `skip_lm_head=True`.
-Реальный интеграционный fixture подтверждает, что у профиля 0.5B `D=896`; прикрепление,
-обучение и checkpointing value head остаются отдельным явным workload шагом.
+Для production критика `QwenTunixBackend.hidden_states()` и `GemmaTunixBackend.hidden_states()`
+открывают финальные `[B, T, D]` признаки закреплённой модели через `skip_lm_head=True`.
+Прикрепление, обучение и checkpointing value head остаются отдельным явным workload шагом;
+текущий Gemma notebook проверяет значения critic forward/evaluation, но ещё не делает trainable
+LoRA/Qwix update.
 
 Базовая среда не импортирует Tunix. Это сохраняет `make test`, сбор CrafText и smoke
 обучение Flax/Optax независимыми от тяжёлого стека модели и tokenizer, сохраняя при этом
@@ -63,11 +62,10 @@ separation of model/tests/scripts — но сам `jax-lm` не становит
 
 `DeterministicLlmActor` остаётся TDD double, но production-shaped слой уже вынесен в
 `tunix_actor.py`: `TunixCausalLmActor` соединяет ordered `BatchLlmBackend`, causal LM модель и
-малый `LinearValueHead`. `generate_batch()` идёт через sampler/backend, а `score_tokens()`
-заново прогоняет `prompt + generated tokens` через модель, собирает actor logprobs с
-авторегрессивных позиций, entropy и critic values. `QwenTunixActor` имеет factory от явного
-локального snapshot; `GemmaTunixActor` собирается из уже загруженных компонентов, чтобы не
-скачивать веса как побочный эффект unit path или импорта.
+малый `LinearValueHead`. `generate_batch()` идёт через sampler/backend, `score_actor_tokens()`
+собирает actor logprobs с авторегрессивных позиций и entropy, а `critic()` возвращает отдельный
+`TunixValueCritic` для values. `QwenTunixActor` и `GemmaTunixActor` имеют factories от явного
+локального snapshot; никакой builder не скачивает веса как побочный эффект unit path или импорта.
 
 Ни одни веса модели не загружаются как побочный эффект установки или обычного теста.
 Опциональный реальный Qwen smoke запускается только тогда, когда явный локальный снимок

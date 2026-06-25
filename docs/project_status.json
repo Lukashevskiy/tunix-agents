@@ -48,7 +48,7 @@
     {
       "name": "Runnable examples",
       "status": "ready",
-      "description": "Тринадцать самостоятельных notebooks согласованы с итоговым pipeline: ранние notebooks показывают отдельные boundaries, 07/09 используют batched Tunix/MegaPrompts/CrafText rollout, 11/12 ведут replay → real actor scoring → token batch → PPO smoke cycle, а 13 визуализирует replay."
+      "description": "Четырнадцать самостоятельных notebooks согласованы с итоговым pipeline: ранние notebooks показывают отдельные boundaries, 07/09 используют batched Tunix/MegaPrompts/CrafText rollout, 11 оставляет compact PPO mechanics, 12 выполняет real Gemma actor + separate critic PPO evaluation, 13 визуализирует replay, 14 меряет generation pipeline."
     },
     {
       "name": "Prompt assembly boundary",
@@ -93,7 +93,7 @@
     {
       "name": "LLM actor backbone contract",
       "status": "ready",
-      "description": "Добавлен strict ModelProfile loader и production-shaped LlmActor boundary: generate_batch для rollout, score_tokens для token logprobs/critic values/entropy. TunixCausalLmActor уже соединяет BatchLlmBackend, causal LM scoring и LinearValueHead; Qwen собирается из явного local snapshot, Gemma — из переданных Tunix components без implicit weight download. jax-lm используется как practice source, не runtime dependency."
+      "description": "Strict ModelProfile loader и production-shaped LLM actor boundary: generate_batch для rollout, actor-only token logprobs/entropy, separate TunixValueCritic values и merge только на PPO objective boundary. Qwen/Gemma собираются из явного local snapshot без implicit weight download; jax-lm/JAX-Toolbox используются как practice sources, не runtime dependency."
     },
     {
       "name": "JIT-safe Flashbax text staging",
@@ -101,9 +101,9 @@
       "description": "Typed Flashbax item-buffer принимает и семплирует fixed-shape TextTrajectoryBatch внутри jax.jit; он предназначен для bounded current-policy staging synchronous PPO window, а не для неявного off-policy replay. Qwix/CLU/mpi4jax зафиксированы в versioned training-stack contract для следующих этапов."
     },
     {
-      "name": "Phase-traced Qwen/CrafText performance evidence",
+      "name": "Phase-traced Qwen/Gemma/CrafText performance evidence",
       "status": "ready",
-      "description": "Versioned text-pipeline benchmark и PhaseProfiler измеряют MegaPrompts render, Qwen/Tunix generation, actor scoring, strict decode, CrafText step и PPO update; JSON artifacts совместимы с будущим nsys-jax/NVTX accelerator lane."
+      "description": "Versioned text-pipeline benchmark, Gemma generation notebook benchmark и PhaseProfiler измеряют MegaPrompts render, Tunix generation, actor scoring, critic scoring, strict decode, CrafText step и PPO evaluation; JSON artifacts совместимы с будущим nsys-jax/NVTX accelerator lane."
     },
     {
       "name": "NVIDIA JAX-Toolbox practice record",
