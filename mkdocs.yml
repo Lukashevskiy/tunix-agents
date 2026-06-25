@@ -46,6 +46,7 @@ nav:
   - План реализации: plan.md
   - Качество и perf: quality.md
   - Профилирование: profiling.md
+  - Observability: observability.md
   - Среда разработки: development.md
   - Поставка изменений: delivery.md
   - Эксперименты: experiments.md

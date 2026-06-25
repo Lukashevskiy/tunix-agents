@@ -20,6 +20,7 @@ from .contracts import RolloutBatch, Transition
 from .episode import collect_text_episode
 from .interop import LoraAdapter, ModelTemplate, TensorRule, convert_state_dict, merge_lora_adapters
 from .llm import LlmBackend, LlmRequest, LlmResponse, ScriptedLlmBackend
+from .observability import JsonlRunLogger, MetricRecord, ValidationTrajectoryRecord
 from .profiling import PhaseProfiler, ProfileEvent, block_until_ready, save_profile
 from .prompts import ActionCatalog, MegaPromptRenderer, PromptContext, RenderedPrompt
 from .random_policy import ActionSamplingError, sample_masked_actions, validate_action_mask
@@ -99,6 +100,9 @@ __all__ = [
     "LlmRequest",
     "LlmResponse",
     "ScriptedLlmBackend",
+    "JsonlRunLogger",
+    "MetricRecord",
+    "ValidationTrajectoryRecord",
     "LlmPpoEvaluation",
     "evaluate_llm_actor_critic_ppo",
     "evaluate_separate_llm_actor_critic_ppo",

@@ -173,8 +173,13 @@ from the frozen reference on the same fixed task set.
 
 - [ ] Store versioned YAML, git revision, model revision, topology, seed and
   package versions beside every run.
-- [ ] Export trajectories and aggregate metrics to JSONL; add TensorBoard only
-  after JSONL schema is stable.
+- [x] Добавить первый observability contract: `MetricRecord`,
+  `ValidationTrajectoryRecord` и `JsonlRunLogger` пишут train/val/eval scalar
+  metrics и ссылки на полные validation trajectories в versioned JSONL.
+- [ ] Подключить observability writer к реальному GRPO/PPO train loop: каждый
+  update пишет loss/KL/return/success/invalid-action, checkpoint path и policy version.
+- [ ] Export full validation trajectories for fixed task list; add TensorBoard
+  only after JSONL schema is stable.
 - [~] Add checkpoint save/restore for RLCluster/learner state: profile
   `evidence.checkpoints` now reaches Tunix `RLTrainingConfig`, which creates
   role-specific actor/critic checkpoint roots; hardware restart/preemption test

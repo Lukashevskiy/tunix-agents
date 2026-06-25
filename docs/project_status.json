@@ -141,6 +141,11 @@
       "description": "docs/training-stack-audit.md фиксирует production path Tunix Agentic GRPO/PPO, а локальный algorithms/learner/llm_ppo слой физически вынесен в tunix_craftext.research с thin compatibility shims. Guard tests запрещают production imports из research и повторное попадание Jupyter checkpoints в индекс."
     },
     {
+      "name": "Training observability contract",
+      "status": "ready",
+      "description": "Добавлен tunix_craftext.observability: MetricRecord, ValidationTrajectoryRecord и JsonlRunLogger пишут versioned train/val/eval metrics JSONL и ссылки на полные validation trajectories; TensorBoard/W&B остаются вторичными sinks после стабилизации JSONL."
+    },
+    {
       "name": "Tunix PPO RLCluster bridge",
       "status": "current",
       "description": "PPO ClusterConfig уже объявляет actor/rollout/critic/reference; load_ppo_qwen_assets/load_ppo_gemma_assets создают actor/reference/tokenizer и обязательный critic model, а build_ppo_cluster вызывает публичный Tunix RLCluster(actor, critic, reference, tokenizer). Следующий blocker — adapter из TextTrajectoryBatch/Flashbax staging в Tunix PPOLearner train-example schema."

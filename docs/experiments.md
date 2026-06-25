@@ -6,6 +6,7 @@
 config.resolved.yaml    # полный config, включая vendor revision
 metadata.json           # Git, hardware, packages, seed, timestamps
 metrics.jsonl           # train/eval/throughput метрики
+validation_trajectories.jsonl # ссылки на полные val trajectories
 trajectory/             # компактный replay + rendered prompt reference
 checkpoints/            # Orbax checkpoints + schema version
 benchmark.json          # если это perf run
