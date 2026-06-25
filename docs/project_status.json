@@ -136,6 +136,11 @@
       "description": "Спроектирован tunix-craftext/tcx CLI как thin orchestration layer: profile, env, prompt, rollout, train, eval, benchmark, docs, verify и audit команды вызывают use-case modules, не хранят business logic и не импортируют heavy Qwen/Tunix modules для help/profile/verify."
     },
     {
+      "name": "PPO/GRPO training stack audit",
+      "status": "ready",
+      "description": "docs/training-stack-audit.md фиксирует production path Tunix Agentic GRPO/PPO, отделяет локальный algorithms/learner/llm_ppo слой как research/smoke, задаёт безопасный migration plan и вычищает tracked Jupyter checkpoints из индекса."
+    },
+    {
       "name": "Tunix PPO RLCluster bridge",
       "status": "current",
       "description": "PPO ClusterConfig уже объявляет actor/rollout/critic/reference; load_ppo_qwen_assets/load_ppo_gemma_assets создают actor/reference/tokenizer и обязательный critic model, а build_ppo_cluster вызывает публичный Tunix RLCluster(actor, critic, reference, tokenizer). Следующий blocker — adapter из TextTrajectoryBatch/Flashbax staging в Tunix PPOLearner train-example schema."
