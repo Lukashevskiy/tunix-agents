@@ -52,6 +52,21 @@ def parse_args(arguments: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--learning-rate", type=float, default=1e-5)
     parser.add_argument("--skip-jit", action="store_true")
     parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate profile/topology/preflight/evidence without loading model assets.",
+    )
+    parser.add_argument(
+        "--scripted-smoke",
+        action="store_true",
+        help="Run local CrafText tool-call GRPO grouping with scripted actions and no model.",
+    )
+    parser.add_argument(
+        "--scripted-output",
+        type=Path,
+        default=Path("artifacts/runs/agentic-grpo-scripted-smoke.json"),
+    )
+    parser.add_argument(
         "--allow-cpu-smoke",
         action="store_true",
         help="Attempt the unsupported local CPU Qwen rollout for upstream debugging only.",
@@ -91,37 +106,14 @@ def main(arguments: Sequence[str] | None = None) -> None:
             + "\n",
             encoding="utf-8",
         )
-    if not args.snapshot.is_dir():
-        raise FileNotFoundError(f"Expected explicit local Qwen snapshot: {args.snapshot}")
     if args.max_steps <= 0 or args.batch_size <= 0 or args.num_generations < 2:
         raise ValueError("max_steps/batch_size must be positive and num_generations at least two")
 
     import jax
 
-    if jax.default_backend() == "cpu" and not args.allow_cpu_smoke:
-        raise RuntimeError(
-            "Agentic Qwen GRPO requires an accelerator mesh. The pinned Tunix Qwen vanilla "
-            "sampler cannot resolve its sharded gather on a local CPU singleton mesh; use an "
-            "accelerator runner or pass --allow-cpu-smoke only to reproduce that upstream failure."
-        )
-
-    from tunix.rl.agentic.agentic_grpo_learner import GRPOConfig, GRPOLearner
-    from tunix.rl.agentic.agents.tool_agent import ToolAgent
-    from tunix.rl.agentic.parser.chat_template_parser.parser import QwenChatTemplateParser
-
-    from tunix_craftext.agentic_craftext import (
-        CrafTextAgenticEnvironment,
-        CrafTextStepTool,
-        agentic_environment_kwargs,
-    )
     from tunix_craftext.config import load_mvp_config
     from tunix_craftext.preflight import pinned_qwen_tensor_shape, validate_agentic_grpo_preflight
-    from tunix_craftext.rlcluster_workload import (
-        AgenticGrpoWorkloadSpec,
-        build_agentic_grpo_cluster,
-        load_agentic_grpo_qwen_assets,
-    )
-    from tunix_craftext.tunix_adapter import load_qwen_hf_tokenizer
+    from tunix_craftext.rlcluster_workload import AgenticGrpoWorkloadSpec
     from tunix_craftext.tunix_topology import load_tunix_topology
 
     config = load_mvp_config(args.config)
@@ -140,6 +132,87 @@ def main(arguments: Sequence[str] | None = None) -> None:
         max_concurrency=args.num_generations,
     )
     validate_agentic_grpo_preflight(topology, spec, pinned_qwen_tensor_shape())
+
+    if args.dry_run:
+        print(
+            json.dumps(
+                {
+                    "schema": "tunix-craftext.agentic-grpo-dry-run/v1",
+                    "config": str(args.config),
+                    "topology": str(args.topology),
+                    "snapshot": str(args.snapshot),
+                    "snapshot_exists": args.snapshot.is_dir(),
+                    "backend": jax.default_backend(),
+                    "batch_preview": next(
+                        task_batches(
+                            goal=args.goal,
+                            seed=config.run.seed,
+                            batch_size=args.batch_size,
+                            count=1,
+                            horizon=config.environment.horizon,
+                        )
+                    )["seed"].tolist(),
+                    "workload": {
+                        "max_steps": spec.max_steps,
+                        "mini_batch_size": spec.mini_batch_size,
+                        "num_generations": spec.num_generations,
+                        "max_new_tokens": spec.max_new_tokens,
+                    },
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return
+
+    if args.scripted_smoke:
+        from tunix_craftext.agentic_grpo_smoke import (
+            collect_scripted_grpo_group_sync,
+            save_scripted_grpo_smoke,
+        )
+
+        action_sequences = tuple(
+            tuple(
+                "NOOP" if generation % 2 == 0 else "LEFT"
+                for _ in range(config.environment.horizon)
+            )
+            for generation in range(args.num_generations)
+        )
+        results = collect_scripted_grpo_group_sync(
+            config_path=args.config,
+            goal=args.goal,
+            seed=config.run.seed,
+            group_id=0,
+            action_sequences=action_sequences,
+            horizon=config.environment.horizon,
+        )
+        save_scripted_grpo_smoke(args.scripted_output, results)
+        print(f"wrote scripted GRPO smoke evidence: {args.scripted_output}")
+        return
+
+    if not args.snapshot.is_dir():
+        raise FileNotFoundError(f"Expected explicit local Qwen snapshot: {args.snapshot}")
+    if jax.default_backend() == "cpu" and not args.allow_cpu_smoke:
+        raise RuntimeError(
+            "Agentic Qwen GRPO requires an accelerator mesh. The pinned Tunix Qwen vanilla "
+            "sampler cannot resolve its sharded gather on a local CPU singleton mesh; use an "
+            "accelerator runner or pass --allow-cpu-smoke only to reproduce that upstream failure."
+        )
+
+    from tunix.rl.agentic.agentic_grpo_learner import GRPOConfig, GRPOLearner
+    from tunix.rl.agentic.agents.tool_agent import ToolAgent
+    from tunix.rl.agentic.parser.chat_template_parser.parser import QwenChatTemplateParser
+
+    from tunix_craftext.agentic_craftext import (
+        CrafTextAgenticEnvironment,
+        CrafTextStepTool,
+        agentic_environment_kwargs,
+    )
+    from tunix_craftext.rlcluster_workload import (
+        build_agentic_grpo_cluster,
+        load_agentic_grpo_qwen_assets,
+    )
+    from tunix_craftext.tunix_adapter import load_qwen_hf_tokenizer
     logging.info("Loading Agentic GRPO Qwen assets from %s", args.snapshot)
     assets = load_agentic_grpo_qwen_assets(args.snapshot, topology)
     cluster = build_agentic_grpo_cluster(topology, spec, assets)

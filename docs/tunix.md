@@ -110,6 +110,15 @@ Qwen vanilla sampler пока не поддерживает его singleton sha
 Реальный one-update smoke предназначен для accelerator runner; флаг
 `--allow-cpu-smoke` существует только для воспроизведения upstream failure.
 
+Перед real weights path есть два локальных gate. `--dry-run` валидирует GRPO profile,
+topology, static preflight и evidence manifest без model allocation. `--scripted-smoke`
+использует тот же `CrafTextAgenticEnvironment`, `ToolAgent` и Tunix `TrajectoryCollectEngine`,
+но подставляет scripted tool calls вместо LLM. Он собирает несколько generations одного task
+group, считает суммарные rewards и GRPO-style group-normalized advantages. Это проверяет
+agentic rollout/tool/reward/grouping semantics до critic-free `GRPOLearner` запуска; будущие
+PPO-Lag/CPO слои должны переиспользовать этот transport и добавить value/cost critic, а не
+переписывать CrafText environment loop.
+
 `tests/integration/test_tunix_topology_hardware.py` намеренно hardware-gated: он пропускает
 тест на системах с менее чем четырьмя видимыми устройствами и проверяет четырехустройственный
 профиль на accelerator runner. Это проверяет declaration placement, а не масштабную производительность;

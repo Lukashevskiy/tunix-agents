@@ -63,6 +63,21 @@ PYTHONPATH=src .venv/bin/python scripts/run_agentic_grpo.py \
 make verify-golden
 ```
 
+Для быстрой проверки GRPO без загрузки модели есть два безопасных режима:
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/run_agentic_grpo.py \
+  --profile configs/grpo/qwen_agentic_local.yaml --dry-run
+
+PYTHONPATH=src .venv/bin/python scripts/run_agentic_grpo.py \
+  --profile configs/grpo/qwen_agentic_local.yaml --scripted-smoke
+```
+
+`--dry-run` валидирует profile/topology/preflight/evidence. `--scripted-smoke` запускает реальный
+CrafText agentic tool-call loop с несколькими GRPO generations и group-normalized advantages, но
+без LLM/RLCluster weights. Это рабочий local gate перед реальным `GRPOLearner`; PPO/PPO-Lag/CPO
+потом добавляют value critic и cost critic поверх уже проверенного rollout/tool transport.
+
 Планируемое дерево команд:
 
 | Команда | Для чего |

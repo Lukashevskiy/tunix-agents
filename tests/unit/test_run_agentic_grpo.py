@@ -25,7 +25,7 @@ def test_task_batches_are_deterministic_and_groupable() -> None:
 
 
 def test_runner_arguments_keep_model_and_topology_explicit() -> None:
-    args = runner.parse_args(["--max-steps", "2", "--num-generations", "3"])
+    args = runner.parse_args(["--max-steps", "2", "--num-generations", "3", "--dry-run"])
 
     assert args.max_steps == 2
     assert args.num_generations == 3
@@ -33,3 +33,11 @@ def test_runner_arguments_keep_model_and_topology_explicit() -> None:
     assert args.kv_cache_size == 2048
     assert not args.allow_cpu_smoke
     assert args.snapshot == Path("artifacts/models/qwen25-05b-instruct")
+    assert args.dry_run
+
+
+def test_runner_exposes_scripted_grpo_smoke_without_model_assets() -> None:
+    args = runner.parse_args(["--scripted-smoke", "--scripted-output", "out.json"])
+
+    assert args.scripted_smoke
+    assert args.scripted_output == Path("out.json")

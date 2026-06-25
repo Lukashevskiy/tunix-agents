@@ -142,8 +142,8 @@
     },
     {
       "name": "Agentic GRPO golden pipeline",
-      "status": "planned",
-      "description": "Versioned fake-agentic fixture фиксирует task groups/generations/turns с tool/reward/done/action-mask evidence; reproducible profile/evidence gate готов. Реальные CrafText/Qwen parity и RLCluster constructor boundary есть, Agentic GRPOLearner one-update/resume/evaluation ещё не реализованы."
+      "status": "current",
+      "description": "GRPO теперь имеет два local gates без model allocation: --dry-run валидирует profile/topology/preflight/evidence, --scripted-smoke запускает CrafTextAgenticEnvironment + ToolAgent + Tunix TrajectoryCollectEngine с несколькими scripted generations и group-normalized advantages. Реальный GRPOLearner one-update остаётся accelerator/local-snapshot gated; PPO-Lag/CPO должны переиспользовать этот transport и добавить value/cost critic."
     }
   ]
 }

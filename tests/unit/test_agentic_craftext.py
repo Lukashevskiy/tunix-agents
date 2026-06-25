@@ -24,6 +24,7 @@ from tunix_craftext.agentic_craftext import (
     build_craftext_agentic_environment,
     build_craftext_tool_agent,
 )
+from tunix_craftext.agentic_grpo_smoke import grouped_advantages
 from tunix_craftext.prompts import ActionCatalog, PromptContext, RenderedPrompt
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -224,6 +225,14 @@ def test_tool_agent_exposes_the_craftext_action_schema() -> None:
     assert agent.tool_manager.names == ["craftext_step"]
     schema = agent.tool_manager.get_json_schema()[0]
     assert schema["function"]["parameters"]["required"] == ["action"]
+
+
+def test_grouped_advantages_are_normalized_inside_one_grpo_task_group() -> None:
+    advantages = grouped_advantages((1.0, 3.0))
+
+    assert advantages[0] == pytest.approx(-1.0, abs=1e-5)
+    assert advantages[1] == pytest.approx(1.0, abs=1e-5)
+    assert grouped_advantages((2.0, 2.0)) == (0.0, 0.0)
 
 
 def test_tunix_trajectory_engine_collects_a_multi_turn_craftext_episode() -> None:
