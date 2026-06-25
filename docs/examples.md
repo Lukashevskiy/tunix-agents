@@ -52,10 +52,11 @@ batched Tunix generation → strict decode/fallback → CrafText step. Он со
 `artifacts/benchmarks/gemma-generation-notebook.json` и profile JSON для сравнения batch size,
 horizon и repeats.
 
-`15_agentic_grpo_full_trainer.ipynb` — operator notebook для critic-free GRPO path:
-external env/model preparation checklist, profile/topology/preflight `--dry-run`, local
-`--scripted-smoke` через реальный `CrafTextAgenticEnvironment + ToolAgent + TrajectoryCollectEngine`
-и gated real `GRPOLearner` запуск при `RUN_REAL_GRPO=1`. Он нужен как рабочая проверка
+`15_agentic_grpo_full_trainer.ipynb` — ручной operator notebook для critic-free GRPO path:
+он по ячейкам поднимает profile/config, CrafText runtime, `CrafTextAgenticEnvironment`, prompt/tool
+boundary, topology/mesh preflight, Qwen snapshot assets, `RLCluster`, `ToolAgent` и сам
+`GRPOLearner`. Локальный scripted smoke остаётся как быстрая проверка grouped rewards без весов,
+а настоящий trainer включается только явно через `RUN_REAL_GRPO=1`. Он нужен как рабочая проверка
 agentic rollout/grouped rewards до добавления PPO critic/cost critic.
 
 Тот же путь доступен вне Jupyter и сохраняет как raw replay, так и summary metrics:
