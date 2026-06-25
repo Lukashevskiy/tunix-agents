@@ -143,7 +143,12 @@
     {
       "name": "Training observability contract",
       "status": "ready",
-      "description": "Добавлен tunix_craftext.observability: MetricRecord, ValidationTrajectoryRecord и JsonlRunLogger пишут versioned train/val/eval metrics JSONL и ссылки на полные validation trajectories; TensorBoard/W&B остаются вторичными sinks после стабилизации JSONL."
+      "description": "Добавлен tunix_craftext.observability: MetricRecord, ValidationTrajectoryRecord, RunArtifact, ArtifactSink и JsonlRunLogger пишут versioned train/val/eval metrics JSONL, ссылки на validation trajectories и artifact manifest; TensorBoard/W&B/Comet остаются вторичными sinks."
+    },
+    {
+      "name": "Comet ML observability adapter",
+      "status": "ready",
+      "description": "Добавлен optional CometMlSink: без импорта comet_ml в core он зеркалирует numeric metrics, scalar context, checkpoints, validation trajectories и visualization artifacts в Comet experiment после локальной записи JSONL evidence."
     },
     {
       "name": "Tunix PPO RLCluster bridge",

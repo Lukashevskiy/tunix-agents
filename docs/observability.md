@@ -18,6 +18,7 @@ from pathlib import Path
 from tunix_craftext.observability import (
     JsonlRunLogger,
     MetricRecord,
+    RunArtifact,
     ValidationTrajectoryRecord,
 )
 
@@ -51,6 +52,18 @@ logger.write_validation_trajectory(
         success=True,
         policy_version=1,
         metrics={"fallback_count": 0},
+    )
+)
+
+logger.write_artifact(
+    RunArtifact(
+        run_id="qwen-grpo-smoke",
+        step=1,
+        policy_version=1,
+        kind="validation_visualization",
+        path="trajectory/val/safe-avoid-enemy-step-1.png",
+        name="safe-avoid-enemy-validation-frame",
+        metadata={"task_id": "safe-avoid-enemy"},
     )
 )
 ```
@@ -100,6 +113,34 @@ fallback и состояние среды, а не гадать по усред�
 
 ## Будущие sinks
 
-TensorBoard, W&B или Prometheus можно добавлять как вторичные sinks. Они не должны
+TensorBoard, W&B, Prometheus и Comet ML являются вторичными sinks. Они не должны
 становиться единственным местом хранения: JSONL остаётся воспроизводимым локальным
 контрактом, который можно читать в тестах, CLI, сайте и release card.
+
+## Comet ML adapter
+
+Comet подключается отдельным optional adapter, а не импортируется core-модулем:
+
+```python
+from tunix_craftext.comet_adapter import CometMlSink
+
+comet = CometMlSink.create_experiment(
+    project_name="tunix-craftext",
+    workspace="my-workspace",
+)
+
+record = MetricRecord(
+    run_id="qwen-grpo-smoke",
+    step=1,
+    split="train",
+    phase="update",
+    metrics={"loss": 0.42, "kl": 0.01},
+)
+
+logger.log_metric(record)  # local JSONL first
+comet.log_metric(record)   # mirror to Comet second
+```
+
+Правило: сначала сохранить локальный artifact (`metrics.jsonl`, replay, validation
+visualization, checkpoint), затем отправить ссылку/файл в Comet через `RunArtifact`.
+Если Comet недоступен, локальные evidence остаются полными.

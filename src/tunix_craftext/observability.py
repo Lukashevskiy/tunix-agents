@@ -12,10 +12,20 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Literal, TypeAlias
+from typing import Literal, Protocol, TypeAlias
 
 JsonScalar: TypeAlias = None | bool | int | float | str
 RunSplit: TypeAlias = Literal["train", "val", "eval", "benchmark"]
+ArtifactKind: TypeAlias = Literal[
+    "trajectory",
+    "validation_visualization",
+    "profile",
+    "checkpoint",
+    "config",
+    "model_card",
+    "report",
+    "other",
+]
 
 
 @dataclass(frozen=True)
@@ -101,6 +111,63 @@ class ValidationTrajectoryRecord:
             _validate_scalar(value, f"metric {name!r}")
 
 
+@dataclass(frozen=True)
+class RunArtifact:
+    """One versioned artifact reference produced by a run.
+
+    :param run_id: Stable run identifier shared with metrics and checkpoints.
+    :param path: Local path to the artifact. Upload sinks should read from this path.
+    :param kind: Artifact kind such as ``trajectory``, ``checkpoint`` or
+        ``validation_visualization``.
+    :param name: Human-readable artifact name. Defaults to the local filename.
+    :param step: Optional global step associated with the artifact.
+    :param policy_version: Optional policy version associated with the artifact.
+    :param metadata: Additional scalar metadata to attach to the artifact.
+    :param schema: Versioned artifact reference schema.
+    """
+
+    run_id: str
+    path: str
+    kind: ArtifactKind
+    name: str | None = None
+    step: int | None = None
+    policy_version: int | None = None
+    metadata: dict[str, JsonScalar] | None = None
+    schema: str = "tunix-craftext.artifact/v1"
+
+    def __post_init__(self) -> None:
+        """Validate artifact references before logging or uploading."""
+        _validate_non_empty(self.run_id, "run_id")
+        _validate_non_empty(self.path, "path")
+        if self.name is not None:
+            _validate_non_empty(self.name, "name")
+        if self.step is not None and self.step < 0:
+            raise ValueError("step must be non-negative")
+        if self.policy_version is not None and self.policy_version < 0:
+            raise ValueError("policy_version must be non-negative")
+        for name, value in (self.metadata or {}).items():
+            _validate_non_empty(name, "metadata name")
+            _validate_scalar(value, f"metadata {name!r}")
+
+    @property
+    def display_name(self) -> str:
+        """Return the explicit artifact name or the local filename."""
+        return self.name or Path(self.path).name
+
+
+class ArtifactSink(Protocol):
+    """Protocol implemented by local, Comet ML and future observability sinks."""
+
+    def log_metric(self, record: MetricRecord) -> None:
+        """Log one scalar metric record."""
+
+    def log_validation_trajectory(self, record: ValidationTrajectoryRecord) -> None:
+        """Log a validation trajectory summary and its full artifact reference."""
+
+    def log_artifact(self, artifact: RunArtifact) -> None:
+        """Log or upload one run artifact."""
+
+
 class JsonlRunLogger:
     """Append-only writer for versioned run observability JSONL files."""
 
@@ -109,16 +176,34 @@ class JsonlRunLogger:
         self.run_dir = run_dir
         self.metrics_path = run_dir / "metrics.jsonl"
         self.validation_trajectories_path = run_dir / "validation_trajectories.jsonl"
+        self.artifacts_path = run_dir / "artifacts.jsonl"
 
     def write_metric(self, record: MetricRecord) -> Path:
         """Append one scalar metric event and return the metrics JSONL path."""
         _append_jsonl(self.metrics_path, _record_payload(record))
         return self.metrics_path
 
+    def log_metric(self, record: MetricRecord) -> None:
+        """Append one metric event through the generic ``ArtifactSink`` protocol."""
+        self.write_metric(record)
+
     def write_validation_trajectory(self, record: ValidationTrajectoryRecord) -> Path:
         """Append one validation trajectory reference and return its JSONL path."""
         _append_jsonl(self.validation_trajectories_path, _record_payload(record))
         return self.validation_trajectories_path
+
+    def log_validation_trajectory(self, record: ValidationTrajectoryRecord) -> None:
+        """Append one validation trajectory event through the sink protocol."""
+        self.write_validation_trajectory(record)
+
+    def write_artifact(self, artifact: RunArtifact) -> Path:
+        """Append one artifact reference and return the artifacts JSONL path."""
+        _append_jsonl(self.artifacts_path, _record_payload(artifact))
+        return self.artifacts_path
+
+    def log_artifact(self, artifact: RunArtifact) -> None:
+        """Append one artifact reference through the generic sink protocol."""
+        self.write_artifact(artifact)
 
 
 def read_jsonl(path: Path) -> tuple[dict[str, JsonScalar | dict[str, JsonScalar]], ...]:
@@ -128,7 +213,9 @@ def read_jsonl(path: Path) -> tuple[dict[str, JsonScalar | dict[str, JsonScalar]
     return tuple(json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line)
 
 
-def _record_payload(record: MetricRecord | ValidationTrajectoryRecord) -> dict[str, object]:
+def _record_payload(
+    record: MetricRecord | ValidationTrajectoryRecord | RunArtifact,
+) -> dict[str, object]:
     return asdict(record)
 
 

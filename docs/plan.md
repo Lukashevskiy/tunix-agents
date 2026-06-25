@@ -176,6 +176,9 @@ from the frozen reference on the same fixed task set.
 - [x] Добавить первый observability contract: `MetricRecord`,
   `ValidationTrajectoryRecord` и `JsonlRunLogger` пишут train/val/eval scalar
   metrics и ссылки на полные validation trajectories в versioned JSONL.
+- [x] Добавить artifact sink contract и Comet ML adapter: `RunArtifact`,
+  `ArtifactSink` и `CometMlSink` зеркалируют metrics, checkpoints, validation
+  trajectories и visualization artifacts во внешний experiment tracker.
 - [ ] Подключить observability writer к реальному GRPO/PPO train loop: каждый
   update пишет loss/KL/return/success/invalid-action, checkpoint path и policy version.
 - [ ] Export full validation trajectories for fixed task list; add TensorBoard

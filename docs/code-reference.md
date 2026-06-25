@@ -15,7 +15,7 @@
 | Rollout transport | `tunix_craftext.rollout`, `tunix_craftext.batched_rollout`, `tunix_craftext.contracts` | Численные trajectories остаются `[T, B, ...]`; text rollout enforce-ит `action_mask` перед `CrafTextAdapter.step` и экспортирует per-env replay. |
 | Replay/training batch | `tunix_craftext.replay`, `tunix_craftext.text_trajectory`, `tunix_craftext.flashbax_replay` | Replay v3 хранит prompt/completion/action/reward/token evidence, `masked_action`, fallback и преобразуется в fixed-shape token batches. |
 | Research objectives/learner | `tunix_craftext.research.algorithms`, `tunix_craftext.research.algorithm_registry`, `tunix_craftext.research.learner`, `tunix_craftext.checkpoints` | PPO/returns/loss functions чистые и JAX-friendly, но это research/smoke слой; production GRPO/PPO идёт через Tunix Agentic `RLCluster`. |
-| Observability / profiling evidence | `tunix_craftext.observability`, `tunix_craftext.profiling` | Append-only train/val metrics JSONL, validation trajectory references, phase-level wall-time, optional NVTX ranges и JSON artifacts для prompt/LLM/env/replay/update stages. |
+| Observability / profiling evidence | `tunix_craftext.observability`, `tunix_craftext.comet_adapter`, `tunix_craftext.profiling` | Append-only train/val metrics JSONL, validation trajectory references, generic artifact sink contract, optional Comet ML mirror, phase-level wall-time и NVTX ranges. |
 | Model/cluster interoperability | `tunix_craftext.interop`, `tunix_craftext.tunix_topology`, `tunix_craftext.rlcluster_workload` | LoRA/state-dict conversion, declared Tunix role→mesh mapping и hardware-gated RLCluster config отделены от core rollout. |
 
 ## Минимальный CrafText runtime

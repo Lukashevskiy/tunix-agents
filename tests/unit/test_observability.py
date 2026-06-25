@@ -8,8 +8,10 @@ from pathlib import Path
 import pytest
 
 from tunix_craftext.observability import (
+    ArtifactSink,
     JsonlRunLogger,
     MetricRecord,
+    RunArtifact,
     ValidationTrajectoryRecord,
     read_jsonl,
 )
@@ -44,9 +46,20 @@ def test_jsonl_run_logger_writes_train_metrics_and_validation_trajectory(
             metrics={"fallback_count": 1, "mean_token_logprob": -2.0},
         )
     )
+    artifact_path = logger.write_artifact(
+        RunArtifact(
+            run_id="test",
+            path="trajectory/val/safe-avoid-enemy-step-3.json",
+            kind="trajectory",
+            step=3,
+            policy_version=2,
+            metadata={"task_id": "safe-avoid-enemy"},
+        )
+    )
 
     [metric] = read_jsonl(metrics_path)
     [trajectory] = read_jsonl(trajectories_path)
+    [artifact] = read_jsonl(artifact_path)
 
     assert metric["schema"] == "tunix-craftext.metric/v1"
     assert metric["split"] == "train"
@@ -55,6 +68,9 @@ def test_jsonl_run_logger_writes_train_metrics_and_validation_trajectory(
     assert trajectory["schema"] == "tunix-craftext.validation-trajectory/v1"
     assert trajectory["trajectory_path"].endswith("safe-avoid-enemy-step-3.json")
     assert trajectory["metrics"]["fallback_count"] == 1
+    assert artifact["schema"] == "tunix-craftext.artifact/v1"
+    assert artifact["kind"] == "trajectory"
+    assert artifact["metadata"]["task_id"] == "safe-avoid-enemy"
 
 
 def test_jsonl_run_logger_appends_records_in_order(tmp_path: Path) -> None:
@@ -98,4 +114,37 @@ def test_validation_trajectory_requires_full_artifact_reference() -> None:
             trajectory_path="",
             return_sum=0.0,
             episode_length=1,
+        )
+
+
+def test_jsonl_run_logger_implements_artifact_sink_protocol(tmp_path: Path) -> None:
+    sink: ArtifactSink = JsonlRunLogger(tmp_path / "run")
+
+    sink.log_metric(
+        MetricRecord("protocol", 0, "train", "update", {"loss": 0.0})
+    )
+    sink.log_validation_trajectory(
+        ValidationTrajectoryRecord(
+            "protocol",
+            0,
+            "task",
+            "trajectory/task.json",
+            return_sum=0.0,
+            episode_length=1,
+        )
+    )
+    sink.log_artifact(RunArtifact("protocol", "trajectory/task.json", "trajectory"))
+
+    assert (tmp_path / "run" / "metrics.jsonl").is_file()
+    assert (tmp_path / "run" / "validation_trajectories.jsonl").is_file()
+    assert (tmp_path / "run" / "artifacts.jsonl").is_file()
+
+
+def test_run_artifact_rejects_non_scalar_metadata() -> None:
+    with pytest.raises(ValueError, match="JSON scalar"):
+        RunArtifact(
+            run_id="bad",
+            path="artifact.json",
+            kind="other",
+            metadata={"array": [1, 2]},  # type: ignore[dict-item]
         )

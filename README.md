@@ -139,6 +139,25 @@ Material и не обновит сгенерированные страницы.
 tесты и доказательства производительности, обновление документации/статуса, intentional commit и
 сборка сайта.
 
+## Observability и Comet ML
+
+Первичный слой логирования — локальный, versioned и воспроизводимый:
+`metrics.jsonl`, `validation_trajectories.jsonl`, `artifacts.jsonl`, replay/trajectory files,
+profiles и checkpoints в `artifacts/runs/<run-id>/`. Внешние трекеры подключаются как mirror.
+
+Для Comet ML используйте optional adapter:
+
+```python
+from tunix_craftext.comet_adapter import CometMlSink
+from tunix_craftext.observability import JsonlRunLogger
+
+local = JsonlRunLogger(run_dir)
+comet = CometMlSink.create_experiment(project_name="tunix-craftext")
+```
+
+Правило проекта: сначала пишем локальный evidence, затем отправляем те же records/artifacts
+в Comet. Так training run остаётся проверяемым даже без сети или API key.
+
 Прочитайте [план выполнения](docs/plan.md), [архитектуру](docs/architecture.md),
 [интеграцию с Tunix](docs/tunix.md), [код/API](docs/code-reference.md) и [примеры](docs/examples.md) перед расширением тренера.
 Notebook 07 показывает batched Qwen/Tunix rollout и replay export, 09/11/12 доводят тот же
