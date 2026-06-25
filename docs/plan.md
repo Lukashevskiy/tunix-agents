@@ -179,6 +179,12 @@ from the frozen reference on the same fixed task set.
 - [x] Добавить artifact sink contract и Comet ML adapter: `RunArtifact`,
   `ArtifactSink` и `CometMlSink` зеркалируют metrics, checkpoints, validation
   trajectories и visualization artifacts во внешний experiment tracker.
+- [x] Добавить generic team logger adapter: `MappedLoggerSink` и
+  `LoggerMethodMapping` позволяют подключить локальный logger команды через
+  method mapping или direct callables без изменения core observability records.
+- [x] Добавить standard artifact factories для checkpoint, weights,
+  optimizer-state, train/val trajectories и validation visualizations, чтобы
+  GRPO/PPO loop логировал все training artifacts единообразно.
 - [ ] Подключить observability writer к реальному GRPO/PPO train loop: каждый
   update пишет loss/KL/return/success/invalid-action, checkpoint path и policy version.
 - [ ] Export full validation trajectories for fixed task list; add TensorBoard

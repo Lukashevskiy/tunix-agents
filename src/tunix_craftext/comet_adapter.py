@@ -99,7 +99,7 @@ class CometMlSink:
             RunArtifact(
                 run_id=record.run_id,
                 path=record.trajectory_path,
-                kind="trajectory",
+                kind="validation_trajectory",
                 name=f"{record.task_id}-step-{record.step}",
                 step=record.step,
                 policy_version=record.policy_version,

@@ -107,8 +107,18 @@ def test_comet_sink_routes_visualizations_and_folders(tmp_path: Path) -> None:
         )
     )
     sink.log_artifact(RunArtifact("run", str(folder), "checkpoint", step=9))
+    sink.log_artifact(
+        RunArtifact(
+            "run",
+            "artifacts/weights/actor.safetensors",
+            "weights",
+            name="actor-weights",
+            step=9,
+        )
+    )
     sink.end()
 
     assert experiment.images == [("artifacts/val/frame.png", "val-frame", 9)]
     assert experiment.asset_folders == [(str(folder), 9)]
+    assert experiment.assets == [("artifacts/weights/actor.safetensors", "actor-weights", 9)]
     assert experiment.ended is True

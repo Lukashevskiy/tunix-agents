@@ -151,6 +151,16 @@
       "description": "Добавлен optional CometMlSink: без импорта comet_ml в core он зеркалирует numeric metrics, scalar context, checkpoints, validation trajectories и visualization artifacts в Comet experiment после локальной записи JSONL evidence."
     },
     {
+      "name": "Mapped team logger adapter",
+      "status": "ready",
+      "description": "Добавлен MappedLoggerSink и LoggerMethodMapping: любой локальный logger команды можно подключить к ArtifactSink через имена методов или direct callables, опираясь на те же MetricRecord, ValidationTrajectoryRecord и RunArtifact contracts."
+    },
+    {
+      "name": "Standard training artifact manifest",
+      "status": "ready",
+      "description": "RunArtifact расширен на checkpoint, weights, optimizer_state, training_trajectory, validation_trajectory и validation_visualization; helper factories единообразно размечают actor/critic/reference роли, policy_version, task_id и quantization для локального JSONL, Comet и командных loggers."
+    },
+    {
       "name": "Tunix PPO RLCluster bridge",
       "status": "current",
       "description": "PPO ClusterConfig уже объявляет actor/rollout/critic/reference; load_ppo_qwen_assets/load_ppo_gemma_assets создают actor/reference/tokenizer и обязательный critic model, а build_ppo_cluster вызывает публичный Tunix RLCluster(actor, critic, reference, tokenizer). Следующий blocker — adapter из TextTrajectoryBatch/Flashbax staging в Tunix PPOLearner train-example schema."

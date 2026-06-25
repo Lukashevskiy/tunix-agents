@@ -7,7 +7,8 @@
 - `validation_trajectories.jsonl` — ссылки на полные validation trajectories;
 - `trajectory/` — полный replay/trajectory artifact с prompt, raw completion, action,
   reward, masks, token ids/logprobs и fallback provenance;
-- `checkpoints/` — actor/critic/reference trainer state, связанный с `policy_version`;
+- `checkpoints/` — actor/critic/reference trainer state, optimizer state и policy version;
+- `weights/` — экспортированные actor/critic/reference weights или LoRA/Qwix adapters;
 - `profiles/` — phase timings и будущие Nsight/`nsys-jax` traces.
 
 ## Python API
@@ -20,6 +21,10 @@ from tunix_craftext.observability import (
     MetricRecord,
     RunArtifact,
     ValidationTrajectoryRecord,
+    checkpoint_artifact,
+    validation_trajectory_artifact,
+    validation_visualization_artifact,
+    weights_artifact,
 )
 
 logger = JsonlRunLogger(Path("artifacts/runs/qwen-grpo-smoke"))
@@ -56,14 +61,33 @@ logger.write_validation_trajectory(
 )
 
 logger.write_artifact(
-    RunArtifact(
+    validation_visualization_artifact(
         run_id="qwen-grpo-smoke",
-        step=1,
-        policy_version=1,
-        kind="validation_visualization",
         path="trajectory/val/safe-avoid-enemy-step-1.png",
-        name="safe-avoid-enemy-validation-frame",
-        metadata={"task_id": "safe-avoid-enemy"},
+        step=1,
+        task_id="safe-avoid-enemy",
+        policy_version=1,
+    )
+)
+
+logger.write_artifact(
+    checkpoint_artifact(
+        run_id="qwen-grpo-smoke",
+        path="checkpoints/actor/1",
+        step=1,
+        role="actor",
+        policy_version=1,
+    )
+)
+
+logger.write_artifact(
+    weights_artifact(
+        run_id="qwen-grpo-smoke",
+        path="weights/actor-lora-step-1.safetensors",
+        step=1,
+        role="actor",
+        policy_version=1,
+        quantization="bf16",
     )
 )
 ```
@@ -80,6 +104,7 @@ logger.write_artifact(
 - `tool_call_count`;
 - `tokens_per_second`, `env_steps_per_second`, `update_seconds`;
 - `policy_version`, `checkpoint_path`.
+- artifact manifest для checkpoint/weights/optimizer state.
 
 Для PPO дополнительно:
 
@@ -142,5 +167,41 @@ comet.log_metric(record)   # mirror to Comet second
 ```
 
 Правило: сначала сохранить локальный artifact (`metrics.jsonl`, replay, validation
-visualization, checkpoint), затем отправить ссылку/файл в Comet через `RunArtifact`.
-Если Comet недоступен, локальные evidence остаются полными.
+visualization, checkpoint, weights), затем отправить ссылку/файл в Comet через
+`RunArtifact`. Если Comet недоступен, локальные evidence остаются полными.
+
+## Адаптер под любой командный logger
+
+Если в команде уже есть локальный logger, его не нужно встраивать в core. Достаточно
+сопоставить методы logger-а с базовым `ArtifactSink` контрактом:
+
+```python
+from tunix_craftext.observability import LoggerMethodMapping, MappedLoggerSink
+
+team_sink = MappedLoggerSink(
+    team_logger,
+    mapping=LoggerMethodMapping(
+        log_metrics="scalars_write",
+        log_artifact="file_write",
+        log_text="text_write",
+        log_image="image_write",
+    ),
+)
+
+team_sink.log_metric(record)
+team_sink.log_artifact(artifact)
+```
+
+Если logger странный и методами его не описать, можно передать прямые callables:
+
+```python
+team_sink = MappedLoggerSink(
+    object(),
+    log_metrics=lambda metrics, **kw: my_metrics_client.send(metrics, **kw),
+    log_artifact=lambda path, **kw: my_artifact_store.upload(path, **kw),
+    log_text=lambda text, **kw: my_event_log.write(text),
+)
+```
+
+Так новый adapter под локальную инфраструктуру команды остаётся тонким glue-слоем поверх
+`MetricRecord`, `ValidationTrajectoryRecord` и `RunArtifact`.
