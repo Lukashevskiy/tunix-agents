@@ -34,6 +34,7 @@ nav:
   - Совместимость моделей: interop.md
   - Контрольные точки: checkpoints.md
   - Интеграция с Tunix: tunix.md
+  - CLI слой: cli.md
   - Промпты: prompts.md
   - Конфигурация: configuration.md
   - Код:

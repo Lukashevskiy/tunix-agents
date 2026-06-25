@@ -46,6 +46,7 @@ roadmap: первый production path — Agentic GRPO с ролями `actor`, 
 | 0 | Hygiene и task semantics | `ruff`, `mypy`, unit suite; real CrafText test доказывает, что prompt содержит и user goal, и scenario instruction, world preset и Caged constraint | Не менять learner/mesh ради обхода неясного task contract |
 | 1 | Deterministic golden fixture | 2 task groups × 2 generations × 8 turns, fixed seeds; expected tool calls/rewards/done/action masks экспортированы как versioned fixture | Не заявлять multi-turn environment production-ready |
 | 2 | Reproducible GRPO profile | `configs/grpo/qwen_agentic_local.yaml` содержит run/model/topology/workload/evidence paths; runner пишет profile/vendor SHA256, model revision/licence, config hash и package versions рядом с run | Не загружать weights по незафиксированному profile |
+| 2.5 | Full CLI orchestration layer | `tunix-craftext profile/verify/train/...` спроектирован как thin orchestration layer; первый implementation slice ограничен profile + verify без heavy imports | Не переносить business logic в CLI и не ломать scripts до wrapper migration |
 | 3 | Real RLCluster rollout | Accelerator-gated fixture создаёт actor/rollout/reference, проверяет role mesh и actor–rollout token/logprob parity | Не мерить distributed throughput и не строить custom scheduler |
 | 4 | One Agentic GRPO update | Один `GRPOLearner` update меняет actor weights, loss конечен, generation groups валидны, metrics включают return/success/invalid-action/KL | Не помечать model factory или runner готовыми |
 | 5 | Evidence, resume, evaluation | Checkpoint включает learner/cluster policy version; resumed next update совпадает с continuous; fixed evaluation сравнивает actor/reference | Не выпускать “trained checkpoint” или notebook как substitute |
@@ -86,6 +87,20 @@ catalogue и deterministic initial environment state.
   docs build и repository audit.
 
 **Gate:** fixture, model profile и dependency provenance проверяются до загрузки весов.
+
+## 0.5. Full CLI Orchestration Layer
+
+- [x] Спроектировать `tunix-craftext` как полновесный, но thin CLI: команды `profile`,
+  `env`, `prompt`, `rollout`, `train`, `eval`, `benchmark`, `docs`, `verify`, `audit`;
+  доменная логика живёт в use-case modules, не в CLI handlers.
+- [ ] Добавить scaffold `tunix_craftext.cli` и console scripts `tunix-craftext`/`tcx`.
+- [ ] Реализовать первый TDD slice: `profile validate`, `profile evidence`, `verify golden`;
+  `--help` и profile commands не импортируют heavy Qwen/Tunix modules.
+- [ ] Перенести `run_agentic_grpo.py` в use-case слой и оставить script wrapper.
+- [ ] Затем мигрировать env/prompt/rollout/benchmark/docs/audit команды.
+
+**Gate:** `tunix-craftext profile validate configs/grpo/qwen_agentic_local.yaml` и
+`tunix-craftext verify golden` проходят на CPU без downloads и accelerator allocation.
 
 ## 1. Production Multi-turn Environment
 
