@@ -88,6 +88,11 @@ Agentic GRPO profile относится к CPU quality gate: unit tests обяз
 provenance до любой попытки загрузить Qwen weights. Это минимальная защита от “непонятного”
 accelerator run.
 
+Локальная команда `make verify-golden` проверяет тот же слой без implicit downloads и без
+accelerator allocation: Ruff, mypy, fake-agentic/profile/RLCluster/preflight unit contracts,
+task-board sync, MkDocs build и repository audit. Её нужно запускать перед переходом к real
+RLCluster rollout или Agentic `GRPOLearner` update.
+
 После MVP GitHub Actions workflow `MVP Python compatibility` запускается на тегах `mvp-v*` (или
 вручную) в матрице Python 3.11, 3.12 и 3.13. Он устанавливает `dev,docs` extras и запускает unit
 и integration lanes. Matrix намеренно не запускает perf: shared GitHub runners непригодны для

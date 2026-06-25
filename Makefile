@@ -1,7 +1,7 @@
 PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 PERF_ARTIFACT ?= artifacts/benchmarks/rollout-latest.json
 
-.PHONY: audit test integration perf perf-env perf-text docs api-docs serve provenance sync-tasks verify
+.PHONY: audit test integration perf perf-env perf-text docs api-docs serve provenance sync-tasks verify verify-golden
 
 audit:
 	$(PYTHON) .codex/skills/repository-audit/scripts/audit_repo.py
@@ -42,3 +42,13 @@ sync-tasks:
 verify: audit test integration sync-tasks api-docs
 	@echo "Verified audit, unit/integration tests, task-board sync, MkDocs and Sphinx API documentation."
 	@echo "For any hot-path change, also run 'make perf' and save or explicitly waive benchmark evidence."
+
+verify-golden:
+	PYTHONPATH=src $(PYTHON) -m ruff check src tests scripts
+	PYTHONPATH=src $(PYTHON) -m mypy src/tunix_craftext
+	PYTHONPATH=src $(PYTHON) -m pytest tests/unit/test_agentic_craftext.py tests/unit/test_grpo_profile.py tests/unit/test_rlcluster_workload.py tests/unit/test_run_agentic_grpo.py tests/unit/test_preflight.py
+	$(PYTHON) .codex/skills/task-board-sync/scripts/sync_task_views.py
+	$(PYTHON) scripts/generate_dashboard.py
+	$(PYTHON) -m mkdocs build --strict
+	$(PYTHON) .codex/skills/repository-audit/scripts/audit_repo.py
+	@echo "Verified golden Agentic GRPO contracts without model downloads or accelerator allocation."

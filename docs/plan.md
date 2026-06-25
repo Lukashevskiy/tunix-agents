@@ -81,7 +81,9 @@ catalogue и deterministic initial environment state.
   real CrafText/Qwen parity остаётся отдельным integration gate.
 - [~] Разделить lockfile evidence: Agentic GRPO profile пишет package versions в run
   manifest; отдельный accelerator lockfile lane ещё не подключён.
-- [ ] Сделать `make verify-golden` обязательным local/CI entrypoint без implicit downloads.
+- [x] Сделать `make verify-golden` обязательным local entrypoint без implicit downloads:
+  Ruff, mypy, fake-agentic/profile/RLCluster/preflight unit contracts, task sync,
+  docs build и repository audit.
 
 **Gate:** fixture, model profile и dependency provenance проверяются до загрузки весов.
 
