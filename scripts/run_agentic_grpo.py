@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 from collections.abc import Iterator, Sequence
 from pathlib import Path
@@ -29,6 +30,11 @@ def task_batches(
 def parse_args(arguments: Sequence[str] | None = None) -> argparse.Namespace:
     """Parse one reproducible, local-weight Agentic GRPO run."""
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--profile",
+        type=Path,
+        help="Canonical Agentic GRPO profile; preferred over individual workload flags.",
+    )
     parser.add_argument("--config", type=Path, default=Path("configs/mvp/qwen_craftext.yaml"))
     parser.add_argument(
         "--topology", type=Path, default=Path("configs/topology/qwen_agentic_grpo_local.yaml")
@@ -56,6 +62,35 @@ def parse_args(arguments: Sequence[str] | None = None) -> argparse.Namespace:
 def main(arguments: Sequence[str] | None = None) -> None:
     """Build assets, cluster and learner, then perform the requested GRPO updates."""
     args = parse_args(arguments)
+
+    from tunix_craftext.grpo_profile import (
+        build_grpo_evidence_manifest,
+        load_agentic_grpo_profile,
+    )
+
+    if args.profile is not None:
+        profile = load_agentic_grpo_profile(args.profile)
+        args.config = profile.environment_config
+        args.topology = profile.topology_config
+        args.snapshot = profile.model.snapshot
+        args.goal = profile.run.goal
+        args.max_steps = profile.workload.max_steps
+        args.batch_size = profile.workload.mini_batch_size
+        args.num_generations = profile.workload.num_generations
+        args.max_new_tokens = profile.workload.max_new_tokens
+        args.max_prompt_length = profile.workload.max_prompt_length
+        args.kv_cache_size = profile.workload.kv_cache_size
+        args.learning_rate = profile.workload.learning_rate
+        profile.evidence.provenance.parent.mkdir(parents=True, exist_ok=True)
+        profile.evidence.provenance.write_text(
+            json.dumps(
+                build_grpo_evidence_manifest(profile, profile_path=args.profile),
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
     if not args.snapshot.is_dir():
         raise FileNotFoundError(f"Expected explicit local Qwen snapshot: {args.snapshot}")
     if args.max_steps <= 0 or args.batch_size <= 0 or args.num_generations < 2:

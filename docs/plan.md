@@ -45,7 +45,7 @@ roadmap: первый production path — Agentic GRPO с ролями `actor`, 
 | --- | --- | --- | --- |
 | 0 | Hygiene и task semantics | `ruff`, `mypy`, unit suite; real CrafText test доказывает, что prompt содержит и user goal, и scenario instruction, world preset и Caged constraint | Не менять learner/mesh ради обхода неясного task contract |
 | 1 | Deterministic golden fixture | 2 task groups × 2 generations × 8 turns, fixed seeds; expected tool calls/rewards/done/action masks экспортированы как versioned fixture | Не заявлять multi-turn environment production-ready |
-| 2 | Reproducible GRPO profile | Один YAML содержит run/model/topology/workload/evidence paths; vendor SHA256, model revision/licence, config hash и package versions лежат рядом с run | Не загружать weights по незафиксированному profile |
+| 2 | Reproducible GRPO profile | `configs/grpo/qwen_agentic_local.yaml` содержит run/model/topology/workload/evidence paths; runner пишет profile/vendor SHA256, model revision/licence, config hash и package versions рядом с run | Не загружать weights по незафиксированному profile |
 | 3 | Real RLCluster rollout | Accelerator-gated fixture создаёт actor/rollout/reference, проверяет role mesh и actor–rollout token/logprob parity | Не мерить distributed throughput и не строить custom scheduler |
 | 4 | One Agentic GRPO update | Один `GRPOLearner` update меняет actor weights, loss конечен, generation groups валидны, metrics включают return/success/invalid-action/KL | Не помечать model factory или runner готовыми |
 | 5 | Evidence, resume, evaluation | Checkpoint включает learner/cluster policy version; resumed next update совпадает с continuous; fixed evaluation сравнивает actor/reference | Не выпускать “trained checkpoint” или notebook как substitute |
@@ -69,15 +69,18 @@ catalogue и deterministic initial environment state.
 
 ## 0. Audit And Reproducibility Gate
 
-- [ ] Добавить SHA256 и exact revisions каждого vendor snapshot в `vendor/manifest.json`.
-- [ ] Зафиксировать один train profile: Qwen 2.5 0.5B, tokenizer, model revision,
+- [~] Добавить SHA256 и exact revisions каждого vendor snapshot в `vendor/manifest.json`:
+  manifest exact revision есть, SHA256 фиксируется в per-run evidence; per-component
+  snapshot hashes остаются отдельным hardening task.
+- [x] Зафиксировать один train profile: Qwen 2.5 0.5B, tokenizer, model revision,
   licence acknowledgement, target accelerator, mesh и memory budget.
 - [x] Добавить Qwen mesh preflight: до загрузки весов проверяются head/embed/vocab
   divisibility по role mesh, train/rollout micro-batch и prompt+generation KV cache budget.
 - [~] Добавить exact deterministic fixture: fake-agentic fixture покрывает 2 task groups ×
   2 generations × 8 turns, fixed seeds, expected tool calls/rewards/done/action masks;
   real CrafText/Qwen parity остаётся отдельным integration gate.
-- [ ] Разделить lockfile evidence: macOS/CPU smoke и target accelerator installation.
+- [~] Разделить lockfile evidence: Agentic GRPO profile пишет package versions в run
+  manifest; отдельный accelerator lockfile lane ещё не подключён.
 - [ ] Сделать `make verify-golden` обязательным local/CI entrypoint без implicit downloads.
 
 **Gate:** fixture, model profile и dependency provenance проверяются до загрузки весов.
@@ -102,7 +105,8 @@ catalogue и deterministic initial environment state.
   на Agentic GRPO roles: actor, rollout, reference; critic допустим только для
   отдельного будущего PPO profile.
 - [x] Создать `AgenticGrpoWorkloadSpec` и YAML profile с batch sizes, generation
-  count, sequence limits, optimizer, checkpoint root и metrics directory.
+  count, sequence limits, optimizer, checkpoint root, metrics directory и
+  pre-allocation evidence manifest.
 - [~] Реализовать model factory, которая создаёт actor/reference совместимых
   Qwen model objects и tokenizer для `RLCluster`; не использовать local sampler
   как train runtime.
@@ -114,7 +118,7 @@ catalogue и deterministic initial environment state.
 
 ## 3. Agentic GRPO Training Loop
 
-- [~] Добавить `run_agentic_grpo.py`: load profile -> task stream -> `RLCluster`
+- [~] Добавить `run_agentic_grpo.py`: load profile -> evidence manifest -> task stream -> `RLCluster`
   -> Tunix Agentic `GRPOLearner` -> train/eval.
 - [ ] Подключить `ToolAgent` и CrafText env factory к `GRPOLearner`, включая
   group key и `num_generations >= 2` для каждого исходного task.

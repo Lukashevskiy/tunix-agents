@@ -1,0 +1,31 @@
+schema_version: 1
+run:
+  name: qwen-agentic-craftext-local-smoke
+  seed: 7
+  goal: Stay alive, obey the scenario instruction, and use craftext_step for every action.
+environment_config: configs/mvp/qwen_craftext.yaml
+topology_config: configs/topology/qwen_agentic_grpo_local.yaml
+model:
+  model_id: Qwen/Qwen2.5-0.5B-Instruct
+  snapshot: artifacts/models/qwen25-05b-instruct
+  revision: local-snapshot-required
+  license: apache-2.0
+workload:
+  max_steps: 1
+  eval_every_n_steps: 1
+  mini_batch_size: 2
+  train_micro_batch_size: 2
+  rollout_micro_batch_size: 1
+  max_prompt_length: 1024
+  max_new_tokens: 32
+  kv_cache_size: 2048
+  learning_rate: 0.00001
+  num_generations: 2
+  max_concurrency: 2
+evidence:
+  root: artifacts/runs/qwen-agentic-craftext-local-smoke
+  trajectories: artifacts/runs/qwen-agentic-craftext-local-smoke/trajectories.jsonl
+  metrics: artifacts/runs/qwen-agentic-craftext-local-smoke/metrics.jsonl
+  checkpoints: artifacts/runs/qwen-agentic-craftext-local-smoke/checkpoints
+  provenance: artifacts/runs/qwen-agentic-craftext-local-smoke/provenance.json
+vendor_manifest: vendor/manifest.json
