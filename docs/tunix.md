@@ -32,10 +32,11 @@ framework-neutral.
 
 `masked_token_returns()` и `masked_token_ppo_loss()` соответствуют чистому JAX loss
 boundary: они работают только с корректными `[B, T]` токенами и игнорируют padding/
-fallback mask позиции. Они требуют будущей actor recomputation и critic values;
-сами по себе они не претендуют на полный Qwen value bridge.
+fallback mask позиции. Для локального полного цикла `PromptConditionedTokenActorCritic`
+уже пересчитывает trainable `new_logprobs` и critic values поверх `TextTrajectoryBatch`;
+это компактный Flax smoke bridge, а не production Qwen value bridge.
 
-Для будущего критика `QwenTunixBackend.hidden_states()` открывает финальные
+Для production критика `QwenTunixBackend.hidden_states()` открывает финальные
 `[B, T, D]` признаки закреплённой модели через публичный Qwen `skip_lm_head=True`.
 Реальный интеграционный fixture подтверждает, что у профиля 0.5B `D=896`; прикрепление,
 обучение и checkpointing value head остаются отдельным явным workload шагом.

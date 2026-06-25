@@ -32,12 +32,14 @@ rollout, per-row terminal reset и export replay на каждую среду. `
 returns и token PPO loss mechanics.
 
 `11_end_to_end_batched_qwen_ppo.ipynb` объединяет все эти стадии в одном run: параллельные
-среды и Qwen requests, full rollout/replay, token batch, masked PPO loss и visualisation. Его
-loss — проверка формы данных: до появления RLCluster actor/critic он не выполняет update весов.
+среды и Qwen requests, full rollout/replay, token batch, trainable token actor-critic PPO
+update и visualisation. Компактный Flax actor/critic пересчитывает `new_logprobs` и values,
+но не заменяет production Qwen/RLCluster actor/value path.
 
 `12_full_cycle_craftext_training.ipynb` — компактный scripted smoke того же полного цикла без
-частных весов: rollout → replay evidence → `TextTrajectoryBatch` → returns → masked PPO update.
-Используйте его как минимальную стартовую точку перед подключением trainable actor/critic.
+частных весов: rollout → replay evidence → `TextTrajectoryBatch` → returns →
+`PromptConditionedTokenActorCritic` → masked PPO update. Используйте его как минимальную
+стартовую точку перед подключением production Qwen actor/critic.
 
 Тот же путь доступен вне Jupyter и сохраняет как raw replay, так и summary metrics:
 

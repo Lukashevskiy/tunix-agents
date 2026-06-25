@@ -1,9 +1,9 @@
-"""Minimal Flax/Optax actor-critic learner for PPO smoke updates.
+"""Minimal Flax/Optax actor-critic learners for PPO smoke updates.
 
-This module provides a compact deterministic actor-critic network and
-helper functions for initializing a Flax TrainState and applying a single
-clipped PPO update. It is built for lightweight smoke tests, example
-workflows, and flat feature inputs rather than production-scale RL.
+This module provides compact deterministic actor-critic networks and helper
+functions for initializing Flax TrainStates and applying clipped PPO updates.
+It is built for lightweight smoke tests, example workflows, and typed data-flow
+validation rather than production-scale Qwen/RLCluster training.
 """
 
 import flax.linen as nn
@@ -12,8 +12,9 @@ import jax.numpy as jnp
 import optax  # type: ignore[import-untyped]
 from flax.training.train_state import TrainState
 
-from .algorithms import ppo_loss
-from .tensor_types import BatchFloat, BatchInt
+from .algorithms import masked_token_ppo_loss, masked_token_returns, ppo_loss
+from .tensor_types import BatchFloat, BatchInt, TokenBatchFloat
+from .text_trajectory import TextTrajectoryBatch
 
 
 class ActorCritic(nn.Module):
@@ -125,6 +126,154 @@ def ppo_update(
             0.5,
             entropy,
             0.01,
+        )
+
+    (loss, metrics), grads = jax.value_and_grad(loss_fn, has_aux=True)(state.params)
+    return state.apply_gradients(grads=grads), {**metrics, "loss": loss}
+
+
+class PromptConditionedTokenActorCritic(nn.Module):
+    """Tiny token actor-critic conditioned on the rendered prompt token set.
+
+    This model is intentionally small and bucketed: it is a trainable smoke
+    bridge from :class:`TextTrajectoryBatch` to PPO loss, not a replacement for
+    Qwen actor logprob recomputation inside Tunix ``RLCluster``. Token ids are
+    mapped to ``token_bucket_count`` buckets so notebooks can run even when Qwen
+    token ids are large.
+
+    :param token_bucket_count: Number of token buckets predicted by the actor.
+    :param hidden: Width of the shared token/prompt representation.
+    """
+
+    token_bucket_count: int
+    hidden: int = 64
+
+    @nn.compact
+    def __call__(
+        self,
+        token_ids: jax.Array,
+        prompt_token_ids: jax.Array,
+        prompt_token_mask: jax.Array,
+    ) -> tuple[jax.Array, TokenBatchFloat]:
+        """Return per-token bucket logits and critic values.
+
+        :param token_ids: Generated token ids shaped ``[B, T]``.
+        :param prompt_token_ids: Prompt token ids shaped ``[B, P]``.
+        :param prompt_token_mask: Boolean prompt mask shaped ``[B, P]``.
+        :returns: ``(logits, values)`` with logits ``[B, T, token_bucket_count]``
+            and values ``[B, T]``.
+        """
+        token_buckets = jnp.mod(token_ids, self.token_bucket_count)
+        prompt_buckets = jnp.mod(prompt_token_ids, self.token_bucket_count)
+        embedding = nn.Embed(self.token_bucket_count, self.hidden)
+        token_features = embedding(token_buckets)
+        prompt_features = embedding(prompt_buckets)
+        prompt_mask = prompt_token_mask[..., None].astype(prompt_features.dtype)
+        prompt_count = jnp.maximum(jnp.sum(prompt_mask, axis=1), 1.0)
+        prompt_context = jnp.sum(prompt_features * prompt_mask, axis=1) / prompt_count
+        prompt_context = jnp.broadcast_to(prompt_context[:, None, :], token_features.shape)
+        features = jnp.concatenate([token_features, prompt_context], axis=-1)
+        hidden = nn.relu(nn.Dense(self.hidden)(features))
+        return nn.Dense(self.token_bucket_count)(hidden), nn.Dense(1)(hidden).squeeze(-1)
+
+
+def create_token_state(
+    key: jax.Array,
+    *,
+    token_bucket_count: int = 512,
+    hidden: int = 64,
+    learning_rate: float = 3e-4,
+) -> TrainState:
+    """Create a prompt-conditioned token actor-critic TrainState.
+
+    :param key: JAX PRNG key for parameter initialization.
+    :param token_bucket_count: Number of actor output buckets. Generated Qwen
+        ids are mapped with modulo into these buckets for smoke training.
+    :param hidden: Width of the shared token/prompt representation.
+    :param learning_rate: Adam optimizer learning rate.
+    :returns: Initialized Flax TrainState.
+    :raises ValueError: If dimensions or learning rate are non-positive.
+    """
+    if token_bucket_count <= 1 or hidden <= 0 or learning_rate <= 0:
+        raise ValueError("token_bucket_count, hidden and learning_rate must be positive")
+    model = PromptConditionedTokenActorCritic(token_bucket_count, hidden)
+    params = model.init(
+        key,
+        jnp.zeros((1, 1), dtype=jnp.int32),
+        jnp.zeros((1, 1), dtype=jnp.int32),
+        jnp.ones((1, 1), dtype=bool),
+    )["params"]
+    return TrainState.create(apply_fn=model.apply, params=params, tx=optax.adam(learning_rate))
+
+
+def token_actor_critic_outputs(
+    state: TrainState, batch: TextTrajectoryBatch
+) -> tuple[TokenBatchFloat, TokenBatchFloat, TokenBatchFloat]:
+    """Recompute trainable token logprobs, critic values and entropies.
+
+    :param state: Prompt-conditioned token actor-critic state.
+    :param batch: Text trajectory batch with generated and prompt tokens.
+    :returns: ``(selected_logprobs, values, entropy)`` arrays shaped like
+        ``batch.token_ids``.
+    """
+    batch.validate_static()
+    logits, values = state.apply_fn(
+        {"params": state.params},
+        batch.token_ids,
+        batch.prompt_token_ids,
+        batch.prompt_token_mask,
+    )
+    target_buckets = jnp.mod(batch.token_ids, logits.shape[-1])[..., None]
+    log_probs = jax.nn.log_softmax(logits, axis=-1)
+    selected_logprobs = jnp.take_along_axis(log_probs, target_buckets, axis=-1).squeeze(-1)
+    probabilities = jax.nn.softmax(logits, axis=-1)
+    entropy = -jnp.sum(probabilities * log_probs, axis=-1)
+    return selected_logprobs, values, entropy
+
+
+def token_ppo_update(
+    state: TrainState,
+    batch: TextTrajectoryBatch,
+    *,
+    gamma: float = 0.99,
+    clip_epsilon: float = 0.2,
+    value_coefficient: float = 0.5,
+    entropy_coefficient: float = 0.01,
+) -> tuple[TrainState, dict[str, jax.Array]]:
+    """Apply one masked token PPO update with a trainable actor and critic.
+
+    The update recomputes ``new_logprobs`` from the actor head and values from
+    the critic head. Behaviour logprobs remain the replayed ``old_logprobs``.
+    Padding and fallback-only rows are excluded through ``batch.policy_mask``.
+
+    :param state: Current token actor-critic TrainState.
+    :param batch: Token trajectory batch produced from replay evidence.
+    :param gamma: Discount for token reward-to-go.
+    :param clip_epsilon: PPO clipping epsilon.
+    :param value_coefficient: Value loss scale.
+    :param entropy_coefficient: Entropy bonus scale.
+    :returns: Updated TrainState and metrics dictionary.
+    """
+    batch.validate_static()
+    returns = masked_token_returns(batch.rewards, batch.token_mask, gamma)
+
+    def loss_fn(params):
+        candidate = state.replace(params=params)
+        new_logprobs, values, entropy = token_actor_critic_outputs(candidate, batch)
+        old_values = jax.lax.stop_gradient(values)
+        advantages = returns - old_values
+        return masked_token_ppo_loss(
+            new_log_prob=new_logprobs,
+            old_log_prob=batch.old_logprobs,
+            advantages=advantages,
+            new_value=values,
+            old_value=old_values,
+            returns=returns,
+            token_mask=batch.policy_mask,
+            clip_epsilon=clip_epsilon,
+            value_coefficient=value_coefficient,
+            entropy=entropy,
+            entropy_coefficient=entropy_coefficient,
         )
 
     (loss, metrics), grads = jax.value_and_grad(loss_fn, has_aux=True)(state.params)
