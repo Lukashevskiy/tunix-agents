@@ -11,7 +11,7 @@
 | Слой | Основные модули | Что гарантирует |
 | --- | --- | --- |
 | Environment boundary | `tunix_craftext.adapters`, `tunix_craftext.runtime`, `tunix_craftext.config` | Vendor CrafText/CagedCrafText превращаются в typed `reset/step`, `action_mask`, `terminated/truncated` и reproducible config runtime. |
-| Prompt/model boundary | `tunix_craftext.prompts`, `tunix_craftext.text_policy`, `tunix_craftext.llm`, `tunix_craftext.llm_actor`, `tunix_craftext.tunix_adapter` | `EnvState` становится `RenderedPrompt`, LLM actor генерирует ordered completions и пересчитывает token scores/values, strict decoder не принимает неизвестные labels. |
+| Prompt/model boundary | `tunix_craftext.prompts`, `tunix_craftext.text_policy`, `tunix_craftext.llm`, `tunix_craftext.llm_actor`, `tunix_craftext.tunix_actor`, `tunix_craftext.tunix_adapter` | `EnvState` становится `RenderedPrompt`, LLM actor генерирует ordered completions и пересчитывает token scores/values, strict decoder не принимает неизвестные labels. |
 | Rollout transport | `tunix_craftext.rollout`, `tunix_craftext.batched_rollout`, `tunix_craftext.contracts` | Численные trajectories остаются `[T, B, ...]`; text rollout enforce-ит `action_mask` перед `CrafTextAdapter.step` и экспортирует per-env replay. |
 | Replay/training batch | `tunix_craftext.replay`, `tunix_craftext.text_trajectory`, `tunix_craftext.flashbax_replay` | Replay v3 хранит prompt/completion/action/reward/token evidence, `masked_action`, fallback и преобразуется в fixed-shape token batches. |
 | Objectives/learner | `tunix_craftext.algorithms`, `tunix_craftext.algorithm_registry`, `tunix_craftext.learner`, `tunix_craftext.checkpoints` | PPO/returns/loss functions чистые и JAX-friendly; будущие DPO/GRPO должны добавляться через typed registry/batch contracts. |
@@ -96,8 +96,29 @@ actor = DeterministicLlmActor(profile, action_text="<action>NOOP</action>")
 `ModelProfile` фиксирует architecture/model id/source/licence/resource intent без загрузки
 весов. `LlmActor` — production-shaped boundary: `generate_batch()` нужен для rollout, а
 `score_tokens()` обязан возвращать token logprobs, critic values и entropy для PPO/GRPO update.
-Текущий `DeterministicLlmActor` только contract double; реальные Gemma/Qwen actors должны
-реализовать тот же интерфейс через Tunix model/sampler/hidden-state adapters.
+`DeterministicLlmActor` остаётся contract double; `TunixCausalLmActor` уже реализует ту же
+форму для Qwen/Gemma: sampler/backend генерирует ordered completions, causal LM пересчитывает
+logprobs по `prompt + generated tokens`, а `LinearValueHead` даёт critic values.
+
+```python
+import jax
+
+from tunix_craftext.tunix_actor import (
+    build_gemma_tunix_actor_from_components,
+    init_linear_value_head,
+)
+
+value_head = init_linear_value_head(jax.random.PRNGKey(0), hidden_dim=640)
+actor = build_gemma_tunix_actor_from_components(
+    profile_path=Path("configs/models/gemma3_270m_instruction.yaml"),
+    backend=already_loaded_backend,
+    model=already_loaded_gemma_model,
+    value_head=value_head,
+)
+```
+
+Gemma builder намеренно принимает уже загруженные компоненты: проект не скачивает веса как
+побочный эффект импорта, теста или построения документации.
 
 ## Replay → token batch → trainable token PPO update
 

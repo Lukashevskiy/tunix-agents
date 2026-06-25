@@ -61,9 +61,13 @@ model modules. Profile loader проверяет этот YAML без загру
 `chuyishang/jax-lm` применяется как engineering discipline — uv/test-first/static-shape
 separation of model/tests/scripts — но сам `jax-lm` не становится runtime dependency.
 
-Текущий `DeterministicLlmActor` — только TDD double, который доказывает shape/evidence
-контракт. Следующий implementation slice должен заменить его на реальный Tunix Gemma/Qwen actor
-factory, сохранив тот же интерфейс.
+`DeterministicLlmActor` остаётся TDD double, но production-shaped слой уже вынесен в
+`tunix_actor.py`: `TunixCausalLmActor` соединяет ordered `BatchLlmBackend`, causal LM модель и
+малый `LinearValueHead`. `generate_batch()` идёт через sampler/backend, а `score_tokens()`
+заново прогоняет `prompt + generated tokens` через модель, собирает actor logprobs с
+авторегрессивных позиций, entropy и critic values. `QwenTunixActor` имеет factory от явного
+локального snapshot; `GemmaTunixActor` собирается из уже загруженных компонентов, чтобы не
+скачивать веса как побочный эффект unit path или импорта.
 
 Ни одни веса модели не загружаются как побочный эффект установки или обычного теста.
 Опциональный реальный Qwen smoke запускается только тогда, когда явный локальный снимок

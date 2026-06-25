@@ -122,4 +122,6 @@ tесты и доказательства производительности, 
 Прочитайте [план выполнения](docs/plan.md), [архитектуру](docs/architecture.md),
 [интеграцию с Tunix](docs/tunix.md), [код/API](docs/code-reference.md) и [примеры](docs/examples.md) перед расширением тренера.
 Notebook 07 показывает batched Qwen/Tunix rollout и replay export, 09/11/12 доводят тот же
-pipeline до replay→token batch→masked PPO smoke cycle.
+pipeline до replay→token batch→masked PPO smoke cycle. Реальный actor boundary теперь живёт в
+`tunix_craftext.tunix_actor`: Qwen/Gemma actor пересчитывает token logprobs, entropy и critic
+values поверх собранных LLM tokens без скрытой загрузки весов.

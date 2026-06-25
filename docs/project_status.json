@@ -93,7 +93,7 @@
     {
       "name": "LLM actor backbone contract",
       "status": "ready",
-      "description": "Добавлен strict ModelProfile loader и production-shaped LlmActor boundary: generate_batch для rollout, score_tokens для token logprobs/critic values/entropy. Gemma3 270M profile зафиксирован как маленький Tunix backbone candidate; jax-lm используется как practice source, не runtime dependency."
+      "description": "Добавлен strict ModelProfile loader и production-shaped LlmActor boundary: generate_batch для rollout, score_tokens для token logprobs/critic values/entropy. TunixCausalLmActor уже соединяет BatchLlmBackend, causal LM scoring и LinearValueHead; Qwen собирается из явного local snapshot, Gemma — из переданных Tunix components без implicit weight download. jax-lm используется как practice source, не runtime dependency."
     },
     {
       "name": "JIT-safe Flashbax text staging",
