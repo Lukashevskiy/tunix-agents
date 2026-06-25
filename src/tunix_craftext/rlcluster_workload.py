@@ -4,11 +4,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, cast
 
+import jax
 import jax.numpy as jnp
 import optax  # type: ignore[import-untyped]
 
-from .tunix_adapter import load_qwen_model_on_mesh, load_qwen_tokenizer
+from .tunix_adapter import (
+    load_gemma_model_on_mesh,
+    load_gemma_tokenizer,
+    load_qwen_model_on_mesh,
+    load_qwen_tokenizer,
+)
 from .tunix_topology import TunixTopology, role_to_meshes, tunix_role_to_meshes
 
 
@@ -70,6 +77,16 @@ class AgenticGrpoModelAssets:
     """Trainable actor, frozen reference and tokenizer loaded for one GRPO cluster."""
 
     actor: object
+    reference: object
+    tokenizer: object
+
+
+@dataclass(frozen=True)
+class PpoModelAssets:
+    """Trainable actor, trainable critic, frozen reference and tokenizer for PPO."""
+
+    actor: object
+    critic: object
     reference: object
     tokenizer: object
 
@@ -169,6 +186,75 @@ def load_agentic_grpo_qwen_assets(
     )
 
 
+def load_ppo_qwen_assets(
+    snapshot: Path, topology: TunixTopology, *, critic_seed: int = 0
+) -> PpoModelAssets:
+    """Load Qwen actor/reference and derive a Tunix-native value critic for PPO."""
+    meshes = _require_ppo_meshes(topology)
+    actor = load_qwen_model_on_mesh(snapshot, meshes["actor"], dtype=jnp.float32)
+    return PpoModelAssets(
+        actor=actor,
+        critic=create_value_critic_from_actor(actor, seed=critic_seed),
+        reference=load_qwen_model_on_mesh(snapshot, meshes["reference"], dtype=jnp.bfloat16),
+        tokenizer=load_qwen_tokenizer(snapshot),
+    )
+
+
+def load_ppo_gemma_assets(
+    snapshot: Path, topology: TunixTopology, *, critic_seed: int = 0
+) -> PpoModelAssets:
+    """Load Gemma actor/reference and derive a Gemma value critic for Tunix PPO."""
+    meshes = _require_ppo_meshes(topology)
+    actor = load_gemma_model_on_mesh(snapshot, meshes["actor"], dtype=jnp.float32)
+    return PpoModelAssets(
+        actor=actor,
+        critic=create_value_critic_from_actor(actor, seed=critic_seed),
+        reference=load_gemma_model_on_mesh(snapshot, meshes["reference"], dtype=jnp.bfloat16),
+        tokenizer=load_gemma_tokenizer(snapshot),
+    )
+
+
+def create_value_critic_from_actor(actor: object, *, seed: int = 0) -> object:
+    """Create a Tunix-compatible critic model from an actor backbone.
+
+    Tunix exposes ``create_critic_model`` for models with a replaceable
+    ``lm_head`` such as Qwen. Gemma3 computes final logits through
+    ``embedder.decode`` instead, so this function provides the equivalent
+    value-head replacement by overriding ``compute_final_logits`` on a copied
+    Gemma3 NNX module. The returned model emits scalar values where PPO expects
+    critic outputs.
+    """
+    try:
+        from tunix.rl.utils import create_critic_model  # type: ignore[import-untyped]
+
+        return create_critic_model(actor, seed=seed)
+    except AttributeError as error:
+        if not _looks_like_gemma3_actor(actor):
+            raise RLClusterWorkloadError(
+                "actor model does not expose a Tunix-supported critic head boundary"
+            ) from error
+        return _create_gemma3_value_critic(actor, seed=seed)
+
+
+def build_ppo_cluster(
+    topology: TunixTopology,
+    spec: RLClusterWorkloadSpec,
+    assets: PpoModelAssets,
+) -> object:
+    """Create the real public Tunix ``RLCluster`` for PPO actor/critic/reference."""
+    try:
+        from tunix.rl.rl_cluster import RLCluster  # type: ignore[import-untyped]
+    except ImportError as error:
+        raise RLClusterWorkloadError("install tunix-craftext[tunix] for PPO workload") from error
+    return RLCluster(
+        actor=assets.actor,
+        critic=assets.critic,
+        reference=assets.reference,
+        tokenizer=assets.tokenizer,
+        cluster_config=build_rlcluster_config(topology, spec),
+    )
+
+
 def build_agentic_grpo_cluster(
     topology: TunixTopology,
     spec: AgenticGrpoWorkloadSpec,
@@ -187,3 +273,41 @@ def build_agentic_grpo_cluster(
         tokenizer=assets.tokenizer,
         cluster_config=build_agentic_grpo_cluster_config(topology, spec),
     )
+
+
+def _require_ppo_meshes(topology: TunixTopology) -> dict[str, jax.sharding.Mesh]:
+    if frozenset(topology.role_to_device_indices) != {
+        "actor",
+        "rollout",
+        "critic",
+        "reference",
+    }:
+        raise RLClusterWorkloadError("PPO topology must declare actor/rollout/critic/reference")
+    return role_to_meshes(topology)
+
+
+def _looks_like_gemma3_actor(actor: object) -> bool:
+    config = getattr(actor, "config", None)
+    return hasattr(actor, "embedder") and hasattr(config, "embed_dim")
+
+
+def _create_gemma3_value_critic(actor: object, *, seed: int) -> object:
+    try:
+        from flax import nnx
+    except ImportError as error:
+        raise RLClusterWorkloadError("install flax/nnx to create Gemma critic model") from error
+    graph, state = nnx.split(actor)
+    critic = cast(Any, nnx.merge(graph, jax.tree.map(jnp.copy, state)))
+    hidden_dim = int(getattr(critic.config, "embed_dim"))
+    critic.value_head = nnx.Linear(
+        in_features=hidden_dim,
+        out_features=1,
+        use_bias=False,
+        rngs=nnx.Rngs(seed),
+    )
+
+    def compute_final_logits(x: jax.Array) -> jax.Array:
+        return critic.value_head(x).astype(jnp.float32)
+
+    critic.compute_final_logits = compute_final_logits
+    return critic

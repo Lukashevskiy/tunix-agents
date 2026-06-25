@@ -12,9 +12,11 @@
 decode/action-mask fallback → CrafText vmap(step) → replay v3 → TextTrajectoryBatch`.
 Для LLM-RL пути уже есть реальный Tunix actor boundary: Gemma/Qwen пересчитывают token
 logprobs/entropy, отдельный critic role считает values, а PPO objective проверяет returns,
-advantages и loss без toy learner в финальном notebook. Полноценно распределённый `RLCluster`
-workload, trainable LoRA/Qwix actor/critic update и async rollout остаются следующими этапами и
-должны подключаться через typed registry/batch contracts, а не менять transport среды.
+advantages и loss без toy learner в финальном notebook. PPO `RLCluster` constructor boundary
+теперь тоже есть: actor/reference/critic/tokenizer assets создаются явно и передаются в public
+Tunix `RLCluster`. Trainable LoRA/Qwix update, PPOLearner batch schema adapter и async rollout
+остаются следующими этапами и должны подключаться через typed registry/batch contracts, а не
+менять transport среды.
 
 ## Быстрый старт
 

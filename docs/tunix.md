@@ -71,11 +71,11 @@ separation of model/tests/scripts — но сам `jax-lm` не становит
 Опциональный реальный Qwen smoke запускается только тогда, когда явный локальный снимок
 существует в `artifacts/models/qwen25-05b-instruct`.
 
-Tunix владеет распределённым исполнением, но проект должен объявлять топологию: будущий
-workload path использует `RLCluster` с versioned `role_to_mesh` mapping для actor,
-rollout и reference. Critic нужен только отдельному будущему PPO profile. Tunix может применять sharding/offload; проект не должен добавлять
-в этом репозитории второй GPU scheduler. Решение архитектуры и отличие от локального sampler
-задокументированы в [ADR 0004](adr/0004-tunix-cluster-topology.md).
+Tunix владеет распределённым исполнением, но проект должен объявлять топологию:
+`RLCluster` получает versioned `role_to_mesh` mapping для actor, rollout, reference
+и PPO critic. Tunix может применять sharding/offload; проект не добавляет в этом репозитории
+второй GPU scheduler. Решение архитектуры и отличие от локального sampler задокументированы в
+[ADR 0004](adr/0004-tunix-cluster-topology.md).
 
 Топология живёт в `configs/topology/`: `qwen_local_smoke.yaml` размещает все роли на
 устройстве 0, а `qwen_four_device_colocated.yaml` документирует четырехустройственный mesh.
@@ -93,6 +93,15 @@ local safetensors snapshot: trainable actor хранится в `float32`, а fr
 в `bfloat16`. `build_agentic_grpo_cluster()` получает уже созданные assets и вызывает
 публичный `RLCluster`; этим загрузка весов отделена от cluster construction и остаётся
 hardware-gated.
+
+Для PPO path добавлены `load_ppo_qwen_assets()`, `load_ppo_gemma_assets()` и
+`build_ppo_cluster()`. Они создают actor/reference/tokenizer и обязательный critic model до
+вызова public `RLCluster(actor=..., critic=..., reference=..., tokenizer=...)`. Qwen critic
+использует upstream Tunix `create_critic_model()`, который заменяет `lm_head`. Gemma3 не имеет
+`lm_head` — logits считаются через `embedder.decode` — поэтому `create_value_critic_from_actor()`
+делает NNX-copy actor, добавляет scalar `value_head` и подменяет `compute_final_logits()` на
+value-output. Это временный совместимый bridge до upstream Gemma critic factory; heavy model
+loading остаётся hardware-gated и не происходит в unit/docs path.
 
 `scripts/run_agentic_grpo.py` связывает task batches, `ToolAgent`,
 `CrafTextAgenticEnvironment`, Qwen assets, `RLCluster` и upstream

@@ -8,12 +8,17 @@ import pytest
 import tunix_craftext.rlcluster_workload as workload
 from tunix_craftext.rlcluster_workload import (
     AgenticGrpoWorkloadSpec,
+    PpoModelAssets,
     RLClusterWorkloadError,
     RLClusterWorkloadSpec,
     build_agentic_grpo_cluster,
     build_agentic_grpo_cluster_config,
+    build_ppo_cluster,
     build_rlcluster_config,
+    create_value_critic_from_actor,
     load_agentic_grpo_qwen_assets,
+    load_ppo_gemma_assets,
+    load_ppo_qwen_assets,
 )
 from tunix_craftext.tunix_topology import load_tunix_topology
 
@@ -77,6 +82,98 @@ def test_agentic_grpo_assets_use_distinct_role_meshes_and_storage_dtypes(monkeyp
     assert calls[0][1] == jnp.float32
     assert calls[1][1] == jnp.bfloat16
     assert assets.actor["mesh"] == assets.reference["mesh"]
+
+
+def test_ppo_qwen_assets_bind_actor_critic_reference_and_tokenizer(monkeypatch) -> None:
+    calls: list[tuple[str, object]] = []
+
+    def load_model(snapshot, mesh, *, dtype):
+        calls.append((str(snapshot), dtype))
+        return {"snapshot": snapshot, "mesh": mesh, "dtype": dtype}
+
+    monkeypatch.setattr(workload, "load_qwen_model_on_mesh", load_model)
+    monkeypatch.setattr(workload, "load_qwen_tokenizer", lambda snapshot: {"snapshot": snapshot})
+    monkeypatch.setattr(
+        workload,
+        "create_value_critic_from_actor",
+        lambda actor, *, seed=0: {"critic_from": actor, "seed": seed},
+    )
+    topology = load_tunix_topology(ROOT / "configs/topology/qwen_local_smoke.yaml")
+
+    assets = load_ppo_qwen_assets(
+        ROOT / "artifacts/models/qwen25-05b-instruct", topology, critic_seed=9
+    )
+
+    assert len(calls) == 2
+    assert calls[0][1] == jnp.float32
+    assert calls[1][1] == jnp.bfloat16
+    assert assets.critic["critic_from"] == assets.actor
+    assert assets.critic["seed"] == 9
+    assert assets.tokenizer["snapshot"].name == "qwen25-05b-instruct"
+
+
+def test_ppo_gemma_assets_use_gemma_loader_and_native_critic(monkeypatch) -> None:
+    calls: list[jnp.dtype] = []
+
+    def load_model(snapshot, mesh, *, dtype):
+        del snapshot, mesh
+        calls.append(dtype)
+        return {"family": "gemma", "dtype": dtype}
+
+    monkeypatch.setattr(workload, "load_gemma_model_on_mesh", load_model)
+    monkeypatch.setattr(workload, "load_gemma_tokenizer", lambda snapshot: {"snapshot": snapshot})
+    monkeypatch.setattr(
+        workload,
+        "create_value_critic_from_actor",
+        lambda actor, *, seed=0: {"critic_from": actor, "seed": seed},
+    )
+    topology = load_tunix_topology(ROOT / "configs/topology/qwen_local_smoke.yaml")
+
+    assets = load_ppo_gemma_assets(ROOT / "artifacts/models/gemma3-270m-it", topology)
+
+    assert calls == [jnp.float32, jnp.bfloat16]
+    assert assets.actor["family"] == "gemma"
+    assert assets.critic["critic_from"] == assets.actor
+    assert assets.reference["dtype"] == jnp.bfloat16
+
+
+def test_create_value_critic_rejects_unknown_actor_shape(monkeypatch) -> None:
+    def fail_create_critic(actor, seed=0):
+        del actor, seed
+        raise AttributeError("lm_head")
+
+    monkeypatch.setattr("tunix.rl.utils.create_critic_model", fail_create_critic)
+
+    with pytest.raises(RLClusterWorkloadError, match="critic head boundary"):
+        create_value_critic_from_actor(object())
+
+
+def test_ppo_cluster_uses_public_actor_critic_reference_constructor(monkeypatch) -> None:
+    constructed: dict[str, object] = {}
+
+    class FakeCluster:
+        def __init__(self, **kwargs) -> None:
+            constructed.update(kwargs)
+
+    monkeypatch.setattr("tunix.rl.rl_cluster.RLCluster", FakeCluster)
+    topology = load_tunix_topology(ROOT / "configs/topology/qwen_local_smoke.yaml")
+    assets = PpoModelAssets("actor", "critic", "reference", "tokenizer")
+
+    cluster = build_ppo_cluster(
+        topology, RLClusterWorkloadSpec(10, 5, 4, 2, 2, 128, 8, 256), assets
+    )
+
+    assert isinstance(cluster, FakeCluster)
+    assert constructed["actor"] == "actor"
+    assert constructed["critic"] == "critic"
+    assert constructed["reference"] == "reference"
+    assert constructed["tokenizer"] == "tokenizer"
+    assert {role.value for role in constructed["cluster_config"].role_to_mesh} == {
+        "actor",
+        "rollout",
+        "critic",
+        "reference",
+    }
 
 
 def test_agentic_grpo_cluster_uses_the_public_three_role_constructor(monkeypatch) -> None:

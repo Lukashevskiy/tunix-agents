@@ -382,6 +382,29 @@ def load_qwen_model_on_mesh(
     )
 
 
+def load_gemma_model_on_mesh(
+    snapshot: Path, mesh: jax.sharding.Mesh | None, *, dtype: jnp.dtype | None
+) -> object:
+    """Load explicit local Gemma weights on a Tunix role mesh.
+
+    :param snapshot: Local Gemma safetensors snapshot.
+    :param mesh: Role mesh declared by the project topology.
+    :param dtype: Storage dtype for loaded parameters.
+    :returns: Tunix Gemma3 NNX model.
+    :raises FileNotFoundError: If the Gemma snapshot is missing.
+    """
+    if not snapshot.is_dir():
+        raise FileNotFoundError(f"Gemma snapshot not found: {snapshot}")
+    from tunix.models.automodel import call_model_config  # type: ignore[import-untyped]
+    from tunix.models.gemma3.params_safetensors import (  # type: ignore[import-untyped]
+        create_model_from_safe_tensors,
+    )
+
+    return create_model_from_safe_tensors(
+        str(snapshot), call_model_config(GEMMA_TUNIX_CONFIG_ID), mesh=mesh, dtype=dtype
+    )
+
+
 def load_qwen_single_device_model(snapshot: Path) -> HiddenStateModel:
     """Load local Qwen weights once for single-device sampling and feature extraction.
 
@@ -412,16 +435,7 @@ def load_gemma_single_device_model(snapshot: Path) -> HiddenStateModel:
     """
     if not snapshot.is_dir():
         raise FileNotFoundError(f"Gemma snapshot not found: {snapshot}")
-    from tunix.models.automodel import call_model_config  # type: ignore[import-untyped]
-    from tunix.models.gemma3.params_safetensors import (  # type: ignore[import-untyped]
-        create_model_from_safe_tensors,
-    )
-
-    config = call_model_config(GEMMA_TUNIX_CONFIG_ID)
-    return cast(
-        HiddenStateModel,
-        create_model_from_safe_tensors(str(snapshot), config, mesh=None),
-    )
+    return cast(HiddenStateModel, load_gemma_model_on_mesh(snapshot, mesh=None, dtype=None))
 
 
 def qwen_chat_token_ids(tokenizer: SamplingTokenizer, chat_prompt: str) -> tuple[int, ...]:

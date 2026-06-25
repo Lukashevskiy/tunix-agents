@@ -136,9 +136,14 @@
       "description": "Спроектирован tunix-craftext/tcx CLI как thin orchestration layer: profile, env, prompt, rollout, train, eval, benchmark, docs, verify и audit команды вызывают use-case modules, не хранят business logic и не импортируют heavy Qwen/Tunix modules для help/profile/verify."
     },
     {
+      "name": "Tunix PPO RLCluster bridge",
+      "status": "current",
+      "description": "PPO ClusterConfig уже объявляет actor/rollout/critic/reference; load_ppo_qwen_assets/load_ppo_gemma_assets создают actor/reference/tokenizer и обязательный critic model, а build_ppo_cluster вызывает публичный Tunix RLCluster(actor, critic, reference, tokenizer). Следующий blocker — adapter из TextTrajectoryBatch/Flashbax staging в Tunix PPOLearner train-example schema."
+    },
+    {
       "name": "Agentic GRPO golden pipeline",
       "status": "planned",
-      "description": "Versioned fake-agentic fixture фиксирует 2 task groups × 2 generations × 8 turns с tool/reward/done/action-mask evidence; reproducible profile/evidence gate готов. Реальные CrafText/Qwen parity, RLCluster model factory, Agentic GRPOLearner one-update, resume и evaluation ещё не реализованы."
+      "description": "Versioned fake-agentic fixture фиксирует task groups/generations/turns с tool/reward/done/action-mask evidence; reproducible profile/evidence gate готов. Реальные CrafText/Qwen parity и RLCluster constructor boundary есть, Agentic GRPOLearner one-update/resume/evaluation ещё не реализованы."
     }
   ]
 }

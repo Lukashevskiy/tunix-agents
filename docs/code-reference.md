@@ -164,6 +164,39 @@ print(ppo.name)
 hand-computed tests. Не fork-айте `collect_batched_text_rollout()` ради DPO/GRPO: transport
 собирает evidence, а objective решает, как интерпретировать batch.
 
+## PPO assets → Tunix RLCluster
+
+```python
+from pathlib import Path
+
+from tunix_craftext.rlcluster_workload import (
+    RLClusterWorkloadSpec,
+    build_ppo_cluster,
+    load_ppo_gemma_assets,
+)
+from tunix_craftext.tunix_topology import load_tunix_topology
+
+topology = load_tunix_topology(Path("configs/topology/qwen_local_smoke.yaml"))
+spec = RLClusterWorkloadSpec(
+    max_steps=10,
+    eval_every_n_steps=5,
+    mini_batch_size=4,
+    train_micro_batch_size=2,
+    rollout_micro_batch_size=2,
+    max_prompt_length=128,
+    max_new_tokens=8,
+    kv_cache_size=256,
+)
+assets = load_ppo_gemma_assets(Path("artifacts/models/gemma3-270m-it"), topology)
+cluster = build_ppo_cluster(topology, spec, assets)
+```
+
+Этот слой не загружает веса при импорте. Asset-функции являются hardware-gated boundary:
+actor/reference загружаются на declared role meshes, critic создаётся как Tunix-compatible value
+model, а `build_ppo_cluster()` вызывает публичный `RLCluster(actor, critic, reference, tokenizer)`.
+Следующий шаг — dataset adapter, который превратит наш `TextTrajectoryBatch`/Flashbax staging в
+формат, ожидаемый Tunix `PPOLearner`.
+
 ## Где смотреть примеры
 
 - `examples/notebooks/07_qwen_craftext_full_trajectory.ipynb` — batched Tunix/MegaPrompts/CrafText replay export.
