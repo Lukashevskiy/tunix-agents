@@ -35,6 +35,47 @@ uv run pytest
 pyenv exec python -m uv sync --extra envs --extra tunix --extra replay --extra dev
 ```
 
+## CLI: единая точка управления проектом
+
+Проект переходит от набора отдельных `scripts/*.py` к полновесному CLI `tunix-craftext`
+с коротким alias `tcx`. CLI спроектирован как thin orchestration layer: он валидирует профили,
+показывает статус, запускает use-case слой и пишет evidence, но не хранит внутри себя
+логику CrafText, MegaPrompts, Tunix/RLCluster или benchmark runner.
+
+Пока CLI находится в стадии реализации. Целевой первый gate:
+
+```bash
+tunix-craftext profile validate configs/grpo/qwen_agentic_local.yaml
+tunix-craftext profile evidence configs/grpo/qwen_agentic_local.yaml \
+  --output artifacts/runs/qwen-agentic-craftext-local-smoke/provenance.json
+tunix-craftext verify golden
+```
+
+До появления console script используйте уже работающие эквиваленты:
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/run_agentic_grpo.py \
+  --profile configs/grpo/qwen_agentic_local.yaml --allow-cpu-smoke
+make verify-golden
+```
+
+Планируемое дерево команд:
+
+| Команда | Для чего |
+| --- | --- |
+| `tunix-craftext profile validate/evidence/inspect` | проверить versioned YAML, SHA256, model/vendor provenance без загрузки весов |
+| `tunix-craftext env smoke/step/inspect` | проверить CrafText/Caged adapter, instruction, world preset, legal actions |
+| `tunix-craftext prompt render/decode/replay` | собрать MegaPrompts prompt и проверить strict action decoder |
+| `tunix-craftext rollout random/text/agentic` | собрать replay/trajectory JSONL без update |
+| `tunix-craftext train grpo` | запустить golden Tunix Agentic GRPO pipeline из profile |
+| `tunix-craftext eval checkpoint/reference` | оценить checkpoint или frozen reference на fixed tasks |
+| `tunix-craftext benchmark env/text/agentic` | записать performance evidence с warmup/raw samples/median/p95 |
+| `tunix-craftext docs sync/build/serve` | обновить dashboard, task graph, сайт и provenance |
+| `tunix-craftext verify unit/golden/full` | локальные quality gates без implicit downloads |
+| `tunix-craftext audit repo/architecture/docs` | аудит dirty state, архитектурных контрактов и документации |
+
+Подробный дизайн, TDD-план и migration strategy описаны в [CLI слое](docs/cli.md).
+
 ## Внешние проекты: что мы перенимаем и где ставим границу
 
 Мы не копируем чужие training loops в core. Каждый проект имеет закреплённую роль и отдельный
