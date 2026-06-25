@@ -8,7 +8,7 @@ environment:
   world_preset: tiny_box_oob_no_mobs
   scenario_config: achievements/easy/one
   instruction_index: 0
-  batch_size: 32
+  batch_size: 4
   horizon: 50
 prompt:
   renderer: megaprompts
