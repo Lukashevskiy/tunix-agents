@@ -95,6 +95,17 @@ CrafText agentic tool-call loop с несколькими GRPO generations и gr
 
 Подробный дизайн, TDD-план и migration strategy описаны в [CLI слое](docs/cli.md).
 
+Пока full CLI слой мигрируется, ручное управление CrafText доступно отдельным script entrypoint:
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/manual_craftext_agent.py \
+  --config configs/mvp/qwen_craftext.yaml \
+  --horizon 16
+
+PYTHONPATH=src .venv/bin/python scripts/visualize_trajectory.py \
+  --trajectory artifacts/trajectories/manual-craftext-latest.json
+```
+
 ## Внешние проекты: что мы перенимаем и где ставим границу
 
 Мы не копируем чужие training loops в core. Каждый проект имеет закреплённую роль и отдельный

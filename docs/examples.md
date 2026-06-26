@@ -65,9 +65,20 @@ agentic rollout/grouped rewards до добавления PPO critic/cost critic
 .venv/bin/python scripts/run_text_episode.py --horizon 1
 ```
 
+Для ручного управления агентом без LLM используйте manual controller. Он показывает текущую
+CrafText instruction, legal actions, принимает action id/label из stdin и сохраняет каждый шаг в
+обычный replay artifact:
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/manual_craftext_agent.py \
+  --config configs/mvp/qwen_craftext.yaml \
+  --horizon 16 \
+  --replay-output artifacts/trajectories/manual-craftext-latest.json
+```
+
 Для сохранённого notebook replay также доступен интерактивный pygame viewer:
 
 ```bash
 PYTHONPATH=src .venv/bin/python scripts/visualize_trajectory.py \
-  --trajectory artifacts/trajectories/qwen-craftext-full-notebook/env-0.json
+  --trajectory artifacts/trajectories/manual-craftext-latest.json
 ```
