@@ -10,7 +10,7 @@ test:
 	PYTHONPATH=src $(PYTHON) -m pytest tests/unit
 
 coverage:
-	PYTHONPATH=src $(PYTHON) -m pytest tests/unit --cov=src/tunix_craftext --cov-report=term-missing:skip-covered --cov-report=xml --cov-fail-under=82
+	PYTHONPATH=src $(PYTHON) -m pytest tests/unit --cov=src/tunix_craftext --cov-report=term-missing:skip-covered --cov-report=xml --cov-fail-under=83
 
 integration:
 	PYTHONPATH=src $(PYTHON) -m pytest -m integration

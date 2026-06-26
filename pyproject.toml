@@ -53,7 +53,7 @@ branch = true
 source = ["src/tunix_craftext"]
 
 [tool.coverage.report]
-fail_under = 82
+fail_under = 83
 show_missing = true
 skip_covered = true
 

@@ -9,7 +9,7 @@ Unit pipeline теперь состоит из четырёх CPU-friendly сл�
 1. `ruff check src tests scripts`
 2. `mypy src/tunix_craftext`
 3. `pytest tests/unit`
-4. `pytest tests/unit --cov=src/tunix_craftext --cov-fail-under=82`
+4. `pytest tests/unit --cov=src/tunix_craftext --cov-fail-under=83`
 
 Coverage считается branch-aware по `src/tunix_craftext`; CI пишет `coverage.xml` и
 `term-missing` отчёт. Локальный эквивалент:
@@ -27,14 +27,15 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/unit \
   --cov=src/tunix_craftext \
   --cov-report=term-missing:skip-covered \
   --cov-report=xml \
-  --cov-fail-under=82
+  --cov-fail-under=83
 ```
 
 Результат:
 
-- `243 passed`
-- total branch-aware coverage: `82.88%`
-- hard gate: `82%`
+- `253 passed`
+- total branch-aware coverage: `83.30%`
+- hard gate: `83%`
+- `adapters/craftext.py`: `100%`
 - `agentic_ppo.py`: `97%`
 - `episode.py`: `98%`
 - `runtime.py`: `94%`
@@ -65,6 +66,9 @@ PYTHONPATH=src .venv/bin/python -m pytest tests/unit \
 - Adapter hierarchy уточнена тестами: `CraftaxAdapter` владеет transition contract
   и prompt identity projection; `CrafTextAdapter` добавляет instruction/world context;
   `CagedCrafTextAdapter` добавляет textual constraint.
+- Adapter tests дополнены guards для action cardinality, custom action-mask key,
+  JAX `vmap`, fixed instruction reset, missing/out-of-range state idx и misaligned
+  Caged constraints.
 
 ## Осознанные зоны ниже production coverage
 

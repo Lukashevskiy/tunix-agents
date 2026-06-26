@@ -55,7 +55,7 @@ critic allocation.
 | 3 | Real RLCluster rollout | Accelerator-gated fixture создаёт actor/rollout/reference, проверяет role mesh и actor–rollout token/logprob parity; `AgenticPPOLearner` уже принимает rich `mdp_steps` через `UniversalMDPStep -> PpoExperienceBuilder` | Не мерить distributed throughput и не строить custom scheduler |
 | 4 | One Agentic PPO update | Один `AgenticPPOLearner` update меняет actor и critic weights, loss конечен, token masks валидны, metrics включают return/success/invalid-action/KL/value loss | Не помечать model factory или runner готовыми |
 | 5 | Evidence, resume, evaluation | Checkpoint включает learner/cluster policy version; resumed next update совпадает с continuous; fixed evaluation сравнивает actor/reference | Не выпускать “trained checkpoint” или notebook как substitute |
-| 6 | CI и performance | PR CPU gate: Ruff + mypy + unit/fake agentic + branch-aware coverage ≥82%; accelerator smoke и nightly benchmark имеют отдельные runners и threshold evidence | Не выводить scale-up из macOS/CPU результатов |
+| 6 | CI и performance | PR CPU gate: Ruff + mypy + unit/fake agentic + branch-aware coverage ≥83%; accelerator smoke и nightly benchmark имеют отдельные runners и threshold evidence | Не выводить scale-up из macOS/CPU результатов |
 
 ### Первый implementation slice: task semantics и hygiene
 
