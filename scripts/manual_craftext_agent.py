@@ -16,6 +16,54 @@ import jax.numpy as jnp
 
 SCHEMA = "tunix-craftext.manual-craftext-metrics/v1"
 DEFAULT_CONFIG = Path("configs/manual/caged_wood_achievements_energy.yaml")
+BLOCK_SYMBOLS = {
+    0: "?",
+    1: "#",
+    2: ".",
+    3: "~",
+    4: "S",
+    5: "T",
+    6: "W",
+    7: ",",
+    8: "C",
+    9: "I",
+    10: "D",
+    11: "B",
+    12: "F",
+    13: ":",
+    14: "L",
+    15: "p",
+    16: "P",
+    17: "#",
+    18: " ",
+    19: "m",
+    20: "^",
+    21: "s",
+    22: "r",
+    23: "$",
+    24: "f",
+}
+FACING_NAMES = {
+    0: "NOOP",
+    1: "LEFT",
+    2: "RIGHT",
+    3: "UP",
+    4: "DOWN",
+}
+INVENTORY_FIELDS = (
+    "wood",
+    "stone",
+    "coal",
+    "iron",
+    "diamond",
+    "sapling",
+    "wood_pickaxe",
+    "stone_pickaxe",
+    "iron_pickaxe",
+    "wood_sword",
+    "stone_sword",
+    "iron_sword",
+)
 
 
 @dataclass(frozen=True)
@@ -106,6 +154,115 @@ def format_observation_value(value: object) -> str:
     if isinstance(value, float):
         return f"{value:.3g}"
     return str(value)
+
+
+def manual_state_text(env_state: object, *, radius: int = 8) -> str:
+    """Render a concrete tactical map and scalar state for manual decisions."""
+    if not hasattr(env_state, "map") or not hasattr(env_state, "player_position"):
+        return "Map view: unavailable for this environment state"
+    return "\n".join(
+        (
+            vital_text(env_state),
+            inventory_text(env_state),
+            (
+                "Map legend: @ player, T tree, . grass, # wall/oob, ~ water, "
+                "S stone, C coal, I iron, D diamond, p plant"
+            ),
+            ascii_map_text(env_state, radius=radius),
+        )
+    )
+
+
+def vital_text(env_state: object) -> str:
+    """Format player scalar state used for Caged constraints."""
+    direction = scalar_int(getattr(env_state, "player_direction", None))
+    fields = [
+        ("pos", tuple(int(value) for value in jnp.asarray(env_state.player_position).tolist())),
+        ("facing", FACING_NAMES.get(direction, str(direction))),
+        ("hp", scalar_int(getattr(env_state, "player_health", None))),
+        ("food", scalar_int(getattr(env_state, "player_food", None))),
+        ("drink", scalar_int(getattr(env_state, "player_drink", None))),
+        ("energy", scalar_int(getattr(env_state, "player_energy", None))),
+        ("sleeping", scalar_bool(getattr(env_state, "is_sleeping", None))),
+        ("timestep", scalar_int(getattr(env_state, "timestep", None))),
+    ]
+    return "Vitals: " + ", ".join(f"{name}={value}" for name, value in fields if value is not None)
+
+
+def inventory_text(env_state: object) -> str:
+    """Format non-empty inventory items for terminal display."""
+    inventory = getattr(env_state, "inventory", None)
+    if inventory is None:
+        return "Inventory: unavailable"
+    non_empty = []
+    for field in INVENTORY_FIELDS:
+        if not hasattr(inventory, field):
+            continue
+        value = scalar_int(getattr(inventory, field))
+        if value:
+            non_empty.append(f"{field}={value}")
+    return "Inventory: " + (", ".join(non_empty) if non_empty else "empty")
+
+
+def ascii_map_text(env_state: object, *, radius: int = 8) -> str:
+    """Render a local ASCII map around the player from Craftax map tensors."""
+    if radius <= 0:
+        raise ValueError("radius must be positive")
+    map_array = jnp.asarray(env_state.map)
+    if map_array.ndim != 2:
+        return f"Map view: unsupported map shape={tuple(map_array.shape)}"
+    player_row, player_col = (
+        int(value) for value in jnp.asarray(env_state.player_position).tolist()
+    )
+    height, width = int(map_array.shape[0]), int(map_array.shape[1])
+    overlays = mob_overlays(env_state)
+    rows: list[str] = []
+    for row in range(player_row - radius, player_row + radius + 1):
+        chars: list[str] = []
+        for col in range(player_col - radius, player_col + radius + 1):
+            if row == player_row and col == player_col:
+                chars.append("@")
+            elif (row, col) in overlays:
+                chars.append(overlays[(row, col)])
+            elif row < 0 or col < 0 or row >= height or col >= width:
+                chars.append("#")
+            else:
+                chars.append(BLOCK_SYMBOLS.get(int(map_array[row, col]), "?"))
+        rows.append("".join(chars))
+    return "Map view:\n" + "\n".join(rows)
+
+
+def mob_overlays(env_state: object) -> dict[tuple[int, int], str]:
+    """Return active mob positions to overlay on top of the terrain map."""
+    overlays: dict[tuple[int, int], str] = {}
+    for attr, marker in (("zombies", "Z"), ("skeletons", "K"), ("cows", "c")):
+        mob_state = getattr(env_state, attr, None)
+        if (
+            mob_state is None
+            or not hasattr(mob_state, "position")
+            or not hasattr(mob_state, "mask")
+        ):
+            continue
+        positions = jnp.asarray(mob_state.position).tolist()
+        masks = jnp.asarray(mob_state.mask).tolist()
+        for position, active in zip(positions, masks, strict=False):
+            if active:
+                overlays[(int(position[0]), int(position[1]))] = marker
+    return overlays
+
+
+def scalar_int(value: object) -> int | None:
+    """Convert optional scalar JAX/Python values to int."""
+    if value is None:
+        return None
+    return int(jnp.asarray(value).item())
+
+
+def scalar_bool(value: object) -> bool | None:
+    """Convert optional scalar JAX/Python values to bool."""
+    if value is None:
+        return None
+    return bool(jnp.asarray(value).item())
 
 
 def manual_episode_metrics(artifact: object) -> dict[str, object]:
@@ -227,7 +384,12 @@ def collect_manual_episode(
             if context.text_constraint:
                 print_fn(f"Constraint: {context.text_constraint}")
             print_fn(f"World preset: {context.world_preset}")
-        print_fn(observation_text(observation))
+        state_view = (
+            manual_state_text(context.env_state)
+            if context is not None
+            else observation_text(observation)
+        )
+        print_fn(state_view)
         print_fn(f"Legal actions: {legal_actions_text(runtime.actions.labels, legal)}")
         if show_full_prompt:
             print_fn("--- rendered prompt ---")

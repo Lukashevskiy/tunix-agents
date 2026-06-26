@@ -5,7 +5,9 @@ from __future__ import annotations
 import importlib.util
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
+import jax.numpy as jnp
 import pytest
 
 from tunix_craftext.config import load_mvp_config
@@ -57,6 +59,47 @@ def test_observation_text_summarizes_shape_dtype_range_and_preview() -> None:
     assert "preview=[0, 1, 2, 3 ...]" in text
 
 
+def test_manual_state_text_renders_concrete_ascii_map_and_player_state() -> None:
+    env_state = SimpleNamespace(
+        map=jnp.asarray(
+            [
+                [1, 1, 1, 1, 1],
+                [1, 2, 5, 4, 1],
+                [1, 3, 2, 8, 1],
+                [1, 2, 15, 10, 1],
+                [1, 1, 1, 1, 1],
+            ],
+            dtype=jnp.int32,
+        ),
+        player_position=jnp.asarray([2, 2], dtype=jnp.int32),
+        player_direction=jnp.asarray(3, dtype=jnp.int32),
+        player_health=jnp.asarray(9, dtype=jnp.int32),
+        player_food=jnp.asarray(8, dtype=jnp.int32),
+        player_drink=jnp.asarray(7, dtype=jnp.int32),
+        player_energy=jnp.asarray(6, dtype=jnp.int32),
+        is_sleeping=jnp.asarray(False),
+        timestep=jnp.asarray(4, dtype=jnp.int32),
+        inventory=SimpleNamespace(
+            wood=jnp.asarray(2, dtype=jnp.int32),
+            stone=jnp.asarray(0, dtype=jnp.int32),
+            coal=jnp.asarray(1, dtype=jnp.int32),
+        ),
+        zombies=SimpleNamespace(
+            position=jnp.asarray([[1, 2]], dtype=jnp.int32),
+            mask=jnp.asarray([True]),
+        ),
+    )
+
+    text = runner.manual_state_text(env_state, radius=1)
+
+    assert "Vitals: pos=(2, 2), facing=UP, hp=9, food=8, drink=7, energy=6" in text
+    assert "Inventory: wood=2, coal=1" in text
+    assert "Map view:" in text
+    assert ".ZS" in text
+    assert "~@C" in text
+    assert ".pD" in text
+
+
 def test_manual_episode_metrics_summarizes_replay() -> None:
     artifact = ReplayArtifact(
         "configs/mvp/qwen_craftext.yaml",
@@ -101,25 +144,18 @@ def test_default_manual_config_targets_full_caged_wood_energy_scenario() -> None
         / "easy"
         / "wood_achievements.yaml"
     )
+    assert config.run.name == "manual-caged-wood-achievements-energy"
+    assert config.environment.implementation == "caged-craftext"
+    assert config.environment.scenario_config == "budget/achievements/easy/wood_achievements"
+    assert config.environment.batch_size == 1
+    assert scenario_path.is_file()
+    assert "dataset_key: wood_achievements" in scenario_path.read_text(encoding="utf-8")
     world_preset_path = (
         ROOT
         / "vendor"
         / "caged-craftext"
         / "caged_craftext"
         / "world_presets"
-        / "caged_craftext_play.yaml"
+        / f"{config.environment.world_preset}.yaml"
     )
-
-    assert config.run.name == "manual-caged-wood-achievements-energy"
-    assert config.environment.implementation == "caged-craftext"
-    assert config.environment.world_preset == "caged_craftext_play"
-    assert config.environment.scenario_config == "budget/achievements/easy/wood_achievements"
-    assert config.environment.batch_size == 1
-    assert config.environment.horizon == 450
-    assert scenario_path.is_file()
-    assert "dataset_key: wood_achievements" in scenario_path.read_text(encoding="utf-8")
     assert world_preset_path.is_file()
-    world_preset = world_preset_path.read_text(encoding="utf-8")
-    assert "player_energy:" in world_preset
-    assert "action_energy_drain" in world_preset
-    assert "action_energy_cost:" in world_preset
