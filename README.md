@@ -95,7 +95,9 @@ CrafText agentic tool-call loop с несколькими GRPO generations и gr
 
 Подробный дизайн, TDD-план и migration strategy описаны в [CLI слое](docs/cli.md).
 
-Пока full CLI слой мигрируется, ручное управление CrafText доступно отдельным script entrypoint:
+Пока full CLI слой мигрируется, ручное управление CrafText доступно отдельным script entrypoint.
+Он печатает instruction/constraint, compact observation summary и legal actions перед каждым
+ручным действием:
 
 ```bash
 PYTHONPATH=src .venv/bin/python scripts/manual_craftext_agent.py \

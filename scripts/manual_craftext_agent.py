@@ -76,6 +76,38 @@ def legal_actions_text(labels: Sequence[str], action_mask: Sequence[bool]) -> st
     )
 
 
+def observation_text(observation: object, *, max_values: int = 24) -> str:
+    """Return a compact terminal-safe summary of the current environment observation.
+
+    Pixel observations can be large; printing the full nested array makes manual
+    control unusable.  The summary keeps enough information for sanity checking
+    while the complete observation is still saved in replay JSON.
+    """
+    try:
+        array = jnp.asarray(observation)
+    except Exception:
+        return f"Observation: {type(observation).__name__}"
+    if array.size == 0:
+        return f"Observation: shape={tuple(array.shape)}, dtype={array.dtype}, empty"
+
+    flat = jnp.ravel(array)
+    preview_values = [format_observation_value(value) for value in flat[:max_values].tolist()]
+    suffix = " ..." if int(flat.size) > max_values else ""
+    return (
+        f"Observation: shape={tuple(array.shape)}, dtype={array.dtype}, "
+        f"min={format_observation_value(jnp.min(flat).item())}, "
+        f"max={format_observation_value(jnp.max(flat).item())}, "
+        f"preview=[{', '.join(preview_values)}{suffix}]"
+    )
+
+
+def format_observation_value(value: object) -> str:
+    """Format one scalar observation value for compact CLI output."""
+    if isinstance(value, float):
+        return f"{value:.3g}"
+    return str(value)
+
+
 def manual_episode_metrics(artifact: object) -> dict[str, object]:
     """Summarize one manual replay while retaining the full replay separately."""
     steps = tuple(getattr(artifact, "steps"))
@@ -158,6 +190,7 @@ def collect_manual_episode(
     reset = runtime.adapter.reset(keys[0])
     state = reset.state
     action_mask = reset.action_mask
+    observation = reset.observation
     steps: list[ReplayStep] = []
 
     for step_index in range(limit):
@@ -194,6 +227,7 @@ def collect_manual_episode(
             if context.text_constraint:
                 print_fn(f"Constraint: {context.text_constraint}")
             print_fn(f"World preset: {context.world_preset}")
+        print_fn(observation_text(observation))
         print_fn(f"Legal actions: {legal_actions_text(runtime.actions.labels, legal)}")
         if show_full_prompt:
             print_fn("--- rendered prompt ---")
@@ -218,6 +252,7 @@ def collect_manual_episode(
         transition = runtime.adapter.step(keys[step_index + 1], state, parsed.action_id)
         state = transition.state
         action_mask = transition.action_mask
+        observation = transition.observation
         reward = float(transition.reward)
         terminated = bool(transition.terminated)
         truncated = bool(transition.truncated)

@@ -46,6 +46,17 @@ def test_legal_actions_text_lists_only_unmasked_actions() -> None:
     )
 
 
+def test_observation_text_summarizes_shape_dtype_range_and_preview() -> None:
+    text = runner.observation_text([[0, 1, 2], [3, 4, 5]], max_values=4)
+
+    assert "Observation:" in text
+    assert "shape=(2, 3)" in text
+    assert "dtype=int32" in text or "dtype=int64" in text
+    assert "min=0" in text
+    assert "max=5" in text
+    assert "preview=[0, 1, 2, 3 ...]" in text
+
+
 def test_manual_episode_metrics_summarizes_replay() -> None:
     artifact = ReplayArtifact(
         "configs/mvp/qwen_craftext.yaml",

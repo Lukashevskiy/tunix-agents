@@ -66,8 +66,8 @@ agentic rollout/grouped rewards до добавления PPO critic/cost critic
 ```
 
 Для ручного управления агентом без LLM используйте manual controller. Он показывает текущую
-CrafText instruction, legal actions, принимает action id/label из stdin и сохраняет каждый шаг в
-обычный replay artifact:
+CrafText instruction, text constraint, compact observation summary, legal actions, принимает
+action id/label из stdin и сохраняет каждый шаг в обычный replay artifact:
 
 ```bash
 PYTHONPATH=src .venv/bin/python scripts/manual_craftext_agent.py \
