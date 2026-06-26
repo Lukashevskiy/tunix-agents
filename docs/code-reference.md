@@ -230,8 +230,11 @@ model, а `build_ppo_cluster()` вызывает публичный `RLCluster(a
 
 - `examples/notebooks/07_qwen_craftext_full_trajectory.ipynb` — batched Tunix/MegaPrompts/CrafText replay export.
 - `examples/notebooks/09_batched_qwen_craftext_rollout.ipynb` — B×T rollout и terminal reset semantics.
-- `examples/notebooks/10_replay_to_token_ppo.ipynb` — replay evidence в token batch/loss tensors.
-- `examples/notebooks/12_full_cycle_craftext_training.ipynb` — real Gemma/Tunix rollout +
-  separate actor/critic scoring, PPO evaluation, replay evidence и profiling.
+- `examples/notebooks/10_replay_to_token_ppo.ipynb` — replay evidence → `HybridPpoStep` →
+  masked token/step PPO boundary.
+- `examples/notebooks/11_end_to_end_batched_qwen_ppo.ipynb` — batched Qwen/CrafText rollout
+  в per-env hybrid PPO evidence trajectories.
+- `examples/notebooks/12_full_cycle_craftext_training.ipynb` — real Gemma/Tunix rollout,
+  separate actor/critic scoring, `HybridPpoStep`, PPO evaluation, replay evidence и profiling.
 - `examples/notebooks/14_generation_benchmark.ipynb` — generation pipeline benchmark по
   batch/horizon/repeats.

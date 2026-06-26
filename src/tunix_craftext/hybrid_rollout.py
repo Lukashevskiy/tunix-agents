@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Protocol
 
 import jax
 import jax.numpy as jnp
@@ -33,6 +34,23 @@ from .tensor_types import (
 )
 
 
+class TextTrajectoryLike(Protocol):
+    """Structural subset required from ``TextTrajectoryBatch`` staging evidence."""
+
+    token_ids: TokenBatchInt
+    prompt_token_ids: PromptTokenBatchInt
+    prompt_token_mask: PromptTokenBatchBool
+    old_logprobs: TokenBatchFloat
+    token_mask: TokenBatchBool
+    policy_mask: TokenBatchBool
+    action_ids: BatchInt
+    terminated: BatchBool
+
+    def validate(self) -> None:
+        """Validate the staging batch before promotion."""
+        ...
+
+
 @dataclass(frozen=True)
 class HybridPpoStep:
     """One PPO-ready host/accelerator step for a batch of agentic CrafText episodes.
@@ -42,6 +60,9 @@ class HybridPpoStep:
     :ivar prompt_token_mask: Valid prompt-token mask, shape ``[B, P]``.
     :ivar generation_tokens: Padded generated response/action tokens, shape ``[B, L]``.
     :ivar generation_token_mask: Valid generated-token mask, shape ``[B, L]``.
+    :ivar policy_token_mask: Optional actor-learning mask, shape ``[B, L]``.
+        It defaults to ``generation_token_mask`` but can exclude safety fallback
+        rows while retaining their generated-token evidence.
     :ivar actor_log_probs: Rollout/current actor token log-probs, shape ``[B, L]``.
     :ivar values: Critic values for the step state, shape ``[B]``.
     :ivar step_mask: ``True`` for episodes alive at this step, shape ``[B]``.
@@ -56,7 +77,15 @@ class HybridPpoStep:
     actor_log_probs: TokenBatchFloat
     values: BatchFloat
     step_mask: BatchBool
+    policy_token_mask: TokenBatchBool | None = None
     action_mask: ActionMask | None = None
+
+    @property
+    def actor_loss_token_mask(self) -> TokenBatchBool:
+        """Return the token mask intended for actor loss computation."""
+        if self.policy_token_mask is None:
+            return self.generation_token_mask
+        return self.policy_token_mask
 
     def validate(self) -> None:
         """Validate static host-side shapes for this PPO rollout step.
@@ -82,6 +111,8 @@ class HybridPpoStep:
             (self.actor_log_probs, "actor_log_probs"),
         ):
             _require_shape(value, name, generation_shape)
+        if self.policy_token_mask is not None:
+            _require_shape(self.policy_token_mask, "policy_token_mask", generation_shape)
 
         _require_shape(self.values, "values", (batch_size,))
         _require_shape(self.step_mask, "step_mask", (batch_size,))
@@ -137,6 +168,70 @@ def hybrid_trajectory_from_steps(steps: Sequence[HybridPpoStep]) -> HybridPpoTra
     )
     trajectory.validate()
     return trajectory
+
+
+def hybrid_step_from_text_trajectory(
+    batch: TextTrajectoryLike,
+    *,
+    values: BatchFloat,
+    actor_log_probs: TokenBatchFloat | None = None,
+    step_mask: BatchBool | None = None,
+    action_mask: ActionMask | None = None,
+) -> HybridPpoStep:
+    """Convert a replay-derived text trajectory batch into one hybrid PPO step.
+
+    ``TextTrajectoryBatch`` uses rows as ordered host decisions for one replay.
+    This adapter keeps that representation but promotes it to the PPO-ready
+    hybrid contract: prompt/completion tokens, rollout actor log-probs, critic
+    values, actor-learning mask and alive-before-step mask.
+
+    :param batch: Object exposing the ``TextTrajectoryBatch`` fields.
+    :param values: Critic values for each row, shape ``[B]``.
+    :param actor_log_probs: Optional actor log-probs. Defaults to rollout
+        ``batch.old_logprobs``.
+    :param step_mask: Optional alive-before-step mask. Defaults to cumulative
+        validity computed from ``batch.terminated``.
+    :param action_mask: Optional legal-action evidence, shape ``[B, A]``.
+    :returns: Validated ``HybridPpoStep``.
+    """
+    if hasattr(batch, "validate"):
+        batch.validate()
+    selected_actor_log_probs = batch.old_logprobs if actor_log_probs is None else actor_log_probs
+    selected_step_mask = (
+        _alive_before_step_mask(jnp.asarray(batch.terminated, dtype=bool))
+        if step_mask is None
+        else step_mask
+    )
+    step = HybridPpoStep(
+        action_ids=batch.action_ids,
+        prompt_tokens=batch.prompt_token_ids,
+        prompt_token_mask=batch.prompt_token_mask,
+        generation_tokens=batch.token_ids,
+        generation_token_mask=batch.token_mask,
+        actor_log_probs=selected_actor_log_probs,
+        values=values,
+        step_mask=selected_step_mask,
+        policy_token_mask=batch.policy_mask,
+        action_mask=action_mask,
+    )
+    step.validate()
+    return step
+
+
+def last_valid_token_values(values: TokenBatchFloat, token_mask: TokenBatchBool) -> BatchFloat:
+    """Select the final valid token value from each generated sequence.
+
+    This bridges token critics ``[B, L]`` into the step-level ``[B]`` value
+    field required by :class:`HybridPpoStep`.
+    """
+    value_shape = _shape_of(values, "values")
+    if len(value_shape) != 2:
+        raise ValueError("values must have shape [B, L]")
+    _require_shape(token_mask, "token_mask", value_shape)
+    if not bool(jnp.all(jnp.any(token_mask, axis=-1))):
+        raise ValueError("each row must contain at least one valid token")
+    last_indices = jnp.sum(jnp.asarray(token_mask, dtype=jnp.int32), axis=-1) - 1
+    return values[jnp.arange(value_shape[0]), last_indices]
 
 
 def compute_masked_step_token_ppo_loss(
@@ -207,3 +302,14 @@ def _require_shape(value: object, field_name: str, expected_shape: tuple[int, ..
     actual_shape = _shape_of(value, field_name)
     if actual_shape != expected_shape:
         raise ValueError(f"{field_name} must have shape {expected_shape}, got {actual_shape}")
+
+
+def _alive_before_step_mask(terminated: BatchBool) -> BatchBool:
+    """Return ``True`` until the step after the first terminal row."""
+    if terminated.ndim != 1:
+        raise ValueError("terminated must have shape [B]")
+    previous_done = jnp.concatenate(
+        [jnp.asarray([False]), jnp.asarray(terminated[:-1], dtype=bool)],
+        axis=0,
+    )
+    return jnp.cumprod((~previous_done).astype(jnp.int32)).astype(bool)

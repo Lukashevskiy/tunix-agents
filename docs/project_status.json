@@ -163,7 +163,7 @@
     {
       "name": "External PPO audit and hybrid rollout contract",
       "status": "ready",
-      "description": "Внешний аудит перенесён в docs/report_audit.md; collect_rollout_scan* зафиксирован как reference/fixed-shape слой, а новый hybrid_rollout contract хранит PPO-ready action ids, prompt/generation tokens, actor token logprobs, critic values, generation-token masks и step masks с unit tests на post-terminal/padding masking."
+      "description": "Внешний аудит перенесён в docs/report_audit.md; collect_rollout_scan* зафиксирован как reference/fixed-shape слой. Новый hybrid_rollout contract хранит PPO-ready action ids, prompt/generation tokens, actor token logprobs, critic values, generation-token masks, policy-token masks и step masks; replay staging adapter и notebooks 10/11/12 переведены на HybridPpoStep с unit tests на post-terminal/padding/fallback masking."
     },
     {
       "name": "Tunix PPO RLCluster bridge",

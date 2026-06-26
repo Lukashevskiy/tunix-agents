@@ -48,9 +48,15 @@ accelerator/JAX boundary:
 - `tunix_craftext.hybrid_rollout.HybridPpoStep` — один PPO-ready батчевый шаг.
 - `tunix_craftext.hybrid_rollout.HybridPpoTrajectory` — tuple шагов + stacked `step_masks`
   формы `[T, B]`.
+- `hybrid_step_from_text_trajectory()` — adapter из replay-derived `TextTrajectoryBatch` в
+  `HybridPpoStep`; он сохраняет generated-token evidence, исключает fallback rows из
+  `policy_token_mask` и вычисляет alive-before-step mask.
+- `last_valid_token_values()` — bridge из token critic values `[B, L]` в step values `[B]`.
 - `compute_masked_step_token_ppo_loss()` — TDD primitive, который доказывает, что PPO actor loss
   игнорирует generated-token padding и post-terminal строки батча.
 - `tests/unit/test_hybrid_rollout.py` покрывает shape contract, stacked masks и masked PPO loss.
+- Notebooks 10/11/12 переписаны под этот setup: replay, batched Qwen rollout и real Gemma
+  actor+critic scoring теперь проходят через `HybridPpoStep` без deferred TODO-блоков.
 
 ## Открытые задачи
 
@@ -61,4 +67,3 @@ accelerator/JAX boundary:
   actor/critic/reference сохраняются, resume parity проходит на fixed fixture.
 - Расширить `AgenticPPOTrainExample` до cost critic для PPO-Lag/CPO после прохождения базового
   PPO gate.
-

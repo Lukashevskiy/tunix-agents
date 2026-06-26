@@ -114,8 +114,13 @@ catalogue и deterministic initial environment state.
   CPU/JAX parity, а не production LLM-RL collector с динамической текстовой историей.
 - [x] Добавить `tunix_craftext.hybrid_rollout`: `HybridPpoStep`,
   `HybridPpoTrajectory`, stacked `step_masks` и masked token-step PPO loss primitive.
+- [x] Добавить replay staging adapter: `hybrid_step_from_text_trajectory()` переводит
+  `TextTrajectoryBatch` в `HybridPpoStep`, сохраняет `policy_token_mask` для fallback rows
+  и `last_valid_token_values()` мостит token critic values `[B, L]` в step values `[B]`.
 - [x] Покрыть hybrid contract unit tests: shape validation, mismatched token logprobs,
   time-major step masks, generated-token padding и post-terminal rows.
+- [x] Переписать notebooks 10/11/12 на новый setup: replay/batched Qwen/Gemma actor+critic
+  проходят через `HybridPpoStep`, без deferred TODO-блоков и старого local learner как финала.
 - [ ] Подключить `HybridPpoStep`/trajectory adapter к реальному Tunix Agentic PPO evidence
   path: `TrajectoryCollectEngine`/`AgenticPPOLearner` должны получать old logprobs,
   values, masks и policy version без неявного replay guessing.
