@@ -11,7 +11,7 @@ from typing import Literal
 
 import jax
 
-from .adapters import CrafTextAdapter
+from .adapters import CraftaxAdapter
 from .llm import LlmBackend, LlmRequest
 from .prompts import ActionCatalog, PromptContext, PromptRenderer, compose_craftext_goal
 from .replay import ReplayArtifact, ReplayStep
@@ -19,7 +19,7 @@ from .text_policy import DecodedAction, decode_action, decode_action_outcome
 
 
 def collect_text_episode(
-    adapter: CrafTextAdapter[object, object, object],
+    adapter: CraftaxAdapter[object, object, object],
     renderer: PromptRenderer[object],
     backend: LlmBackend,
     *,
@@ -79,11 +79,7 @@ def collect_text_episode(
     for index, key in enumerate(keys[1:]):
         # MegaPrompts renders Craftax ``EnvState``; CrafText's instruction wrapper
         # keeps its task metadata in the outer TextEnvState.
-        context = (
-            adapter.episode_context(state)
-            if isinstance(adapter, CrafTextAdapter) and adapter.has_instruction_context
-            else None
-        )
+        context = adapter.episode_context(state) if adapter.has_instruction_context else None
         prompt = renderer.render(
             PromptContext(
                 goal

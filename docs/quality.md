@@ -5,7 +5,7 @@
 | Линия | Что доказывает | Запуск |
 | --- | --- | --- |
 | Unit | формы, masks, GAE/loss/checkpoint schema | `pytest tests/unit` |
-| Unit coverage | общий coverage core modules, branch-aware | `make coverage` / `pytest tests/unit --cov=src/tunix_craftext --cov-fail-under=80` |
+| Unit coverage | общий coverage core modules, branch-aware | `make coverage` / `pytest tests/unit --cov=src/tunix_craftext --cov-fail-under=82` |
 | Integration | реальная среда, prompts, Tunix bridge, resume | `pytest -m integration` |
 | Performance | median/p95 throughput, compile time, HBM | `pytest -m performance --benchmark-only` |
 | E2E | config → train → checkpoint → eval → report | nightly / release |
@@ -85,7 +85,7 @@ Smoke with three repeats полезен только для проверки pip
 
 На каждом PR и push в `main` workflow `CPU quality gate` запускает Ruff, mypy,
 unit/fake-agentic suite и coverage gate на Python 3.12. Coverage считается по
-`src/tunix_craftext` с branch-aware режимом и минимальным порогом 80%; отчёт
+`src/tunix_craftext` с branch-aware режимом и минимальным порогом 82%; отчёт
 пишется в `coverage.xml` и `term-missing`. Он намеренно не запускает real Qwen,
 accelerator или performance lanes: эти доказательства принадлежат отдельным
 hardware/nightly gates из roadmap.

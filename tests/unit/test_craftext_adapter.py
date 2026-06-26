@@ -97,4 +97,10 @@ def test_caged_context_aligns_text_constraint_with_selected_instruction() -> Non
 def test_craftax_adapter_stays_free_of_craftext_instruction_metadata() -> None:
     adapter = CraftaxAdapter(TinyCrafText(terminal_timestep=1), params=object(), action_count=3)
 
-    assert not hasattr(adapter, "episode_context")
+    reset = adapter.reset(key=0)
+
+    assert adapter.world_preset == ""
+    assert not adapter.has_instruction_context
+    assert adapter.prompt_state(reset.state) is reset.state
+    with pytest.raises(AdapterContractError, match="instruction metadata"):
+        adapter.episode_context(reset.state)

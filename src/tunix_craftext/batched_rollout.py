@@ -9,7 +9,7 @@ from typing import Literal, cast
 import jax
 import jax.numpy as jnp
 
-from .adapters import CrafTextAdapter, EnvironmentReset, EnvironmentStep
+from .adapters import CraftaxAdapter, EnvironmentReset, EnvironmentStep
 from .llm import BatchLlmBackend, LlmRequest, LlmResponse
 from .prompts import (
     ActionCatalog,
@@ -58,7 +58,7 @@ def _replace_finished(current: object, reset: object, finished: jax.Array) -> ob
 
 
 def collect_batched_text_decision(
-    adapter: CrafTextAdapter[object, object, object],
+    adapter: CraftaxAdapter[object, object, object],
     renderer: PromptRenderer[object],
     backend: BatchLlmBackend,
     *,
@@ -114,9 +114,7 @@ def collect_batched_text_decision(
         for index in range(batch_size)
         for state in (_item_at(states, index),)
         for context in (
-            adapter.episode_context(state)
-            if isinstance(adapter, CrafTextAdapter) and adapter.has_instruction_context
-            else None,
+            adapter.episode_context(state) if adapter.has_instruction_context else None,
         )
     )
     responses = backend.complete_batch(
@@ -162,7 +160,7 @@ def collect_batched_text_decision(
 
 
 def collect_batched_text_rollout(
-    adapter: CrafTextAdapter[object, object, object],
+    adapter: CraftaxAdapter[object, object, object],
     renderer: PromptRenderer[object],
     backend: BatchLlmBackend,
     *,

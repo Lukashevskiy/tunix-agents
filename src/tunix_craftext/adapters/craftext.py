@@ -156,6 +156,41 @@ class CraftaxAdapter(Generic[ParamsT, ObservationT, StateT]):
         """
         return self._action_count
 
+    @property
+    def world_preset(self) -> str:
+        """Return optional world-preset provenance for prompt rendering.
+
+        Bare Craftax environments do not own CrafText world-preset metadata, so
+        the base adapter exposes an empty value. CrafText-specialized adapters
+        override this with runtime provenance.
+        """
+        return ""
+
+    @property
+    def has_instruction_context(self) -> bool:
+        """Whether this adapter can resolve host-side instruction metadata."""
+        return False
+
+    @staticmethod
+    def prompt_state(state: StateT) -> object:
+        """Return the state object visible to prompt renderers.
+
+        Bare Craftax-compatible environments already expose the prompt state
+        directly. CrafText wrappers override this projection to unwrap
+        ``TextEnvState.env_state``.
+        """
+        return state
+
+    def episode_context(self, state: StateT) -> "CrafTextEpisodeContext[object]":
+        """Resolve optional CrafText instruction metadata.
+
+        Bare Craftax adapters deliberately do not own scenario instructions.
+        Callers should check ``has_instruction_context`` before requesting this
+        metadata.
+        """
+        del state
+        raise AdapterContractError("CrafText instruction metadata is not configured")
+
     def _fallback_mask(self) -> SingleActionMask:
         """Return the conservative all-actions-available mask with shape ``[A]``.
 
