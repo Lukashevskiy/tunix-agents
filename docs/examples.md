@@ -82,3 +82,13 @@ PYTHONPATH=src .venv/bin/python scripts/manual_craftext_agent.py \
 PYTHONPATH=src .venv/bin/python scripts/visualize_trajectory.py \
   --trajectory artifacts/trajectories/manual-craftext-latest.json
 ```
+
+А для отчётов, сайта и Comet/локальных artifact sinks можно экспортировать GIF без открытия окна:
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/export_trajectory_gif.py \
+  --trajectory artifacts/trajectories/manual-craftext-latest.json \
+  --output artifacts/visualizations/manual-craftext-latest.gif \
+  --fps 4 \
+  --scale 4
+```

@@ -64,6 +64,13 @@ from .text_policy import (
     decode_action_outcome,
 )
 from .text_trajectory import TextTrajectoryBatch, TextTrajectoryError, text_trajectory_from_replay
+from .trajectory_gif import (
+    frames_from_replay_payload,
+    load_replay_payload,
+    normalize_observation_image,
+    scale_frame,
+    write_gif,
+)
 from .tunix_topology import (
     TopologyConfigError,
     TunixTopology,
@@ -118,6 +125,11 @@ __all__ = [
     "TextTrajectoryBatch",
     "TextTrajectoryError",
     "text_trajectory_from_replay",
+    "frames_from_replay_payload",
+    "load_replay_payload",
+    "normalize_observation_image",
+    "scale_frame",
+    "write_gif",
     "ConfigError",
     "MvpRunConfig",
     "load_mvp_config",

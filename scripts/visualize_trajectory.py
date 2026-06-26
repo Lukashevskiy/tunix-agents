@@ -8,7 +8,6 @@ trajectory contains a numeric array observation.
 from __future__ import annotations
 
 import argparse
-import json
 import textwrap
 from pathlib import Path
 from typing import Any
@@ -16,48 +15,15 @@ from typing import Any
 import numpy as np
 import pygame
 
+from tunix_craftext.trajectory_gif import load_replay_payload, normalize_observation_image
+
 
 def load_trajectory(path: Path) -> dict[str, Any]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict) or "steps" not in payload:
-        raise ValueError(f"Trajectory file {path} is not a replay artifact")
-    if not isinstance(payload["steps"], list):
-        raise ValueError(f"Trajectory file {path} contains invalid steps")
-    return payload
+    return load_replay_payload(path)
 
 
 def normalize_image(obs: Any) -> np.ndarray | None:
-    try:
-        array = np.asarray(obs)
-    except Exception:
-        return None
-    if array.size == 0:
-        return None
-    if array.ndim == 1:
-        return None
-    if array.ndim == 2:
-        image = array
-        image = image.astype(np.float32)
-        image = image - image.min()
-        if image.max() > 0:
-            image = image / image.max() * 255.0
-        image = np.stack([image, image, image], axis=-1)
-    elif array.ndim == 3 and array.shape[2] in {1, 3, 4}:
-        image = array.astype(np.float32)
-        if image.dtype != np.uint8:
-            image = image - image.min()
-            if image.max() > 0:
-                image = image / image.max() * 255.0
-            image = image.astype(np.uint8)
-        if image.shape[2] == 1:
-            image = np.concatenate([image, image, image], axis=-1)
-        elif image.shape[2] == 4:
-            image = image[:, :, :3]
-    else:
-        return None
-    if image.dtype != np.uint8:
-        image = np.clip(image, 0, 255).astype(np.uint8)
-    return image
+    return normalize_observation_image(obs)
 
 
 def render_multiline_text(

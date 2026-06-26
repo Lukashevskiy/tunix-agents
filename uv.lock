@@ -5052,6 +5052,7 @@ envs = [
 examples = [
     { name = "jupyterlab" },
     { name = "matplotlib" },
+    { name = "pillow" },
 ]
 interop = [
     { name = "safetensors" },
@@ -5093,6 +5094,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=1.26" },
     { name = "optax", specifier = ">=0.2.3" },
     { name = "orbax-checkpoint", specifier = ">=0.6.4" },
+    { name = "pillow", marker = "extra == 'examples'", specifier = ">=10.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3" },
     { name = "pytest-benchmark", marker = "extra == 'dev'", specifier = ">=5.1" },
     { name = "pyyaml", specifier = ">=6.0" },
