@@ -13,7 +13,7 @@
 | Environment boundary | `tunix_craftext.adapters`, `tunix_craftext.runtime`, `tunix_craftext.config` | Vendor CrafText/CagedCrafText превращаются в typed `reset/step`, `action_mask`, `terminated/truncated` и reproducible config runtime. |
 | Prompt/model boundary | `tunix_craftext.prompts`, `tunix_craftext.text_policy`, `tunix_craftext.llm`, `tunix_craftext.llm_actor`, `tunix_craftext.tunix_actor`, `tunix_craftext.tunix_adapter` | `EnvState` становится `RenderedPrompt`, LLM actor генерирует ordered completions и пересчитывает token scores/values, strict decoder не принимает неизвестные labels. |
 | Rollout transport | `tunix_craftext.rollout`, `tunix_craftext.batched_rollout`, `tunix_craftext.hybrid_rollout`, `tunix_craftext.contracts` | `rollout.py` остаётся fixed-shape reference; `batched_rollout` делает host prompt/LLM/decode + `jax.vmap(step)`; `hybrid_rollout` фиксирует PPO-ready actor logprobs, critic values, token masks и step masks. |
-| Experience builders | `tunix_craftext.experience_builders` | Universal MDP step contract, MDP-time GAE over `[T, B]`, advantage/return broadcasting на generated tokens и flattened token PPO experience без heavy Tunix imports. |
+| Experience builders | `tunix_craftext.experience_builders`, `tunix_craftext.agentic_ppo` | Universal MDP step contract, MDP-time GAE over `[T, B]`, advantage/return broadcasting на generated tokens и flattened token PPO experience. `AgenticPPOLearner` consumes rich `traj["mdp_steps"]` and emits Tunix PPO train examples; legacy concatenated trajectories stay smoke-only. |
 | Replay/training batch | `tunix_craftext.replay`, `tunix_craftext.text_trajectory`, `tunix_craftext.flashbax_replay` | Replay v3 хранит prompt/completion/action/reward/token evidence, `masked_action`, fallback и преобразуется в fixed-shape token batches. |
 | Research objectives/learner | `tunix_craftext.research.algorithms`, `tunix_craftext.research.algorithm_registry`, `tunix_craftext.research.learner`, `tunix_craftext.checkpoints` | PPO/returns/loss functions чистые и JAX-friendly, но это research/smoke слой; production GRPO/PPO идёт через Tunix Agentic `RLCluster`. |
 | Observability / profiling evidence | `tunix_craftext.observability`, `tunix_craftext.comet_adapter`, `tunix_craftext.profiling` | Append-only train/val metrics JSONL, validation trajectory references, generic artifact sink contract, mapped team logger adapter, optional Comet ML mirror, phase-level wall-time и NVTX ranges. |
@@ -227,8 +227,10 @@ cluster = build_ppo_cluster(topology, spec, assets)
 Этот слой не загружает веса при импорте. Asset-функции являются hardware-gated boundary:
 actor/reference загружаются на declared role meshes, critic создаётся как Tunix-compatible value
 model, а `build_ppo_cluster()` вызывает публичный `RLCluster(actor, critic, reference, tokenizer)`.
-Следующий шаг — dataset adapter, который превратит наш `TextTrajectoryBatch`/Flashbax staging в
-формат, ожидаемый Tunix `PPOLearner`.
+`AgenticPPOLearner` принимает rich `traj["mdp_steps"]`, строит `UniversalMDPStep`, считает
+`PpoExperienceBuilder` и отдаёт Tunix actor/critic update-ready batch. Следующий production
+шаг — collector-side запись того же `mdp_steps` contract из `TrajectoryCollectEngine`, чтобы
+old logprobs, critic values, rewards, masks и policy version приходили без replay guessing.
 
 ## Где смотреть примеры
 

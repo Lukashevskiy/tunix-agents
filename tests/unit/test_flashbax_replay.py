@@ -23,6 +23,7 @@ def _batch() -> TextTrajectoryBatch:
         action_ids=jnp.asarray([1, 2], dtype=jnp.int32),
         terminated=jnp.asarray([False, True]),
         fallback_used=jnp.asarray([False, False]),
+        invalid_action=jnp.asarray([False, False]),
     )
 
 

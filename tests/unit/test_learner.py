@@ -43,6 +43,7 @@ def _token_batch(*, fallback: bool = False) -> TextTrajectoryBatch:
         action_ids=jnp.array([1, 2], dtype=jnp.int32),
         terminated=jnp.array([False, True]),
         fallback_used=fallback_used,
+        invalid_action=jnp.array([False, False]),
     )
 
 

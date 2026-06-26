@@ -52,7 +52,7 @@ critic allocation.
 | 2 | Reproducible PPO profile | versioned profile содержит run/model/topology/workload/evidence paths; runner пишет profile/vendor SHA256, model revision/licence, config hash и package versions рядом с run | Не загружать weights по незафиксированному profile |
 | 2.5 | Full CLI orchestration layer | `tunix-craftext profile/verify/train/...` спроектирован как thin orchestration layer; первый implementation slice ограничен profile + verify без heavy imports | Не переносить business logic в CLI и не ломать scripts до wrapper migration |
 | 2.7 | Hybrid PPO rollout contract | `hybrid_rollout.py` хранит actor token logprobs, critic values, generation-token masks и step masks; `rollout.py` явно остаётся reference/fixed-shape слоем | Не использовать `lax.scan` collectors как production LLM-RL rollout |
-| 3 | Real RLCluster rollout | Accelerator-gated fixture создаёт actor/rollout/reference, проверяет role mesh и actor–rollout token/logprob parity | Не мерить distributed throughput и не строить custom scheduler |
+| 3 | Real RLCluster rollout | Accelerator-gated fixture создаёт actor/rollout/reference, проверяет role mesh и actor–rollout token/logprob parity; `AgenticPPOLearner` уже принимает rich `mdp_steps` через `UniversalMDPStep -> PpoExperienceBuilder` | Не мерить distributed throughput и не строить custom scheduler |
 | 4 | One Agentic PPO update | Один `AgenticPPOLearner` update меняет actor и critic weights, loss конечен, token masks валидны, metrics включают return/success/invalid-action/KL/value loss | Не помечать model factory или runner готовыми |
 | 5 | Evidence, resume, evaluation | Checkpoint включает learner/cluster policy version; resumed next update совпадает с continuous; fixed evaluation сравнивает actor/reference | Не выпускать “trained checkpoint” или notebook как substitute |
 | 6 | CI и performance | PR CPU gate: Ruff + mypy + unit/fake agentic; accelerator smoke и nightly benchmark имеют отдельные runners и threshold evidence | Не выводить scale-up из macOS/CPU результатов |
@@ -129,9 +129,13 @@ catalogue и deterministic initial environment state.
   flatten-ятся в `[T*B, L]` learner layout.
 - [x] Переписать notebooks 10/11/12 на новый setup: replay/batched Qwen/Gemma actor+critic
   проходят через `HybridPpoStep`, без deferred TODO-блоков и старого local learner как финала.
-- [ ] Подключить `UniversalMDPStep`/`PpoExperienceBuilder` к реальному Tunix Agentic PPO
-  evidence path: `TrajectoryCollectEngine`/`AgenticPPOLearner` должны получать old logprobs,
-  values, rewards, masks и policy version без неявного replay guessing.
+- [x] Подключить `UniversalMDPStep`/`PpoExperienceBuilder` к `AgenticPPOLearner`:
+  `traj["mdp_steps"]` нормализуется в rich MDP steps, MDP-time GAE считается до Tunix
+  update, advantages/returns/value baselines broadcast-ятся только на valid generated tokens,
+  старый `conversation_tokens` путь остаётся smoke fallback.
+- [ ] Подключить тот же rich `mdp_steps` contract к production `TrajectoryCollectEngine`:
+  collector должен писать old logprobs, values, rewards, masks и policy version без неявного
+  replay guessing.
 - [ ] Реализовать model-side Tunix action masking/logits processor; текущий fallback в
   `batched_rollout.py` остаётся safety/evidence mechanism, а не финальный sampling policy.
 

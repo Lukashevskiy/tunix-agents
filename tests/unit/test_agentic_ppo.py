@@ -12,6 +12,7 @@ from tunix_craftext.agentic_ppo import (
     AgenticPPOConfig,
     AgenticPPOLearner,
     configure_agentic_ppo_trainers,
+    universal_mdp_steps_from_trajectory,
 )
 
 
@@ -206,3 +207,106 @@ def test_agentic_ppo_can_recompute_old_logprobs_from_actor(monkeypatch) -> None:
 
     assert learner.rl_cluster.actor_logprob_calls == 1
     assert example.old_per_token_logps.tolist() == [[-0.5, -0.5, -0.5]]
+
+
+def test_agentic_ppo_process_results_uses_mdp_steps_and_experience_builder(
+    monkeypatch,
+) -> None:
+    learner = object.__new__(AgenticPPOLearner)
+    learner.rl_cluster = _FakeCluster()
+    learner.algo_config = AgenticPPOConfig(
+        max_response_length=3,
+        beta=0.0,
+        gamma=1.0,
+        gae_lambda=1.0,
+    )
+    monkeypatch.setattr(
+        learner,
+        "_compute_rewards",
+        lambda **kwargs: pytest.fail("MDP step rewards must bypass EOS reward fallback"),
+    )
+
+    trajectory = SimpleNamespace(
+        traj={
+            "policy_version": 9,
+            "original_input": {"prompts": ["task"]},
+            "mdp_steps": [
+                {
+                    "prompt_tokens": np.asarray([9, 8], dtype=np.int32),
+                    "generation_tokens": np.asarray([5, 6], dtype=np.int32),
+                    "generation_mask": np.asarray([1, 1], dtype=np.int32),
+                    "actor_log_probs": np.asarray([-0.2, -0.3], dtype=np.float32),
+                    "reward": 1.0,
+                    "value": 0.5,
+                    "step_mask": True,
+                },
+                {
+                    "prompt_tokens": np.asarray([9, 8, 7], dtype=np.int32),
+                    "generation_tokens": np.asarray([2], dtype=np.int32),
+                    "generation_mask": np.asarray([1], dtype=np.int32),
+                    "actor_log_probs": np.asarray([-0.4], dtype=np.float32),
+                    "reward": 2.0,
+                    "value": 0.25,
+                    "step_mask": True,
+                },
+            ],
+        }
+    )
+
+    [example] = learner._process_results([trajectory])
+
+    assert example.prompt_ids.shape == (2, 4)
+    assert example.completion_ids.shape == (2, 3)
+    assert example.completion_mask.tolist() == [[True, True, False], [True, False, False]]
+    np.testing.assert_allclose(
+        np.asarray(example.old_per_token_logps),
+        np.asarray([[-0.2, -0.3, 0.0], [-0.4, 0.0, 0.0]], dtype=np.float32),
+    )
+    np.testing.assert_allclose(
+        np.asarray(example.advantages),
+        np.asarray([[2.5, 2.5, 0.0], [1.75, 0.0, 0.0]], dtype=np.float32),
+    )
+    np.testing.assert_allclose(
+        np.asarray(example.returns),
+        np.asarray([[3.0, 3.0, 0.0], [2.0, 0.0, 0.0]], dtype=np.float32),
+    )
+    np.testing.assert_allclose(
+        np.asarray(example.old_values),
+        np.asarray([[0.5, 0.5, 0.0], [0.25, 0.0, 0.0]], dtype=np.float32),
+    )
+    assert example.policy_version.tolist() == [9, 9]
+    assert learner.rl_cluster.metrics[-1][0]["agentic_ppo/mdp_return_mean"][0] == pytest.approx(
+        2.5
+    )
+
+
+def test_universal_mdp_steps_from_trajectory_pads_variable_lengths() -> None:
+    steps = universal_mdp_steps_from_trajectory(
+        {
+            "mdp_steps": [
+                {
+                    "prompt_tokens": [1, 2, 3],
+                    "assistant_tokens": [4],
+                    "assistant_masks": [1],
+                    "logprobs": [-0.1],
+                    "reward": 1.0,
+                    "value": 0.5,
+                }
+            ]
+        },
+        max_prompt_length=5,
+        max_response_length=3,
+        pad_id=0,
+    )
+
+    [step] = steps
+    assert step.prompt_tokens.tolist() == [[1, 2, 3, 0, 0]]
+    assert step.prompt_mask.tolist() == [[True, True, True, False, False]]
+    assert step.generation_tokens.tolist() == [[4, 0, 0]]
+    assert step.generation_mask.tolist() == [[True, False, False]]
+    np.testing.assert_allclose(
+        np.asarray(step.actor_log_probs),
+        np.asarray([[-0.1, 0.0, 0.0]], dtype=np.float32),
+    )
+    assert step.reward.tolist() == [1.0]
+    assert step.value.tolist() == [0.5]
