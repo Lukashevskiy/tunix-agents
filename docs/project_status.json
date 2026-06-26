@@ -173,7 +173,7 @@
     {
       "name": "Agentic GRPO golden pipeline",
       "status": "current",
-      "description": "GRPO имеет два local gates без model allocation: --dry-run валидирует profile/topology/preflight/evidence, --scripted-smoke запускает CrafTextAgenticEnvironment + ToolAgent + Tunix TrajectoryCollectEngine с несколькими scripted generations и group-normalized advantages. Notebook 15 показывает ручную сборку этого пути по деталям — env, prompt/tool boundary, Qwen assets, RLCluster и GRPOLearner — с отдельной readiness validation перед heavy ячейками; one-update остаётся accelerator/local-snapshot gated."
+      "description": "GRPO имеет local gates без model allocation: profile/preflight/evidence и deterministic scripted group check через CrafTextAgenticEnvironment + ToolAgent semantics. Notebook 15 вручную собирает production-shaped путь по деталям — env, prompt/tool boundary, evidence/checkpoint paths, Qwen assets, RLCluster и GRPOLearner — с отдельной readiness validation перед heavy ячейками; one-update остаётся accelerator/local-snapshot gated."
     },
     {
       "name": "Agentic PPO critic bridge",

@@ -238,3 +238,6 @@ model, а `build_ppo_cluster()` вызывает публичный `RLCluster(a
   separate actor/critic scoring, `HybridPpoStep`, PPO evaluation, replay evidence и profiling.
 - `examples/notebooks/14_generation_benchmark.ipynb` — generation pipeline benchmark по
   batch/horizon/repeats.
+- `examples/notebooks/15_agentic_grpo_full_trainer.ipynb` — ручная сборка Agentic GRPO:
+  profile/runtime/preflight, evidence/checkpoint paths, Qwen assets, RLCluster, ToolAgent и
+  `GRPOLearner`.
