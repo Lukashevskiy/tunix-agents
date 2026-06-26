@@ -38,3 +38,15 @@ def test_example_notebooks_are_valid_nbformat_with_runnable_imports() -> None:
         for index, cell in enumerate(notebook["cells"]):
             if cell["cell_type"] == "code":
                 compile("".join(cell["source"]), f"{filename}:cell-{index}", "exec")
+
+
+def test_batched_qwen_ppo_notebook_handles_fallback_only_evidence() -> None:
+    """Notebook 11 must not crash when Qwen rollout produces fallback-only rows."""
+    notebook = json.loads(
+        (NOTEBOOKS / "11_end_to_end_batched_qwen_ppo.ipynb").read_text(encoding="utf-8")
+    )
+    source = "".join("".join(cell["source"]) for cell in notebook["cells"])
+
+    assert "actor_loss_tokens = int(jnp.sum(hybrid_step.actor_loss_token_mask))" in source
+    assert "if actor_loss_tokens:" in source
+    assert "fallback-only evidence; actor loss skipped" in source
