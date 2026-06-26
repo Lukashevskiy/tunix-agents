@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import jax.numpy as jnp
 import numpy as np
 import pytest
+from tunix.rl import rl_cluster as rl_cluster_lib  # type: ignore[import-untyped]
 
 from tunix_craftext.agentic_ppo import (
     AgenticPPOConfig,
@@ -14,6 +15,7 @@ from tunix_craftext.agentic_ppo import (
     configure_agentic_ppo_trainers,
     universal_mdp_steps_from_trajectory,
 )
+from tunix_craftext.experience_builders import PpoExperienceBuilder
 
 
 class _Trainer:
@@ -57,10 +59,11 @@ class _FakeCluster:
         )
         self.metrics: list[tuple[dict, object, object]] = []
         self.actor_logprob_calls = 0
+        self.ref_logprob_calls = 0
 
     def get_ref_per_token_logps(self, **kwargs):
-        del kwargs
-        return jnp.zeros((1, 3), dtype=jnp.float32)
+        self.ref_logprob_calls += 1
+        return jnp.zeros_like(kwargs["completion_tokens"], dtype=jnp.float32)
 
     def get_actor_per_token_logps(self, **kwargs):
         del kwargs
@@ -90,6 +93,23 @@ def test_agentic_ppo_config_defaults_to_single_generation_critic_path() -> None:
 def test_agentic_ppo_config_rejects_grpo_style_groups() -> None:
     with pytest.raises(ValueError, match="exactly one generation"):
         AgenticPPOConfig(max_response_length=3, num_generations=2)
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    [
+        ({"num_iterations": 0}, "num_iterations"),
+        ({"epsilon": 0.0}, "epsilon"),
+        ({"clip_range_value": 0.0}, "clip_range_value"),
+        ({"epsilon_c": 1.0}, "epsilon_c"),
+        ({"kl_method": "wat"}, "kl_method"),
+    ],
+)
+def test_agentic_ppo_config_rejects_invalid_optimizer_contracts(
+    kwargs: dict[str, object], message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        AgenticPPOConfig(max_response_length=3, **kwargs)
 
 
 def test_configure_agentic_ppo_trainers_requires_critic_and_wires_losses() -> None:
@@ -150,6 +170,35 @@ def test_agentic_ppo_process_results_adds_values_and_returns(monkeypatch) -> Non
     assert learner.rl_cluster.metrics
 
 
+def test_agentic_ppo_process_results_supports_rollout_config_by_mode(monkeypatch) -> None:
+    learner = object.__new__(AgenticPPOLearner)
+    learner.rl_cluster = _FakeCluster()
+    learner.rl_cluster.cluster_config.rollout_config = {
+        rl_cluster_lib.Mode.TRAIN: SimpleNamespace(
+            max_prompt_length=5,
+            max_tokens_to_generate=3,
+        )
+    }
+    learner.algo_config = AgenticPPOConfig(max_response_length=3, beta=0.0)
+    monkeypatch.setattr(learner, "_compute_rewards", lambda **kwargs: np.asarray([0.0]))
+
+    trajectory = SimpleNamespace(
+        traj={
+            "conversation_text": [{"role": "assistant", "content": "move"}],
+            "prompt_tokens": np.asarray([9, 8, 7], dtype=np.int32),
+            "conversation_tokens": np.asarray([5], dtype=np.int32),
+            "conversation_masks": np.asarray([1], dtype=np.int32),
+            "policy_version": 4,
+            "trajectory_reward": 0.0,
+            "original_input": {"prompts": ["task"]},
+        }
+    )
+
+    [example] = learner._process_results([trajectory], mode=rl_cluster_lib.Mode.TRAIN)
+
+    assert example.prompt_ids.shape == (1, 5)
+
+
 def test_agentic_ppo_process_results_rejects_grouped_grpo_trajectories() -> None:
     learner = object.__new__(AgenticPPOLearner)
     learner.rl_cluster = _FakeCluster()
@@ -207,6 +256,35 @@ def test_agentic_ppo_can_recompute_old_logprobs_from_actor(monkeypatch) -> None:
 
     assert learner.rl_cluster.actor_logprob_calls == 1
     assert example.old_per_token_logps.tolist() == [[-0.5, -0.5, -0.5]]
+
+
+def test_agentic_ppo_process_results_applies_reference_kl_when_beta_enabled(
+    monkeypatch,
+) -> None:
+    learner = object.__new__(AgenticPPOLearner)
+    learner.rl_cluster = _FakeCluster()
+    learner.algo_config = AgenticPPOConfig(max_response_length=3, beta=0.2, kl_method="kl")
+    monkeypatch.setattr(learner, "_compute_rewards", lambda **kwargs: np.asarray([1.0]))
+
+    trajectory = SimpleNamespace(
+        traj={
+            "conversation_text": [{"role": "assistant", "content": "move"}],
+            "prompt_tokens": np.asarray([9, 8], dtype=np.int32),
+            "conversation_tokens": np.asarray([5, 6, 2], dtype=np.int32),
+            "conversation_masks": np.asarray([1, 1, 1], dtype=np.int32),
+            "old_logprobs": np.asarray([-0.2, -0.3, -0.4], dtype=np.float32),
+            "policy_version": 4,
+            "trajectory_reward": 1.0,
+            "original_input": {"prompts": ["task"]},
+        }
+    )
+
+    [example] = learner._process_results([trajectory])
+
+    assert learner.rl_cluster.ref_logprob_calls == 1
+    assert example.ref_per_token_logps is not None
+    assert example.ref_per_token_logps.shape == example.completion_ids.shape
+    assert bool(jnp.all(jnp.isfinite(example.returns)))
 
 
 def test_agentic_ppo_process_results_uses_mdp_steps_and_experience_builder(
@@ -280,6 +358,42 @@ def test_agentic_ppo_process_results_uses_mdp_steps_and_experience_builder(
     )
 
 
+def test_agentic_ppo_process_results_mdp_steps_can_fetch_reference_logps(
+    monkeypatch,
+) -> None:
+    learner = object.__new__(AgenticPPOLearner)
+    learner.rl_cluster = _FakeCluster()
+    learner.algo_config = AgenticPPOConfig(max_response_length=2, beta=0.1)
+    monkeypatch.setattr(
+        learner,
+        "_compute_rewards",
+        lambda **kwargs: pytest.fail("MDP step rewards must bypass EOS reward fallback"),
+    )
+
+    trajectory = SimpleNamespace(
+        traj={
+            "policy_version": 3,
+            "mdp_steps": [
+                {
+                    "prompt_tokens": [9],
+                    "generation_tokens": [5, 6],
+                    "generation_mask": [1, 1],
+                    "actor_log_probs": [-0.2, -0.3],
+                    "reward": 1.0,
+                    "value": 0.0,
+                    "step_mask": True,
+                }
+            ],
+        }
+    )
+
+    [example] = learner._process_results([trajectory])
+
+    assert learner.rl_cluster.ref_logprob_calls == 1
+    assert example.ref_per_token_logps is not None
+    assert example.ref_per_token_logps.shape == example.completion_ids.shape
+
+
 def test_universal_mdp_steps_from_trajectory_pads_variable_lengths() -> None:
     steps = universal_mdp_steps_from_trajectory(
         {
@@ -310,3 +424,104 @@ def test_universal_mdp_steps_from_trajectory_pads_variable_lengths() -> None:
     )
     assert step.reward.tolist() == [1.0]
     assert step.value.tolist() == [0.5]
+
+
+def test_universal_mdp_steps_from_trajectory_supports_batched_rows_and_action_mask() -> None:
+    steps = universal_mdp_steps_from_trajectory(
+        {
+            "mdp_steps": [
+                {
+                    "prompt_token_ids": [[1, 2], [3, 0]],
+                    "completion_tokens": [[4, 5], [6, 0]],
+                    "completion_mask": [[1, 1], [1, 0]],
+                    "old_logprobs": [[-0.1, -0.2], [-0.3, 0.0]],
+                    "policy_token_mask": [[1, 0], [1, 0]],
+                    "action_mask": [[1, 0, 1], [0, 1, 1]],
+                    "reward": [1.0, -1.0],
+                    "value": [0.5, -0.25],
+                    "step_mask": [True, False],
+                }
+            ]
+        },
+        max_prompt_length=3,
+        max_response_length=2,
+        pad_id=0,
+    )
+
+    [step] = steps
+    assert step.prompt_tokens.tolist() == [[1, 2, 0], [3, 0, 0]]
+    assert step.generation_mask.tolist() == [[True, True], [True, False]]
+    assert step.policy_token_mask is not None
+    assert step.actor_loss_token_mask.tolist() == [[True, False], [True, False]]
+    built = PpoExperienceBuilder().build(steps)
+    assert built.completion_mask.tolist() == [[True, False], [False, False]]
+    assert step.action_mask is not None
+    assert step.action_mask.tolist() == [[True, False, True], [False, True, True]]
+    assert step.reward.tolist() == pytest.approx([1.0, -1.0])
+    assert step.value.tolist() == pytest.approx([0.5, -0.25])
+    assert step.step_mask.tolist() == [True, False]
+
+
+@pytest.mark.parametrize(
+    ("raw_step", "message"),
+    [
+        ({}, "missing required field"),
+        (
+            {
+                "prompt_tokens": [[[1]]],
+                "generation_tokens": [2],
+                "reward": 1.0,
+                "value": 0.0,
+            },
+            "token arrays",
+        ),
+        (
+            {
+                "prompt_tokens": [[1], [2]],
+                "generation_tokens": [[3]],
+                "reward": 1.0,
+                "value": 0.0,
+            },
+            "batch size",
+        ),
+        (
+            {
+                "prompt_tokens": [1],
+                "generation_tokens": [2],
+                "actor_log_probs": [[-0.1], [-0.2]],
+                "reward": 1.0,
+                "value": 0.0,
+            },
+            "logprob batch size",
+        ),
+        (
+            {
+                "prompt_tokens": [1],
+                "generation_tokens": [2],
+                "reward": [1.0, 2.0],
+                "value": 0.0,
+            },
+            "scalar or shape",
+        ),
+    ],
+)
+def test_universal_mdp_steps_from_trajectory_rejects_invalid_evidence(
+    raw_step: dict[str, object], message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        universal_mdp_steps_from_trajectory(
+            {"mdp_steps": [raw_step]},
+            max_prompt_length=2,
+            max_response_length=2,
+            pad_id=0,
+        )
+
+
+def test_universal_mdp_steps_from_trajectory_rejects_empty_steps() -> None:
+    with pytest.raises(ValueError, match="at least one step"):
+        universal_mdp_steps_from_trajectory(
+            {"mdp_steps": []},
+            max_prompt_length=2,
+            max_response_length=2,
+            pad_id=0,
+        )

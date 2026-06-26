@@ -36,6 +36,7 @@ nav:
   - Интеграция с Tunix: tunix.md
   - Аудит training stack: training-stack-audit.md
   - Внешний PPO/hybrid аудит: report_audit.md
+  - Аудит unit-тестов: unit-test-audit.md
   - CLI слой: cli.md
   - Промпты: prompts.md
   - Конфигурация: configuration.md

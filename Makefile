@@ -1,13 +1,16 @@
 PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 PERF_ARTIFACT ?= artifacts/benchmarks/rollout-latest.json
 
-.PHONY: audit test integration perf perf-env perf-text docs api-docs serve provenance sync-tasks verify verify-golden
+.PHONY: audit test coverage integration perf perf-env perf-text docs api-docs serve provenance sync-tasks verify verify-golden
 
 audit:
 	$(PYTHON) .codex/skills/repository-audit/scripts/audit_repo.py
 
 test:
 	PYTHONPATH=src $(PYTHON) -m pytest tests/unit
+
+coverage:
+	PYTHONPATH=src $(PYTHON) -m pytest tests/unit --cov=src/tunix_craftext --cov-report=term-missing:skip-covered --cov-report=xml --cov-fail-under=80
 
 integration:
 	PYTHONPATH=src $(PYTHON) -m pytest -m integration
