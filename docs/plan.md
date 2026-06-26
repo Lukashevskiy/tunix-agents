@@ -1,4 +1,4 @@
-# Golden Pipeline: Tunix Agentic GRPO + CrafText
+# Golden Pipeline: Tunix Agentic PPO + CrafText
 
 ## Решение
 
@@ -7,17 +7,18 @@ product-critical путь использует публичный Tunix 0.1.7 Ag
 
 ```text
 task/seed -> CrafText Agentic environment -> ToolAgent -> RLCluster rollout
--> multi-turn trajectories -> Agentic GRPO -> checkpoints/metrics -> evaluation
+-> universal MDP steps -> PPO Experience Builder -> Agentic PPO -> checkpoints/metrics -> evaluation
 ```
 
-Алгоритм первого полного pipeline - **Agentic GRPO**. В закреплённом Tunix это
-готовый agentic learner с `TrajectoryCollectEngine` и `RolloutOrchestrator`.
-Он не требует отдельного trainable critic, поэтому не следует сначала строить
-локальный PPO/value-head путь, который не связан с model policy.
+Алгоритм полного production pipeline — **Agentic PPO** с trainable actor,
+rollout actor/reference и trainable critic. Agentic GRPO остаётся полезным
+critic-free smoke path для локальной проверки ToolAgent/CrafText транспорта,
+но больше не является целевым production learner.
 
 Локальные `algorithms.py`, `learner.py`, Flashbax и token-PPO остаются
-исследовательскими компонентами. Они не являются production training loop и не
-должны получать новые feature-изменения, пока golden pipeline не завершён.
+исследовательскими компонентами. Production PPO data path строится через
+`UniversalMDPStep -> PpoExperienceBuilder -> AgenticPPOLearner`, а не через
+локальный text-only learner.
 
 ## Definition Of Done
 
@@ -27,7 +28,7 @@ task/seed -> CrafText Agentic environment -> ToolAgent -> RLCluster rollout
 1. создать trainable actor, rollout actor и frozen reference через `RLCluster`;
 2. собрать минимум две multi-turn CrafText траектории на один task через
    `ToolAgent` и `craftext_step(action=...)`;
-3. выполнить хотя бы один Agentic GRPO update и доказать изменение actor weights;
+3. выполнить хотя бы один Agentic PPO update и доказать изменение actor/critic weights;
 4. записать checkpoint, trajectory JSONL, metrics JSONL и evaluation artifact;
 5. восстановить checkpoint и воспроизвести следующий update на fixed fixture;
 6. пройти CPU/fake-model contract tests и hardware-gated real-model integration test.
@@ -37,21 +38,22 @@ task/seed -> CrafText Agentic environment -> ToolAgent -> RLCluster rollout
 
 ## Порядок исполнения после архитектурного аудита
 
-Следующие этапы исполняются строго по порядку. Они не создают второй PPO-first
-roadmap: первый production path — Agentic GRPO с ролями `actor`, `rollout` и
-`reference`; trainable critic теперь оформлен отдельным Agentic PPO extension
-lane поверх upstream `AgenticRLLearner`, но его hardware one-update gate не
-смешивается с GRPO acceptance gates.
+Следующие этапы исполняются строго по порядку. Production path — Agentic PPO:
+host loop собирает динамические prompt histories и token provenance, JAX/JIT
+граница используется только для batched environment physics, Experience Builder
+считает MDP-time GAE и broadcast advantages на generated tokens, Tunix learner
+делает actor/critic update. GRPO остаётся smoke lane для проверки transport без
+critic allocation.
 
 | Очередь | Вертикальный срез | Acceptance gate | Не делать до gate |
 | --- | --- | --- | --- |
 | 0 | Hygiene и task semantics | `ruff`, `mypy`, unit suite; real CrafText test доказывает, что prompt содержит и user goal, и scenario instruction, world preset и Caged constraint | Не менять learner/mesh ради обхода неясного task contract |
 | 1 | Deterministic golden fixture | 2 task groups × 2 generations × 8 turns, fixed seeds; expected tool calls/rewards/done/action masks экспортированы как versioned fixture | Не заявлять multi-turn environment production-ready |
-| 2 | Reproducible GRPO profile | `configs/grpo/qwen_agentic_local.yaml` содержит run/model/topology/workload/evidence paths; runner пишет profile/vendor SHA256, model revision/licence, config hash и package versions рядом с run | Не загружать weights по незафиксированному profile |
+| 2 | Reproducible PPO profile | versioned profile содержит run/model/topology/workload/evidence paths; runner пишет profile/vendor SHA256, model revision/licence, config hash и package versions рядом с run | Не загружать weights по незафиксированному profile |
 | 2.5 | Full CLI orchestration layer | `tunix-craftext profile/verify/train/...` спроектирован как thin orchestration layer; первый implementation slice ограничен profile + verify без heavy imports | Не переносить business logic в CLI и не ломать scripts до wrapper migration |
 | 2.7 | Hybrid PPO rollout contract | `hybrid_rollout.py` хранит actor token logprobs, critic values, generation-token masks и step masks; `rollout.py` явно остаётся reference/fixed-shape слоем | Не использовать `lax.scan` collectors как production LLM-RL rollout |
 | 3 | Real RLCluster rollout | Accelerator-gated fixture создаёт actor/rollout/reference, проверяет role mesh и actor–rollout token/logprob parity | Не мерить distributed throughput и не строить custom scheduler |
-| 4 | One Agentic GRPO update | Один `GRPOLearner` update меняет actor weights, loss конечен, generation groups валидны, metrics включают return/success/invalid-action/KL | Не помечать model factory или runner готовыми |
+| 4 | One Agentic PPO update | Один `AgenticPPOLearner` update меняет actor и critic weights, loss конечен, token masks валидны, metrics включают return/success/invalid-action/KL/value loss | Не помечать model factory или runner готовыми |
 | 5 | Evidence, resume, evaluation | Checkpoint включает learner/cluster policy version; resumed next update совпадает с continuous; fixed evaluation сравнивает actor/reference | Не выпускать “trained checkpoint” или notebook как substitute |
 | 6 | CI и performance | PR CPU gate: Ruff + mypy + unit/fake agentic; accelerator smoke и nightly benchmark имеют отдельные runners и threshold evidence | Не выводить scale-up из macOS/CPU результатов |
 
@@ -109,7 +111,7 @@ catalogue и deterministic initial environment state.
 
 - [x] Перенести внешний PPO/hybrid rollout аудит в `docs/report_audit.md` и root
   `report_audit.md` pointer; явно отметить, какие рекомендации приняты, а какие
-  скорректированы под GRPO-first roadmap.
+  скорректированы под PPO-first roadmap.
 - [x] Зафиксировать, что `collect_rollout_scan*` — reference/fixed-shape collector для
   CPU/JAX parity, а не production LLM-RL collector с динамической текстовой историей.
 - [x] Добавить `tunix_craftext.hybrid_rollout`: `HybridPpoStep`,
@@ -119,11 +121,17 @@ catalogue и deterministic initial environment state.
   и `last_valid_token_values()` мостит token critic values `[B, L]` в step values `[B]`.
 - [x] Покрыть hybrid contract unit tests: shape validation, mismatched token logprobs,
   time-major step masks, generated-token padding и post-terminal rows.
+- [x] Добавить `tunix_craftext.experience_builders`: `UniversalMDPStep`,
+  `TokenPPOExperience`, `compute_mdp_gae()` по MDP time axis и
+  `PpoExperienceBuilder` с advantage broadcasting на valid generated tokens.
+- [x] Покрыть Experience Builder unit tests: MDP GAE не течёт через post-terminal rows,
+  scalar advantages/returns broadcast-ятся только на valid/policy tokens, prompt/token masks
+  flatten-ятся в `[T*B, L]` learner layout.
 - [x] Переписать notebooks 10/11/12 на новый setup: replay/batched Qwen/Gemma actor+critic
   проходят через `HybridPpoStep`, без deferred TODO-блоков и старого local learner как финала.
-- [ ] Подключить `HybridPpoStep`/trajectory adapter к реальному Tunix Agentic PPO evidence
-  path: `TrajectoryCollectEngine`/`AgenticPPOLearner` должны получать old logprobs,
-  values, masks и policy version без неявного replay guessing.
+- [ ] Подключить `UniversalMDPStep`/`PpoExperienceBuilder` к реальному Tunix Agentic PPO
+  evidence path: `TrajectoryCollectEngine`/`AgenticPPOLearner` должны получать old logprobs,
+  values, rewards, masks и policy version без неявного replay guessing.
 - [ ] Реализовать model-side Tunix action masking/logits processor; текущий fallback в
   `batched_rollout.py` остаётся safety/evidence mechanism, а не финальный sampling policy.
 

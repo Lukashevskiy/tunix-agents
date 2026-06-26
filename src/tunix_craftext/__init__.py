@@ -18,6 +18,14 @@ from .checkpoints import CheckpointMetadata, restore_checkpoint, save_checkpoint
 from .config import ConfigError, MvpRunConfig, load_mvp_config
 from .contracts import RolloutBatch, Transition
 from .episode import collect_text_episode
+from .experience_builders import (
+    ExperienceBuilder,
+    PpoExperienceBuilder,
+    TokenPPOExperience,
+    UniversalMDPStep,
+    broadcast_step_values_to_tokens,
+    compute_mdp_gae,
+)
 from .hybrid_rollout import (
     HybridPpoStep,
     HybridPpoTrajectory,
@@ -91,9 +99,15 @@ __all__ = [
     "RolloutBatch",
     "TensorRule",
     "Transition",
+    "ExperienceBuilder",
     "HybridPpoStep",
     "HybridPpoTrajectory",
+    "PpoExperienceBuilder",
+    "TokenPPOExperience",
+    "UniversalMDPStep",
+    "broadcast_step_values_to_tokens",
     "compute_masked_step_token_ppo_loss",
+    "compute_mdp_gae",
     "hybrid_step_from_text_trajectory",
     "hybrid_trajectory_from_steps",
     "last_valid_token_values",
