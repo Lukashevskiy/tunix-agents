@@ -11,6 +11,7 @@ from tunix_craftext.hybrid_rollout import (
     hybrid_step_from_text_trajectory,
     hybrid_trajectory_from_steps,
     last_valid_token_values,
+    shaped_step_rewards_from_text_trajectory,
 )
 from tunix_craftext.replay import ReplayArtifact, ReplayStep
 from tunix_craftext.text_trajectory import text_trajectory_from_replay
@@ -187,6 +188,75 @@ def test_text_trajectory_promotes_to_hybrid_step_with_policy_and_step_masks() ->
     assert step.actor_loss_token_mask.tolist() == [[True, True], [False, False], [True, False]]
     assert step.step_mask.tolist() == [True, True, False]
     assert step.values.tolist() == pytest.approx([0.1, 0.2, 0.3])
+    assert batch.invalid_action.tolist() == [False, True, False]
+
+
+def test_invalid_actions_can_receive_reward_shaping_penalty() -> None:
+    artifact = ReplayArtifact(
+        "config.yaml",
+        "abc",
+        "tunix",
+        (
+            ReplayStep(
+                0,
+                "p0",
+                "c0",
+                1,
+                "DO",
+                0.5,
+                False,
+                token_ids=(5,),
+                token_logprobs=(-0.1,),
+                prompt_token_ids=(101,),
+            ),
+            ReplayStep(
+                1,
+                "p1",
+                "bad",
+                0,
+                "NOOP",
+                0.5,
+                False,
+                fallback_used=True,
+                masked_action=1,
+                token_ids=(6,),
+                token_logprobs=(-0.2,),
+                prompt_token_ids=(102,),
+            ),
+        ),
+    )
+    batch = text_trajectory_from_replay(artifact)
+
+    shaped = shaped_step_rewards_from_text_trajectory(batch, invalid_action_penalty=-0.75)
+
+    assert batch.invalid_action.tolist() == [False, True]
+    assert shaped.tolist() == pytest.approx([0.5, -0.25])
+
+
+def test_invalid_action_penalty_must_not_be_positive() -> None:
+    artifact = ReplayArtifact(
+        "config.yaml",
+        "abc",
+        "tunix",
+        (
+            ReplayStep(
+                0,
+                "p0",
+                "c0",
+                1,
+                "DO",
+                0.5,
+                False,
+                token_ids=(5,),
+                token_logprobs=(-0.1,),
+                prompt_token_ids=(101,),
+            ),
+        ),
+    )
+    batch = text_trajectory_from_replay(artifact)
+
+    with pytest.raises(ValueError, match="non-positive"):
+        shaped_step_rewards_from_text_trajectory(batch, invalid_action_penalty=0.1)
 
 
 def test_last_valid_token_values_bridge_token_critic_to_step_values() -> None:

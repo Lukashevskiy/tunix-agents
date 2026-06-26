@@ -55,6 +55,7 @@ def test_replay_becomes_padded_token_batch_with_terminal_reward() -> None:
     np.testing.assert_allclose(batch.rewards, [[0.0, 1.5], [-0.5, 0.0]])
     np.testing.assert_array_equal(batch.action_ids, [2, 0])
     np.testing.assert_array_equal(batch.terminated, [False, True])
+    np.testing.assert_array_equal(batch.invalid_action, [False, True])
 
 
 def test_replay_without_aligned_token_provenance_is_rejected() -> None:

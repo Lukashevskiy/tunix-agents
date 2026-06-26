@@ -43,8 +43,10 @@ class TextTrajectoryLike(Protocol):
     old_logprobs: TokenBatchFloat
     token_mask: TokenBatchBool
     policy_mask: TokenBatchBool
+    rewards: TokenBatchFloat
     action_ids: BatchInt
     terminated: BatchBool
+    invalid_action: BatchBool
 
     def validate(self) -> None:
         """Validate the staging batch before promotion."""
@@ -232,6 +234,30 @@ def last_valid_token_values(values: TokenBatchFloat, token_mask: TokenBatchBool)
         raise ValueError("each row must contain at least one valid token")
     last_indices = jnp.sum(jnp.asarray(token_mask, dtype=jnp.int32), axis=-1) - 1
     return values[jnp.arange(value_shape[0]), last_indices]
+
+
+def shaped_step_rewards_from_text_trajectory(
+    batch: TextTrajectoryLike,
+    *,
+    invalid_action_penalty: float = 0.0,
+) -> BatchFloat:
+    """Return one step reward per row with optional invalid-action penalty.
+
+    Environment reward remains the source of truth.  The penalty is an explicit
+    shaping term applied when replay evidence says the model produced an invalid
+    format, unknown action, masked action, or fallback-controlled decision.
+
+    :param batch: Replay-derived text trajectory batch.
+    :param invalid_action_penalty: Non-positive reward added to invalid rows.
+    :returns: Step rewards shaped ``[B]``.
+    :raises ValueError: If ``invalid_action_penalty`` is positive.
+    """
+    if invalid_action_penalty > 0:
+        raise ValueError("invalid_action_penalty must be non-positive")
+    rewards = jnp.sum(jnp.asarray(batch.rewards, dtype=jnp.float32), axis=-1)
+    if invalid_action_penalty == 0:
+        return rewards
+    return rewards + jnp.asarray(batch.invalid_action, dtype=jnp.float32) * invalid_action_penalty
 
 
 def compute_masked_step_token_ppo_loss(

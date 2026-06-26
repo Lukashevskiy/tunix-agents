@@ -110,6 +110,9 @@ trajectory = hybrid_trajectory_from_steps([step])
 через batched JAX step. `compute_masked_step_token_ppo_loss()` доказывает базовую семантику:
 padding generated tokens и post-terminal rows не вносят вклад в actor PPO loss. Старые
 `collect_rollout_scan*` не используются как production LLM-RL collector.
+`shaped_step_rewards_from_text_trajectory()` добавляет явный не-положительный штраф за invalid
+format / unknown action / masked action / fallback evidence: поведение получает отрицательный
+reward signal, но fallback-token rows всё равно не попадают в actor loss.
 
 ## Model profile → LLM actor backbone
 

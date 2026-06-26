@@ -42,6 +42,7 @@ class TextTrajectoryBatch:
     :ivar action_ids: CrafText discrete action selected per host decision, shape ``[B]``.
     :ivar terminated: Environment terminal state per host decision, shape ``[B]``.
     :ivar fallback_used: Whether an explicit fallback rather than model action stepped the env.
+    :ivar invalid_action: Whether decoding/action-mask validation failed before fallback.
     
     Example:
         >>> batch = TextTrajectoryBatch(...)
@@ -58,6 +59,7 @@ class TextTrajectoryBatch:
     action_ids: BatchInt
     terminated: BatchBool
     fallback_used: BatchBool
+    invalid_action: BatchBool
 
     def validate_static(self) -> None:
         """Validate static batch/token axes without reading array values.
@@ -84,7 +86,7 @@ class TextTrajectoryBatch:
             raise TextTrajectoryError("prompt_token_ids must have non-empty shape [B, P]")
         if tuple(self.prompt_token_mask.shape) != prompt_shape:
             raise TextTrajectoryError(f"prompt_token_mask must have shape {prompt_shape}")
-        for name in ("action_ids", "terminated", "fallback_used"):
+        for name in ("action_ids", "terminated", "fallback_used", "invalid_action"):
             if tuple(getattr(self, name).shape) != batch_shape:
                 raise TextTrajectoryError(f"{name} must have shape {batch_shape}")
 
@@ -154,6 +156,18 @@ def text_trajectory_from_replay(artifact: ReplayArtifact) -> TextTrajectoryBatch
         prompt_token_mask = prompt_token_mask.at[index, :prompt_length].set(True)
 
     fallback_used = jnp.asarray([step.fallback_used for step in artifact.steps], dtype=bool)
+    invalid_action = jnp.asarray(
+        [
+            bool(
+                step.invalid_format
+                or step.unknown_action
+                or step.masked_action
+                or step.fallback_used
+            )
+            for step in artifact.steps
+        ],
+        dtype=bool,
+    )
     batch = TextTrajectoryBatch(
         token_ids=token_ids,
         prompt_token_ids=prompt_token_ids,
@@ -165,6 +179,7 @@ def text_trajectory_from_replay(artifact: ReplayArtifact) -> TextTrajectoryBatch
         action_ids=jnp.asarray([step.action_id for step in artifact.steps], dtype=jnp.int32),
         terminated=jnp.asarray([step.terminated for step in artifact.steps], dtype=bool),
         fallback_used=fallback_used,
+        invalid_action=invalid_action,
     )
     batch.validate()
     return batch
@@ -183,6 +198,7 @@ jax.tree_util.register_dataclass(
         "action_ids",
         "terminated",
         "fallback_used",
+        "invalid_action",
     ],
     meta_fields=[],
 )

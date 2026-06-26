@@ -25,6 +25,7 @@ from .hybrid_rollout import (
     hybrid_step_from_text_trajectory,
     hybrid_trajectory_from_steps,
     last_valid_token_values,
+    shaped_step_rewards_from_text_trajectory,
 )
 from .interop import LoraAdapter, ModelTemplate, TensorRule, convert_state_dict, merge_lora_adapters
 from .llm import LlmBackend, LlmRequest, LlmResponse, ScriptedLlmBackend
@@ -89,6 +90,7 @@ __all__ = [
     "hybrid_step_from_text_trajectory",
     "hybrid_trajectory_from_steps",
     "last_valid_token_values",
+    "shaped_step_rewards_from_text_trajectory",
     "collect_text_episode",
     "collect_rollout",
     "collect_rollout_scan",
