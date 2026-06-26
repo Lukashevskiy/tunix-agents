@@ -18,6 +18,12 @@ from .checkpoints import CheckpointMetadata, restore_checkpoint, save_checkpoint
 from .config import ConfigError, MvpRunConfig, load_mvp_config
 from .contracts import RolloutBatch, Transition
 from .episode import collect_text_episode
+from .hybrid_rollout import (
+    HybridPpoStep,
+    HybridPpoTrajectory,
+    compute_masked_step_token_ppo_loss,
+    hybrid_trajectory_from_steps,
+)
 from .interop import LoraAdapter, ModelTemplate, TensorRule, convert_state_dict, merge_lora_adapters
 from .llm import LlmBackend, LlmRequest, LlmResponse, ScriptedLlmBackend
 from .observability import (
@@ -75,6 +81,10 @@ __all__ = [
     "RolloutBatch",
     "TensorRule",
     "Transition",
+    "HybridPpoStep",
+    "HybridPpoTrajectory",
+    "compute_masked_step_token_ppo_loss",
+    "hybrid_trajectory_from_steps",
     "collect_text_episode",
     "collect_rollout",
     "collect_rollout_scan",

@@ -12,7 +12,7 @@
 | --- | --- | --- |
 | Environment boundary | `tunix_craftext.adapters`, `tunix_craftext.runtime`, `tunix_craftext.config` | Vendor CrafText/CagedCrafText превращаются в typed `reset/step`, `action_mask`, `terminated/truncated` и reproducible config runtime. |
 | Prompt/model boundary | `tunix_craftext.prompts`, `tunix_craftext.text_policy`, `tunix_craftext.llm`, `tunix_craftext.llm_actor`, `tunix_craftext.tunix_actor`, `tunix_craftext.tunix_adapter` | `EnvState` становится `RenderedPrompt`, LLM actor генерирует ordered completions и пересчитывает token scores/values, strict decoder не принимает неизвестные labels. |
-| Rollout transport | `tunix_craftext.rollout`, `tunix_craftext.batched_rollout`, `tunix_craftext.contracts` | Численные trajectories остаются `[T, B, ...]`; text rollout enforce-ит `action_mask` перед `CrafTextAdapter.step` и экспортирует per-env replay. |
+| Rollout transport | `tunix_craftext.rollout`, `tunix_craftext.batched_rollout`, `tunix_craftext.hybrid_rollout`, `tunix_craftext.contracts` | `rollout.py` остаётся fixed-shape reference; `batched_rollout` делает host prompt/LLM/decode + `jax.vmap(step)`; `hybrid_rollout` фиксирует PPO-ready actor logprobs, critic values, token masks и step masks. |
 | Replay/training batch | `tunix_craftext.replay`, `tunix_craftext.text_trajectory`, `tunix_craftext.flashbax_replay` | Replay v3 хранит prompt/completion/action/reward/token evidence, `masked_action`, fallback и преобразуется в fixed-shape token batches. |
 | Research objectives/learner | `tunix_craftext.research.algorithms`, `tunix_craftext.research.algorithm_registry`, `tunix_craftext.research.learner`, `tunix_craftext.checkpoints` | PPO/returns/loss functions чистые и JAX-friendly, но это research/smoke слой; production GRPO/PPO идёт через Tunix Agentic `RLCluster`. |
 | Observability / profiling evidence | `tunix_craftext.observability`, `tunix_craftext.comet_adapter`, `tunix_craftext.profiling` | Append-only train/val metrics JSONL, validation trajectory references, generic artifact sink contract, mapped team logger adapter, optional Comet ML mirror, phase-level wall-time и NVTX ranges. |
@@ -81,6 +81,35 @@ replays = replays_from_batched_rollout(
 через backend, декодирует action labels, сверяет decoded action с текущим `action_mask` и только
 после этого вызывает `jax.vmap(CrafTextAdapter.step)`. Если model action masked, replay сохранит
 `masked_action=1` и `fallback_used=True` при включённом fallback.
+
+## Hybrid rollout → PPO-ready actor/critic evidence
+
+```python
+from tunix_craftext.hybrid_rollout import (
+    HybridPpoStep,
+    compute_masked_step_token_ppo_loss,
+    hybrid_trajectory_from_steps,
+)
+
+step = HybridPpoStep(
+    action_ids=action_ids,                      # [B]
+    prompt_tokens=prompt_ids,                   # [B, P]
+    prompt_token_mask=prompt_mask,              # [B, P]
+    generation_tokens=completion_ids,           # [B, L]
+    generation_token_mask=completion_mask,      # [B, L]
+    actor_log_probs=rollout_token_logprobs,     # [B, L]
+    values=critic_values,                       # [B]
+    step_mask=alive_before_step,                # [B]
+    action_mask=legal_action_mask,              # [B, A]
+)
+trajectory = hybrid_trajectory_from_steps([step])
+```
+
+`HybridPpoStep` — новый explicit boundary для рекомендаций внешнего PPO-аудита: динамическая
+история промптов и generation остаются на host/Tunix стороне, а CrafText transition выполняется
+через batched JAX step. `compute_masked_step_token_ppo_loss()` доказывает базовую семантику:
+padding generated tokens и post-terminal rows не вносят вклад в actor PPO loss. Старые
+`collect_rollout_scan*` не используются как production LLM-RL collector.
 
 ## Model profile → LLM actor backbone
 

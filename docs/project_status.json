@@ -161,6 +161,11 @@
       "description": "RunArtifact расширен на checkpoint, weights, optimizer_state, training_trajectory, validation_trajectory и validation_visualization; helper factories единообразно размечают actor/critic/reference роли, policy_version, task_id и quantization для локального JSONL, Comet и командных loggers."
     },
     {
+      "name": "External PPO audit and hybrid rollout contract",
+      "status": "ready",
+      "description": "Внешний аудит перенесён в docs/report_audit.md; collect_rollout_scan* зафиксирован как reference/fixed-shape слой, а новый hybrid_rollout contract хранит PPO-ready action ids, prompt/generation tokens, actor token logprobs, critic values, generation-token masks и step masks с unit tests на post-terminal/padding masking."
+    },
+    {
       "name": "Tunix PPO RLCluster bridge",
       "status": "current",
       "description": "PPO ClusterConfig уже объявляет actor/rollout/critic/reference; load_ppo_qwen_assets/load_ppo_gemma_assets создают actor/reference/tokenizer и обязательный critic model, а build_ppo_cluster вызывает публичный Tunix RLCluster(actor, critic, reference, tokenizer). Следующий blocker — adapter из TextTrajectoryBatch/Flashbax staging в Tunix PPOLearner train-example schema."

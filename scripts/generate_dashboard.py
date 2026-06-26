@@ -32,6 +32,7 @@ API_MODULES = (
     "tunix_craftext.text_policy",
     "tunix_craftext.llm",
     "tunix_craftext.batched_rollout",
+    "tunix_craftext.hybrid_rollout",
     "tunix_craftext.replay",
     "tunix_craftext.text_trajectory",
     "tunix_craftext.algorithms",

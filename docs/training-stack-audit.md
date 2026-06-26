@@ -27,7 +27,7 @@ RLCluster обучения.
 | Tunix LLM backend | `tunix_adapter.py`, `tunix_actor.py`, `llm_actor.py`, `model_profile.py` | смешанный production/research bridge | Разбить большой adapter на loaders, sampler backend, scoring и model profile modules. |
 | Local PPO mechanics | `research/algorithms.py`, `research/algorithm_registry.py`, `research/learner.py`, `research/llm_ppo.py`, `checkpoints.py` | research/smoke | Уже вынесено из production namespace; старые top-level пути оставлены как thin compatibility shims. |
 | Replay staging | `flashbax_replay.py`, `replay.py`, `text_trajectory.py` | reusable staging | Оставить, но документационно ограничить on-policy/bounded staging. |
-| Local rollout examples | `rollout.py`, `batched_rollout.py`, `episode.py`, `random_policy.py` | reference/examples | Оставить для env/perf/contracts; не считать RLCluster trainer. |
+| Local rollout examples | `rollout.py`, `batched_rollout.py`, `hybrid_rollout.py`, `episode.py`, `random_policy.py` | reference/contract boundary | `rollout.py` оставить fixed-shape reference; `batched_rollout.py` оставить synchronous host+JAX precursor; `hybrid_rollout.py` использовать как PPO-ready evidence contract с actor logprobs, critic values, token masks и step masks. Не считать это самостоятельным trainer. |
 | Interop | `interop/*` | support module | Оставить отдельно; Qwix/LoRA integration делать здесь. |
 
 ## Как сейчас реализован GRPO
@@ -81,6 +81,24 @@ GRPO реализуется не через локальный PPO loss, а че
 local Flax/Optax/Orbax checkpoint restore.
 Это ценно для TDD, но не заменяет Tunix Agentic PPO, потому что не владеет реальным
 distributed actor/reference/critic lifecycle.
+
+### 3. Hybrid PPO rollout contract
+
+Внешний PPO-аудит отдельно указал, что `jax.lax.scan` с динамически растущей LLM-историей
+приведёт к статическому padding/KV-cache overhead и не должен быть production collector.
+Поэтому добавлен `hybrid_rollout.py`: он фиксирует данные, которые обязан вернуть реальный
+host-orchestrated rollout перед PPO update:
+
+- discrete `action_ids` для `jax.vmap(CrafTextAdapter.step)`;
+- `prompt_tokens` и `generation_tokens` как evidence/model inputs;
+- `actor_log_probs` токенов rollout policy;
+- `values` от critic role;
+- `generation_token_mask` для padding ответа;
+- `step_mask` для post-terminal padding батча;
+- optional `action_mask`, который позже должен перейти в Tunix logits processor.
+
+Этот слой согласует `batched_rollout.py`/notebooks с будущим `AgenticPPOLearner` input contract,
+но не возвращает старый local PPO learner в production namespace.
 
 ## Что вырезано сейчас
 

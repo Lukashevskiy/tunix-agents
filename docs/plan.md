@@ -49,6 +49,7 @@ lane поверх upstream `AgenticRLLearner`, но его hardware one-update g
 | 1 | Deterministic golden fixture | 2 task groups × 2 generations × 8 turns, fixed seeds; expected tool calls/rewards/done/action masks экспортированы как versioned fixture | Не заявлять multi-turn environment production-ready |
 | 2 | Reproducible GRPO profile | `configs/grpo/qwen_agentic_local.yaml` содержит run/model/topology/workload/evidence paths; runner пишет profile/vendor SHA256, model revision/licence, config hash и package versions рядом с run | Не загружать weights по незафиксированному profile |
 | 2.5 | Full CLI orchestration layer | `tunix-craftext profile/verify/train/...` спроектирован как thin orchestration layer; первый implementation slice ограничен profile + verify без heavy imports | Не переносить business logic в CLI и не ломать scripts до wrapper migration |
+| 2.7 | Hybrid PPO rollout contract | `hybrid_rollout.py` хранит actor token logprobs, critic values, generation-token masks и step masks; `rollout.py` явно остаётся reference/fixed-shape слоем | Не использовать `lax.scan` collectors как production LLM-RL rollout |
 | 3 | Real RLCluster rollout | Accelerator-gated fixture создаёт actor/rollout/reference, проверяет role mesh и actor–rollout token/logprob parity | Не мерить distributed throughput и не строить custom scheduler |
 | 4 | One Agentic GRPO update | Один `GRPOLearner` update меняет actor weights, loss конечен, generation groups валидны, metrics включают return/success/invalid-action/KL | Не помечать model factory или runner готовыми |
 | 5 | Evidence, resume, evaluation | Checkpoint включает learner/cluster policy version; resumed next update совпадает с continuous; fixed evaluation сравнивает actor/reference | Не выпускать “trained checkpoint” или notebook как substitute |
@@ -103,6 +104,27 @@ catalogue и deterministic initial environment state.
 
 **Gate:** `tunix-craftext profile validate configs/grpo/qwen_agentic_local.yaml` и
 `tunix-craftext verify golden` проходят на CPU без downloads и accelerator allocation.
+
+## 0.7. External PPO Audit And Hybrid Rollout Boundary
+
+- [x] Перенести внешний PPO/hybrid rollout аудит в `docs/report_audit.md` и root
+  `report_audit.md` pointer; явно отметить, какие рекомендации приняты, а какие
+  скорректированы под GRPO-first roadmap.
+- [x] Зафиксировать, что `collect_rollout_scan*` — reference/fixed-shape collector для
+  CPU/JAX parity, а не production LLM-RL collector с динамической текстовой историей.
+- [x] Добавить `tunix_craftext.hybrid_rollout`: `HybridPpoStep`,
+  `HybridPpoTrajectory`, stacked `step_masks` и masked token-step PPO loss primitive.
+- [x] Покрыть hybrid contract unit tests: shape validation, mismatched token logprobs,
+  time-major step masks, generated-token padding и post-terminal rows.
+- [ ] Подключить `HybridPpoStep`/trajectory adapter к реальному Tunix Agentic PPO evidence
+  path: `TrajectoryCollectEngine`/`AgenticPPOLearner` должны получать old logprobs,
+  values, masks и policy version без неявного replay guessing.
+- [ ] Реализовать model-side Tunix action masking/logits processor; текущий fallback в
+  `batched_rollout.py` остаётся safety/evidence mechanism, а не финальный sampling policy.
+
+**Gate:** один PPO-ready hybrid trajectory из CrafText/Tunix rollout содержит валидные
+`actor_log_probs`, `values`, `generation_token_mask`, `step_mask` и проходит masked loss smoke
+без вклада post-terminal padding.
 
 ## 1. Production Multi-turn Environment
 

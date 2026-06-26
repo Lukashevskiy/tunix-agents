@@ -17,6 +17,8 @@ def test_code_reference_is_in_site_nav_and_mentions_pipeline_abstractions() -> N
     assert "Автодока API" in page
     for required in (
         "collect_batched_text_rollout",
+        "HybridPpoStep",
+        "compute_masked_step_token_ppo_loss",
         "replays_from_batched_rollout",
         "text_trajectory_from_replay",
         "masked_token_ppo_loss",
@@ -38,4 +40,6 @@ def test_generated_api_reference_is_built_from_docstrings() -> None:
     assert "Автодока API" in generated
     assert "tunix_craftext.batched_rollout" in generated
     assert "collect_batched_text_rollout" in generated
+    assert "tunix_craftext.hybrid_rollout" in generated
+    assert "HybridPpoStep" in generated
     assert "tunix_craftext.text_trajectory" in generated

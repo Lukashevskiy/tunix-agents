@@ -1,8 +1,10 @@
-"""Collection primitives kept independent of a particular policy or environment API.
+"""Reference fixed-shape rollout collectors independent of vendor APIs.
 
-The module defines signatures and helpers for collecting rollouts in a framework-neutral form.
-It is intended for use by external drivers that sample from policies and pass
-state through an explicit step function.
+The module defines signatures and helpers for collecting numeric rollouts in a
+framework-neutral form.  These collectors are intentionally reference/contract
+tools for CPU tests, deterministic fixtures and fixed-shape JAX parity checks.
+Production LLM-RL with growing prompt history should use a host-orchestrated
+hybrid rollout boundary such as :mod:`tunix_craftext.hybrid_rollout`.
 """
 
 from __future__ import annotations
@@ -78,8 +80,9 @@ def collect_rollout(
 ) -> tuple[StateT, ObservationT, RolloutBatch[ObservationT, ActionT]]:
     """Collect a deterministic, time-major rollout.
 
-    The production version will be `jax.lax.scan`; this reference implementation is the
-    executable contract used by unit tests and adapter parity tests.
+    This reference implementation is the executable contract used by unit tests
+    and adapter parity tests. It is not the production LLM-RL collector for
+    dynamic prompt-history rollouts.
 
     :param initial_state: State before the first environment step.
     :param initial_observation: Batched observation consumed at time zero.
@@ -192,7 +195,8 @@ def collect_rollout_scan_indexed(
     """Collect a JIT-safe rollout while passing each ``lax.scan`` index to the step function.
 
     The index lets callers select pre-split environment keys ``[T, B, 2]`` without hidden global
-    RNG state. It is the production form for real CrafText environments.
+    RNG state. It is the fixed-shape JAX parity form for CrafText-style environments; real
+    LLM-RL rollout with dynamic text history must use the hybrid host/Tunix boundary.
     :param initial_state: JAX PyTree state before time zero.
     :param initial_observation: Batched observation PyTree at time zero.
     :param horizon: Positive static rollout length ``T``.
