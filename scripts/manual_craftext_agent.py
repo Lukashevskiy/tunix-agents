@@ -15,6 +15,7 @@ import jax
 import jax.numpy as jnp
 
 SCHEMA = "tunix-craftext.manual-craftext-metrics/v1"
+DEFAULT_CONFIG = Path("configs/manual/caged_wood_achievements_energy.yaml")
 
 
 @dataclass(frozen=True)
@@ -103,7 +104,7 @@ def write_json(path: Path, payload: dict[str, object]) -> None:
 def parse_args(arguments: Sequence[str] | None = None) -> argparse.Namespace:
     """Parse manual control CLI arguments."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--config", type=Path, default=Path("configs/mvp/qwen_craftext.yaml"))
+    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--goal", default="Follow the current CrafText scenario instruction.")
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--horizon", type=int, default=None)

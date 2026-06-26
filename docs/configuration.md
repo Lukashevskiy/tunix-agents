@@ -18,6 +18,14 @@
 Он использует реальный шаблон `MegaPrompts base`, явную политику `tunix` и observable `NOOP`
 fallback. Он запускается через `scripts/run_text_episode.py`; веса передаются как явный локальный input.
 
+`configs/manual/caged_wood_achievements_energy.yaml` — ручной operator профиль для полного
+Caged CrafText сценария. Он соединяет scenario
+`budget/achievements/easy/wood_achievements` с world preset `caged_craftext_play`: сам scenario
+задаёт wood-achievement instruction, а preset добавляет boxed world, `player_energy` и
+`action_energy_drain` с ценой `1` energy за действие. Этот профиль является дефолтом для
+`scripts/manual_craftext_agent.py`, чтобы руками собранные replay trajectories сразу проверяли
+wood task под energy constraint.
+
 Поддерживаемая версия схемы сейчас только `1`; изменение полей — отдельная migration/ADR.
 `build_craftext_runtime()` связывает validated `MvpRunConfig` с vendored world preset и
 instruction wrapper. Для `implementation: craftext` это `RawInstructionWrapper → CrafTextAdapter`

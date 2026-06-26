@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from tunix_craftext.config import load_mvp_config
 from tunix_craftext.replay import ReplayArtifact, ReplayStep
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -68,7 +69,46 @@ def test_manual_episode_metrics_summarizes_replay() -> None:
 def test_parse_args_exposes_manual_artifact_paths() -> None:
     args = runner.parse_args(["--horizon", "3", "--seed", "9", "--show-full-prompt"])
 
+    assert args.config == Path("configs/manual/caged_wood_achievements_energy.yaml")
     assert args.horizon == 3
     assert args.seed == 9
     assert args.show_full_prompt is True
     assert args.replay_output == Path("artifacts/trajectories/manual-craftext-latest.json")
+
+
+def test_default_manual_config_targets_full_caged_wood_energy_scenario() -> None:
+    config = load_mvp_config(ROOT / runner.DEFAULT_CONFIG)
+    scenario_path = (
+        ROOT
+        / "vendor"
+        / "caged-craftext"
+        / "caged_craftext"
+        / "dataset"
+        / "configs"
+        / "budget"
+        / "achievements"
+        / "easy"
+        / "wood_achievements.yaml"
+    )
+    world_preset_path = (
+        ROOT
+        / "vendor"
+        / "caged-craftext"
+        / "caged_craftext"
+        / "world_presets"
+        / "caged_craftext_play.yaml"
+    )
+
+    assert config.run.name == "manual-caged-wood-achievements-energy"
+    assert config.environment.implementation == "caged-craftext"
+    assert config.environment.world_preset == "caged_craftext_play"
+    assert config.environment.scenario_config == "budget/achievements/easy/wood_achievements"
+    assert config.environment.batch_size == 1
+    assert config.environment.horizon == 450
+    assert scenario_path.is_file()
+    assert "dataset_key: wood_achievements" in scenario_path.read_text(encoding="utf-8")
+    assert world_preset_path.is_file()
+    world_preset = world_preset_path.read_text(encoding="utf-8")
+    assert "player_energy:" in world_preset
+    assert "action_energy_drain" in world_preset
+    assert "action_energy_cost:" in world_preset

@@ -71,7 +71,7 @@ CrafText instruction, legal actions, принимает action id/label из std
 
 ```bash
 PYTHONPATH=src .venv/bin/python scripts/manual_craftext_agent.py \
-  --config configs/mvp/qwen_craftext.yaml \
+  --config configs/manual/caged_wood_achievements_energy.yaml \
   --horizon 16 \
   --replay-output artifacts/trajectories/manual-craftext-latest.json
 ```
