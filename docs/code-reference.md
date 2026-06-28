@@ -111,10 +111,11 @@ rollout = collect_batched_text_rollout(
 ```
 
 `EnvironmentDevicePolicy` делает `device_put` для keys/state/action masks/action ids и использует
-`jit(vmap(reset/step))`. Prompt rendering и strict text decode остаются host-side, поэтому это не
-устраняет все host↔device переходы, но фиксирует самый важный численный кусок: CrafText/Craftax
-state carry и transition step не должны случайно съезжать на CPU. Если CUDA backend недоступен,
-pipeline падает до rollout, а не молча переключается на CPU.
+`jit(vmap(reset/step))`. Внутри `collect_batched_text_rollout()` state/action-mask carry уже
+считается размещённым и не перекладывается на device повторно на каждом decision. Для prompt
+render и strict decode делается один явный host snapshot state/action-mask на decision; это
+сознательный компромисс, потому что текстовая часть всё равно Python/host-side. Если CUDA backend
+недоступен, pipeline падает до rollout, а не молча переключается на CPU.
 
 ## Hybrid rollout → PPO-ready actor/critic evidence
 

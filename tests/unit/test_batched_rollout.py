@@ -33,6 +33,15 @@ class _Renderer:
         return RenderedPrompt(f"state={context.observation}", context.actions, "test")
 
 
+class _RecordingRenderer:
+    def __init__(self) -> None:
+        self.observations: list[object] = []
+
+    def render(self, context: PromptContext[object]) -> RenderedPrompt:
+        self.observations.append(context.observation)
+        return RenderedPrompt(f"state={context.observation}", context.actions, "test")
+
+
 class _Backend:
     def __init__(self) -> None:
         self.calls = 0
@@ -101,6 +110,34 @@ def test_batched_decision_can_place_and_jit_environment_step_on_selected_device(
     assert result.transition.reward.tolist() == [1.0, 0.0]
     assert result.transition.reward.devices() == {device}
     assert result.transition.action_mask.devices() == {device}
+
+
+def test_batched_decision_uses_one_host_snapshot_for_prompt_and_decode_inputs() -> None:
+    """Prompt/decode sees host snapshots while env carry remains on the selected device."""
+    adapter = CrafTextAdapter(_Environment(), None, action_count=2)
+    renderer = _RecordingRenderer()
+    result = collect_batched_text_decision(
+        adapter,
+        renderer,
+        _Backend(),
+        states=jax.device_put(jnp.asarray([10, 20]), jax.devices()[0]),
+        action_masks=jax.device_put(jnp.ones((2, 2), dtype=bool), jax.devices()[0]),
+        actions=ActionCatalog(("NOOP", "DO")),
+        keys=jax.device_put(jax.random.split(jax.random.PRNGKey(0), 2), jax.devices()[0]),
+        goal="test",
+        max_new_tokens=4,
+        invalid_action="fallback",
+        fallback_action_id=0,
+        device_policy=EnvironmentDevicePolicy(
+            backend=jax.default_backend(),
+            device_index=0,
+            snapshot_prompt_inputs=True,
+        ),
+        _inputs_are_placed=True,
+    )
+
+    assert [int(value) for value in renderer.observations] == [10, 20]
+    assert result.transition.reward.devices() == {jax.devices()[0]}
 
 
 def test_batched_rollout_can_jit_reset_and_step_with_device_policy() -> None:

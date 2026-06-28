@@ -60,7 +60,9 @@ Batched text rollout имеет отдельный colocated accelerator mode ч
 masks/action ids явно размещаются на выбранном JAX device (`backend="cuda"`/`"gpu"`,
 `device_index=0`). Это позволяет держать Craftax/CrafText transition на той же GPU, где живёт
 single-device Tunix/Qwen/Gemma backend. Текстовые части — MegaPrompts render, LLM completion
-object creation и action decode — остаются host boundary по определению.
+object creation и action decode — остаются host boundary по определению. Чтобы не плодить мелкие
+копии, rollout loop не перекладывает уже размещённый state/action-mask carry обратно на device, а
+делает один host snapshot prompt-visible state/action-mask на decision.
 
 ## Three-layer environment adapter boundary
 

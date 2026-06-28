@@ -8,6 +8,7 @@ from typing import Literal, cast
 
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 from ..adapters import CraftaxAdapter, EnvironmentReset, EnvironmentStep
 from ..artifacts.replay import ReplayArtifact, ReplayStep
@@ -38,6 +39,7 @@ class EnvironmentDevicePolicy:
     jit_reset: bool = True
     jit_step: bool = True
     place_inputs: bool = True
+    snapshot_prompt_inputs: bool = True
 
 
 @dataclass(frozen=True)
@@ -101,6 +103,13 @@ def _place_for_environment(value: object, device: jax.Device | None, *, enabled:
     return jax.device_put(value, device)
 
 
+def _host_snapshot_for_prompt(value: object, policy: EnvironmentDevicePolicy | None) -> object:
+    """Copy one prompt-visible PyTree snapshot to host when using an explicit device lane."""
+    if policy is None or not policy.snapshot_prompt_inputs:
+        return value
+    return jax.device_get(value)
+
+
 def _batched_reset(
     adapter: CraftaxAdapter[object, object, object], policy: EnvironmentDevicePolicy | None
 ):
@@ -132,6 +141,7 @@ def collect_batched_text_decision(
     invalid_action: Literal["error", "fallback"] = "error",
     fallback_action_id: int | None = None,
     device_policy: EnvironmentDevicePolicy | None = None,
+    _inputs_are_placed: bool = False,
 ) -> BatchedTextDecision:
     """Render, complete, decode and step an ordered environment batch.
 
@@ -153,11 +163,14 @@ def collect_batched_text_decision(
         raise ValueError("fallback_action_id must be inside the action catalog")
     device = _resolve_device(device_policy)
     place_inputs = True if device_policy is None else device_policy.place_inputs
-    states = _place_for_environment(states, device, enabled=place_inputs)
+    should_place_inputs = place_inputs and not _inputs_are_placed
+    states = _place_for_environment(states, device, enabled=should_place_inputs)
     action_masks = cast(
-        jax.Array, _place_for_environment(action_masks, device, enabled=place_inputs)
+        jax.Array, _place_for_environment(action_masks, device, enabled=should_place_inputs)
     )
-    keys = cast(jax.Array, _place_for_environment(keys, device, enabled=place_inputs))
+    keys = cast(jax.Array, _place_for_environment(keys, device, enabled=should_place_inputs))
+    prompt_states = _host_snapshot_for_prompt(states, device_policy)
+    prompt_action_masks = np.asarray(jax.device_get(action_masks))
     dialogs = tuple(() for _ in range(batch_size)) if dialog is None else tuple(dialog)
     if len(dialogs) != batch_size:
         raise ValueError("dialog must contain one tuple per batch item")
@@ -180,7 +193,7 @@ def collect_batched_text_decision(
             )
         )
         for index in range(batch_size)
-        for state in (_item_at(states, index),)
+        for state in (_item_at(prompt_states, index),)
         for context in (
             adapter.episode_context(state) if adapter.has_instruction_context else None,
         )
@@ -195,7 +208,7 @@ def collect_batched_text_decision(
     fallback: list[bool] = []
     for row_index, (prompt, response) in enumerate(zip(prompts, responses, strict=True)):
         decision, outcome = decode_action_outcome(prompt, response.raw_text)
-        if decision is not None and not bool(action_masks[row_index, decision.action_id]):
+        if decision is not None and not bool(prompt_action_masks[row_index, decision.action_id]):
             outcome = DecodeMetrics(masked_action=1)
             decision = None
         if decision is None:
@@ -284,6 +297,7 @@ def collect_batched_text_rollout(
             invalid_action=invalid_action,
             fallback_action_id=fallback_action_id,
             device_policy=device_policy,
+            _inputs_are_placed=device is not None and place_inputs,
         )
         finished = jnp.logical_or(decision.transition.terminated, decision.transition.truncated)
         fresh = batched_reset(reset_keys)
