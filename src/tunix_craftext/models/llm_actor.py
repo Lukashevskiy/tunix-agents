@@ -13,13 +13,13 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
-import jax
 import jax.numpy as jnp
 
 from ..core.tensor_types import (
     PromptTokenBatchBool,
     PromptTokenBatchInt,
     TokenBatchBool,
+    TokenBatchFloat,
     TokenBatchInt,
 )
 from .llm import LlmRequest, LlmResponse
@@ -30,10 +30,10 @@ from .profile import ModelProfile
 class LlmActorScores:
     """Token-level actor scores shaped for PPO/GRPO updates."""
 
-    token_logprobs: jax.Array
-    values: jax.Array
-    entropy: jax.Array
-    token_mask: jax.Array
+    token_logprobs: TokenBatchFloat
+    values: TokenBatchFloat
+    entropy: TokenBatchFloat
+    token_mask: TokenBatchBool
 
     def validate(self, token_ids: TokenBatchInt) -> None:
         """Validate that score arrays align with generated token ids.

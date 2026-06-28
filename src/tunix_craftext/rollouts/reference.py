@@ -14,9 +14,9 @@ from typing import Protocol, TypeVar, cast
 import jax
 import jax.numpy as jnp
 import numpy as np
-from jax.typing import ArrayLike
 
 from ..core.contracts import ActionT, ObservationT, RolloutBatch, Transition
+from ..core.tensor_types import BatchBool, BatchFloat, JaxArray, JaxArrayLike, ScalarInt
 
 StateT = TypeVar("StateT")
 TreeT = TypeVar("TreeT")
@@ -24,6 +24,15 @@ PolicyObservationT = TypeVar("PolicyObservationT", contravariant=True)
 PolicyActionT = TypeVar("PolicyActionT", covariant=True)
 StepActionT = TypeVar("StepActionT", contravariant=True)
 StepObservationT = TypeVar("StepObservationT", covariant=True)
+RolloutRecordT = tuple[
+    ObservationT,
+    ActionT,
+    JaxArrayLike,
+    JaxArrayLike,
+    JaxArrayLike,
+    JaxArrayLike,
+    JaxArrayLike,
+]
 
 
 class PolicyFn(Protocol[PolicyObservationT, PolicyActionT]):
@@ -31,7 +40,7 @@ class PolicyFn(Protocol[PolicyObservationT, PolicyActionT]):
 
     def __call__(
         self, observation: PolicyObservationT
-    ) -> tuple[PolicyActionT, ArrayLike, ArrayLike]:
+    ) -> tuple[PolicyActionT, BatchFloat, BatchFloat]:
         """Return an action, its log-probability and value for a batched observation.
 
         :param observation: Batched observation PyTree consumed by the policy.
@@ -45,7 +54,7 @@ class StepFn(Protocol[StateT, StepActionT, StepObservationT]):
 
     def __call__(
         self, state: StateT, action: StepActionT
-    ) -> tuple[StateT, StepObservationT, ArrayLike, ArrayLike, ArrayLike]:
+    ) -> tuple[StateT, StepObservationT, BatchFloat, BatchBool, BatchBool]:
         """Step the environment synchronously for one action.
 
         :param state: Current environment state.
@@ -59,8 +68,8 @@ class IndexedStepFn(Protocol[StateT, StepActionT, StepObservationT]):
     """JAX step signature that receives the static scan index for explicit RNG selection."""
 
     def __call__(
-        self, state: StateT, action: StepActionT, step_index: jax.Array
-    ) -> tuple[StateT, StepObservationT, ArrayLike, ArrayLike, ArrayLike]:
+        self, state: StateT, action: StepActionT, step_index: ScalarInt
+    ) -> tuple[StateT, StepObservationT, BatchFloat, BatchBool, BatchBool]:
         """JAX-compatible step accepting the scan index for RNG selection.
 
         :param state: Current environment state PyTree.
@@ -95,9 +104,7 @@ def collect_rollout(
     if horizon <= 0:
         raise ValueError("horizon must be positive")
     state, observation = initial_state, initial_observation
-    records: list[
-        tuple[ObservationT, ActionT, ArrayLike, ArrayLike, ArrayLike, ArrayLike, ArrayLike]
-    ] = []
+    records: list[RolloutRecordT[ObservationT, ActionT]] = []
     for _ in range(horizon):
         action, log_prob, value = policy(observation)
         next_state, next_observation, reward, terminated, truncated = step(state, action)
@@ -146,10 +153,10 @@ def collect_rollout_scan(
         raise ValueError("horizon must be positive")
 
     def scan_step(
-        carry: tuple[StateT, ObservationT], _: jax.Array
+        carry: tuple[StateT, ObservationT], _: ScalarInt
     ) -> tuple[
         tuple[StateT, ObservationT],
-        tuple[ObservationT, ActionT, jax.Array, jax.Array, jax.Array, jax.Array, jax.Array],
+        tuple[ObservationT, ActionT, BatchFloat, BatchBool, BatchBool, BatchFloat, BatchFloat],
     ]:
         state, observation = carry
         """One step of the jax.lax.scan used by `collect_rollout_scan`.
@@ -213,7 +220,7 @@ def collect_rollout_scan_indexed(
     if horizon <= 0:
         raise ValueError("horizon must be positive")
 
-    def scan_step(carry: tuple[StateT, ObservationT], index: jax.Array):
+    def scan_step(carry: tuple[StateT, ObservationT], index: ScalarInt):
         state, observation = carry
         """One indexed scan step forwarding the provided `index` to the `step` function.
 
@@ -259,7 +266,7 @@ def _stack_pytree(values: list[TreeT]) -> TreeT:
     return cast(TreeT, jax.tree.map(lambda *leaves: _stack_arraylike(list(leaves)), *values))
 
 
-def _stack_arraylike(values: list[ArrayLike]) -> jax.Array:
+def _stack_arraylike(values: list[JaxArrayLike]) -> JaxArray:
     """Stack a host reference field and return its normalized JAX contract array.
 
     :param values: List of host-side array-like objects to stack along axis 0.

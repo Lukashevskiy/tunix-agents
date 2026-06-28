@@ -19,10 +19,21 @@ import jax
 import jax.numpy as jnp
 
 from ..core.tensor_types import (
+    CausalInputPositionBatchInt,
+    CausalInputTokenBatchInt,
+    CausalLmHidden,
+    CausalLmLogits,
+    JaxArray,
+    JaxKey,
     PromptTokenBatchBool,
     PromptTokenBatchInt,
     TokenBatchBool,
+    TokenBatchFloat,
+    TokenBatchHidden,
     TokenBatchInt,
+    TokenIndexBatchInt,
+    ValueHeadBias,
+    ValueHeadKernel,
 )
 from .llm import BatchLlmBackend, LlmRequest, LlmResponse
 from .llm_actor import LlmActorScores
@@ -35,13 +46,13 @@ class CausalLmScoringModel(Protocol):
 
     def __call__(
         self,
-        input_tokens: jax.Array,
-        positions: jax.Array,
+        input_tokens: CausalInputTokenBatchInt,
+        positions: CausalInputPositionBatchInt,
         cache: object | None,
-        attention_mask: jax.Array | None = None,
+        attention_mask: JaxArray | None = None,
         *,
         skip_lm_head: bool = False,
-    ) -> tuple[jax.Array, object | None]:
+    ) -> tuple[CausalLmLogits | CausalLmHidden, object | None]:
         """Return logits or hidden states depending on ``skip_lm_head``."""
         ...
 
@@ -50,17 +61,17 @@ class CausalLmScoringModel(Protocol):
 class LinearValueHead:
     """Tiny trainable critic head attached to frozen/adapter-tuned LLM features."""
 
-    kernel: jax.Array
-    bias: jax.Array
+    kernel: ValueHeadKernel
+    bias: ValueHeadBias
 
-    def __call__(self, hidden_states: jax.Array) -> jax.Array:
+    def __call__(self, hidden_states: TokenBatchHidden) -> TokenBatchFloat:
         """Project hidden states ``[B, T, D]`` to scalar values ``[B, T]``."""
         if hidden_states.shape[-1] != self.kernel.shape[0]:
             raise ValueError("hidden_states last axis must match value head kernel")
         return jnp.einsum("btd,d->bt", hidden_states, self.kernel) + self.bias
 
 
-def init_linear_value_head(key: jax.Array, hidden_dim: int, scale: float = 0.01) -> LinearValueHead:
+def init_linear_value_head(key: JaxKey, hidden_dim: int, scale: float = 0.01) -> LinearValueHead:
     """Initialize a small linear critic head for LLM token hidden states."""
     if hidden_dim <= 0 or scale <= 0:
         raise ValueError("hidden_dim and scale must be positive")
@@ -74,9 +85,9 @@ def init_linear_value_head(key: jax.Array, hidden_dim: int, scale: float = 0.01)
 class LlmActorTokenScores:
     """Actor-only token scores produced by a causal LM."""
 
-    token_logprobs: jax.Array
-    entropy: jax.Array
-    token_mask: jax.Array
+    token_logprobs: TokenBatchFloat
+    entropy: TokenBatchFloat
+    token_mask: TokenBatchBool
 
     def validate(self, token_ids: TokenBatchInt) -> None:
         """Validate actor score axes against generated token ids."""
@@ -90,8 +101,8 @@ class LlmActorTokenScores:
 class LlmCriticValues:
     """Critic-only token values produced from causal LM hidden states."""
 
-    values: jax.Array
-    token_mask: jax.Array
+    values: TokenBatchFloat
+    token_mask: TokenBatchBool
 
     def validate(self, token_ids: TokenBatchInt) -> None:
         """Validate critic value axes against generated token ids."""
@@ -363,11 +374,16 @@ def build_gemma_tunix_actor(
 
 
 def _causal_inputs(
-    prompt_token_ids: jax.Array,
-    prompt_token_mask: jax.Array,
-    token_ids: jax.Array,
-    token_mask: jax.Array,
-) -> tuple[jax.Array, jax.Array, jax.Array, jax.Array]:
+    prompt_token_ids: PromptTokenBatchInt,
+    prompt_token_mask: PromptTokenBatchBool,
+    token_ids: TokenBatchInt,
+    token_mask: TokenBatchBool,
+) -> tuple[
+    CausalInputTokenBatchInt,
+    CausalInputPositionBatchInt,
+    TokenIndexBatchInt,
+    TokenIndexBatchInt,
+]:
     _validate_token_axes(prompt_token_ids, prompt_token_mask, token_ids, token_mask)
     input_tokens = jnp.concatenate((prompt_token_ids, token_ids), axis=1)
     positions = jnp.broadcast_to(
@@ -382,10 +398,10 @@ def _causal_inputs(
 
 
 def _validate_token_axes(
-    prompt_token_ids: jax.Array,
-    prompt_token_mask: jax.Array,
-    token_ids: jax.Array,
-    token_mask: jax.Array,
+    prompt_token_ids: PromptTokenBatchInt,
+    prompt_token_mask: PromptTokenBatchBool,
+    token_ids: TokenBatchInt,
+    token_mask: TokenBatchBool,
 ) -> None:
     if prompt_token_ids.ndim != 2 or prompt_token_mask.shape != prompt_token_ids.shape:
         raise ValueError("prompt_token_ids and prompt_token_mask must have shape [B, P]")

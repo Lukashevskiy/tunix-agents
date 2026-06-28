@@ -9,7 +9,9 @@ import jax
 import jax.numpy as jnp
 
 from ..core.tensor_types import (
+    BatchBool,
     BatchFloat,
+    ScalarFloat,
     TimeBatchBool,
     TimeBatchFloat,
     TokenBatchBool,
@@ -28,7 +30,7 @@ def ppo_loss(
     value_coefficient: float,
     entropy: BatchFloat,
     entropy_coefficient: float,
-) -> tuple[jax.Array, dict[str, jax.Array]]:
+) -> tuple[ScalarFloat, dict[str, ScalarFloat]]:
     """Return clipped PPO scalar loss and inspectable policy/value/KL metrics.
 
     :param new_log_prob: jax.Array input value
@@ -95,7 +97,9 @@ def generalized_advantage_estimation(
     if bootstrap_value.shape != rewards.shape[1:]:
         raise ValueError("bootstrap_value must have shape [B]")
 
-    def step(carry, inputs):
+    def step(
+        carry: BatchFloat, inputs: tuple[BatchFloat, BatchFloat, BatchFloat, BatchBool]
+    ) -> tuple[BatchFloat, BatchFloat]:
         reward, value, next_value, done = inputs
         delta = reward + gamma * (1.0 - done) * next_value - value
         advantage = delta + gamma * gae_lambda * (1.0 - done) * carry
@@ -133,7 +137,9 @@ def masked_token_returns(
     if not 0.0 <= gamma <= 1.0:
         raise ValueError("gamma must be in [0, 1]")
 
-    def step(carry: jax.Array, inputs: tuple[jax.Array, jax.Array]) -> tuple[jax.Array, jax.Array]:
+    def step(
+        carry: BatchFloat, inputs: tuple[BatchFloat, BatchBool]
+    ) -> tuple[BatchFloat, BatchFloat]:
         reward, valid = inputs
         returned = jnp.where(valid, reward + gamma * carry, 0.0)
         return returned, returned
@@ -158,7 +164,7 @@ def masked_token_ppo_loss(
     value_coefficient: float,
     entropy: TokenBatchFloat,
     entropy_coefficient: float,
-) -> tuple[jax.Array, dict[str, jax.Array]]:
+) -> tuple[ScalarFloat, dict[str, ScalarFloat]]:
     """Apply PPO only to valid token positions in ``[B, T]`` text trajectories.
 
     :param new_log_prob: Token-wise new log-probabilities shaped ``[B, T]``.

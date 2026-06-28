@@ -56,7 +56,11 @@ pyenv exec python -m uv run make verify
 `tunix_craftext.core.tensor_types`: `TimeBatchFloat`/`TimeBatchBool` означают rollout `[T, B]`,
 `TokenBatch*` — padded text batch `[B, L]`, а `ActionMask` — legal actions `[B, A]`.
 Новые numerical public APIs должны использовать эти aliases или явный `jaxtyping` shape/dtype,
-а не голый `jax.Array`.
+а не голый `jax.Array`. Для LLM/RL boundary уже есть отдельные aliases:
+`PromptTokenBatch*`, `CausalInputTokenBatchInt`, `CausalLmLogits`, `CausalLmHidden`,
+`TokenBatchLogits`, `TokenBatchHidden`, `ActionLogits`, `ValueHeadKernel` и `JaxKey`.
+`JaxArray` и `JaxTree` остаются escape hatch только для приватных helpers, vendor protocols
+и opaque state/params, где форма действительно принадлежит внешней библиотеке.
 
 Это статический контракт, не замена boundary validation: `RolloutBatch.validate()` и
 `TextTrajectoryBatch.validate_static()` остаются явными runtime checks. Не добавляйте

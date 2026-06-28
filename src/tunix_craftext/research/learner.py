@@ -13,7 +13,20 @@ import optax  # type: ignore[import-untyped]
 from flax.training.train_state import TrainState
 
 from ..artifacts.text_trajectory import TextTrajectoryBatch
-from ..core.tensor_types import BatchFloat, BatchInt, TokenBatchBool, TokenBatchFloat
+from ..core.tensor_types import (
+    ActionLogits,
+    BatchFeatureFloat,
+    BatchFloat,
+    BatchInt,
+    JaxKey,
+    PromptTokenBatchBool,
+    PromptTokenBatchInt,
+    ScalarFloat,
+    TokenBatchBool,
+    TokenBatchFloat,
+    TokenBatchInt,
+    TokenBatchLogits,
+)
 from .algorithms import masked_token_ppo_loss, masked_token_returns, ppo_loss
 
 
@@ -33,7 +46,7 @@ class ActorCritic(nn.Module):
     hidden: int = 32
 
     @nn.compact
-    def __call__(self, observation: jax.Array) -> tuple[jax.Array, BatchFloat]:
+    def __call__(self, observation: BatchFeatureFloat) -> tuple[ActionLogits, BatchFloat]:
         """Return action logits and scalar value predictions.
 
         The policy head produces unnormalized logits for discrete action
@@ -52,7 +65,7 @@ class ActorCritic(nn.Module):
         return nn.Dense(self.actions)(x), nn.Dense(1)(x).squeeze(-1)
 
 
-def create_state(key: jax.Array, observation_dim: int, actions: int) -> TrainState:
+def create_state(key: JaxKey, observation_dim: int, actions: int) -> TrainState:
     """Create a deterministic actor-critic state with Adam optimizer.
 
     Builds the Flax model parameters from a dummy observation and returns a
@@ -76,12 +89,12 @@ def create_state(key: jax.Array, observation_dim: int, actions: int) -> TrainSta
 
 def ppo_update(
     state: TrainState,
-    observations: jax.Array,
+    observations: BatchFeatureFloat,
     actions: BatchInt,
     old_log_prob: BatchFloat,
     advantages: BatchFloat,
     returns: BatchFloat,
-) -> tuple[TrainState, dict[str, jax.Array]]:
+) -> tuple[TrainState, dict[str, ScalarFloat]]:
     """Apply one clipped PPO update to a flat synthetic or encoded minibatch.
 
     This function computes the PPO loss, gradients, and returns an updated
@@ -151,10 +164,10 @@ class PromptConditionedTokenActorCritic(nn.Module):
     @nn.compact
     def __call__(
         self,
-        token_ids: jax.Array,
-        prompt_token_ids: jax.Array,
-        prompt_token_mask: jax.Array,
-    ) -> tuple[jax.Array, TokenBatchFloat]:
+        token_ids: TokenBatchInt,
+        prompt_token_ids: PromptTokenBatchInt,
+        prompt_token_mask: PromptTokenBatchBool,
+    ) -> tuple[TokenBatchLogits, TokenBatchFloat]:
         """Return per-token bucket logits and critic values.
 
         :param token_ids: Generated token ids shaped ``[B, T]``.
@@ -178,7 +191,7 @@ class PromptConditionedTokenActorCritic(nn.Module):
 
 
 def create_token_state(
-    key: jax.Array,
+    key: JaxKey,
     *,
     token_bucket_count: int = 512,
     hidden: int = 64,
@@ -239,7 +252,7 @@ def token_ppo_update(
     clip_epsilon: float = 0.2,
     value_coefficient: float = 0.5,
     entropy_coefficient: float = 0.01,
-) -> tuple[TrainState, dict[str, jax.Array]]:
+) -> tuple[TrainState, dict[str, ScalarFloat]]:
     """Apply one masked token PPO update with a trainable actor and critic.
 
     The update recomputes ``new_logprobs`` from the actor head and values from
@@ -274,7 +287,7 @@ def full_token_ppo_update(
     clip_epsilon: float = 0.2,
     value_coefficient: float = 0.5,
     entropy_coefficient: float = 0.01,
-) -> tuple[TrainState, dict[str, jax.Array]]:
+) -> tuple[TrainState, dict[str, ScalarFloat]]:
     """Apply PPO to every generated token, including fallback-marked rows.
 
     This mode uses ``batch.token_mask`` rather than ``batch.policy_mask``. Padding
@@ -312,7 +325,7 @@ def _token_ppo_update_with_mask(
     value_coefficient: float,
     entropy_coefficient: float,
     mode: str,
-) -> tuple[TrainState, dict[str, jax.Array]]:
+) -> tuple[TrainState, dict[str, ScalarFloat]]:
     """Apply one token PPO update with an explicit learning mask."""
     batch.validate_static()
     if tuple(learning_mask.shape) != tuple(batch.token_ids.shape):

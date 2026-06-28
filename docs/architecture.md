@@ -49,6 +49,12 @@ rollout tensors — `TimeBatch*` (`[T, B]`), text learner tensors — `TokenBatc
 state имеет одну универсальную форму. Runtime validators остаются обязательными
 на host boundary; compiled JAX path не получает Python type checker.
 
+LLM/RL contracts дополнительно разделяют prompt tokens, generated tokens, full causal
+sequence, logits, hidden states и value-head weights. Это не просто косметика: actor
+logprobs, critic values, entropy, token masks и PPO smoke learner теперь имеют разные
+shape aliases, поэтому случайное смешивание `[B, A]`, `[B, L]` и `[B, L, V]` видно уже
+в type hints и тестируется unit-аудитом.
+
 ## Three-layer environment adapter boundary
 
 `CraftaxAdapter` — нижний чистый boundary для любого Craftax-compatible env: он принимает
