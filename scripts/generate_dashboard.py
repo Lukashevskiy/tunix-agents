@@ -43,8 +43,9 @@ API_MODULES = (
     "tunix_craftext.checkpoints",
     "tunix_craftext.tunix_adapter",
     "tunix_craftext.tunix_actor",
-    "tunix_craftext.tunix_topology",
-    "tunix_craftext.rlcluster_workload",
+    "tunix_craftext.tunix.topology",
+    "tunix_craftext.tunix.rlcluster_workload",
+    "tunix_craftext.tunix.preflight",
 )
 
 

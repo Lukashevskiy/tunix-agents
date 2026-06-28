@@ -271,7 +271,7 @@ tunix-craftext audit docs
 | `env smoke` | `run_environment_smoke()` | `runtime.py`, adapters |
 | `prompt render/decode` | `render_prompt_preview()` | `prompts.py`, `text_policy.py` |
 | `rollout text` | `collect_text_episode()` | `run_text_episode.py`, `episode.py` |
-| `train grpo` | `run_agentic_grpo()` | `run_agentic_grpo.py`, `rlcluster_workload.py` |
+| `train grpo` | `run_agentic_grpo()` | `run_agentic_grpo.py`, `tunix/rlcluster_workload.py` |
 | `benchmark env` | `run_environment_benchmark()` | `benchmark_environments.py` |
 | `benchmark text` | `run_text_pipeline_benchmark()` | `benchmark_text_pipeline.py` |
 | `docs build` | `build_docs_site()` | `generate_dashboard.py`, MkDocs |

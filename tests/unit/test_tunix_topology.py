@@ -7,6 +7,7 @@ from pathlib import Path
 import jax
 import pytest
 
+import tunix_craftext.tunix as tunix_package
 from tunix_craftext.tunix_topology import (
     TopologyConfigError,
     TunixTopology,
@@ -16,6 +17,14 @@ from tunix_craftext.tunix_topology import (
 )
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_tunix_package_exports_match_legacy_topology_shim() -> None:
+    assert tunix_package.TopologyConfigError is TopologyConfigError
+    assert tunix_package.TunixTopology is TunixTopology
+    assert tunix_package.load_tunix_topology is load_tunix_topology
+    assert tunix_package.role_to_meshes is role_to_meshes
+    assert tunix_package.tunix_role_to_meshes is tunix_role_to_meshes
 
 
 def test_local_profile_colocates_all_tunix_roles_on_visible_device_zero() -> None:

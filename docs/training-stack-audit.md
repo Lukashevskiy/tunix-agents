@@ -21,7 +21,7 @@ RLCluster обучения.
 | Слой | Файлы | Статус | Что делать |
 | --- | --- | --- | --- |
 | Agentic environment transport | `agentic_craftext.py`, `prompts.py`, `text_policy.py`, `runtime.py`, `adapters/craftext.py` | production boundary | Оставить как общий транспорт для GRPO/PPO/PPO-Lag/CPO. |
-| Tunix topology/workload | `tunix_topology.py`, `rlcluster_workload.py`, `preflight.py`, `grpo_profile.py` | production boundary | Оставить; позднее split на `training/topology.py`, `training/workload.py`, `training/assets.py`. |
+| Tunix topology/workload | `tunix/topology.py`, `tunix/rlcluster_workload.py`, `tunix/preflight.py`, `grpo_profile.py` | production boundary | Уже вынесено в semantic package `tunix_craftext.tunix`; старые root modules остались thin compatibility shims. |
 | Agentic GRPO | `agentic_grpo_smoke.py`, `scripts/run_agentic_grpo.py`, `configs/grpo/qwen_agentic_local.yaml` | текущий golden path до heavy update | Довести до real one-update на accelerator/local snapshot. |
 | Agentic PPO | `agentic_ppo.py`, `tests/unit/test_agentic_ppo.py` | current extension lane | Добавить hardware-gated one-update actor+critic, затем cost critic для PPO-Lag/CPO. |
 | Tunix LLM backend | `tunix_adapter.py`, `tunix_actor.py`, `llm_actor.py`, `model_profile.py` | смешанный production/research bridge | Разбить большой adapter на loaders, sampler backend, scoring и model profile modules. |
@@ -36,8 +36,8 @@ GRPO реализуется не через локальный PPO loss, а че
 
 1. Profile `configs/grpo/qwen_agentic_local.yaml` задаёт модель, topology, workload и evidence paths.
 2. `grpo_profile.py` валидирует profile, пишет hash/provenance/package evidence.
-3. `tunix_topology.py` объявляет роли `actor`, `rollout`, `reference`; critic намеренно отсутствует.
-4. `rlcluster_workload.py::build_agentic_grpo_cluster_config()` строит Tunix `ClusterConfig` с
+3. `tunix/topology.py` объявляет роли `actor`, `rollout`, `reference`; critic намеренно отсутствует.
+4. `tunix/rlcluster_workload.py::build_agentic_grpo_cluster_config()` строит Tunix `ClusterConfig` с
    `RLTrainingConfig`, `RolloutConfig`, checkpoint root и recomputed logprobs.
 5. `agentic_craftext.py` адаптирует CrafText в multi-turn tool-call environment для Tunix
    `TrajectoryCollectEngine`.
@@ -126,15 +126,17 @@ host-orchestrated rollout перед PPO update:
 
 Делать отдельными маленькими коммитами:
 
-1. Создать `src/tunix_craftext/training/`:
-   `agentic_grpo.py`, `agentic_ppo.py`, `workload.py`, `topology.py`, `preflight.py`.
+1. Создан первый semantic package `src/tunix_craftext/tunix/`:
+   `topology.py`, `rlcluster_workload.py`, `preflight.py`.
 2. `src/tunix_craftext/research/` уже содержит:
    `algorithms.py`, `learner.py`, `llm_ppo.py`, `algorithm_registry.py`.
 3. Compatibility imports в старых путях оставить на один-два цикла:
    `from tunix_craftext.research.learner import ...`.
-4. Разбить `tunix_adapter.py`:
+4. Следующим отдельным коммитом можно перенести `agentic_grpo.py`/`agentic_ppo.py`
+   в training/use-case слой, не смешивая это с Tunix asset/topology package.
+5. Разбить `tunix_adapter.py`:
    `tunix_loaders.py`, `tunix_sampler.py`, `tunix_scoring.py`, `model_profiles.py`.
-5. Добавить migration test, который запрещает production modules импортировать
+6. Добавить migration test, который запрещает production modules импортировать
    `tunix_craftext.research.*`.
 
 ## Acceptance gates перед записью “готовы мерить обучение”

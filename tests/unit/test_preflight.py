@@ -4,11 +4,17 @@ from pathlib import Path
 
 import pytest
 
+import tunix_craftext.tunix as tunix_package
 from tunix_craftext.preflight import QwenTensorShape, validate_agentic_grpo_preflight
 from tunix_craftext.rlcluster_workload import AgenticGrpoWorkloadSpec, RLClusterWorkloadError
 from tunix_craftext.tunix_topology import TunixTopology, load_tunix_topology
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_tunix_preflight_package_preserves_legacy_shim_identity() -> None:
+    assert tunix_package.QwenTensorShape is QwenTensorShape
+    assert tunix_package.validate_agentic_grpo_preflight is validate_agentic_grpo_preflight
 
 
 def _spec() -> AgenticGrpoWorkloadSpec:

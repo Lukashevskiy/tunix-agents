@@ -79,7 +79,7 @@ from .trajectory_gif import (
     scale_frame,
     write_gif,
 )
-from .tunix_topology import (
+from .tunix import (
     TopologyConfigError,
     TunixTopology,
     load_tunix_topology,

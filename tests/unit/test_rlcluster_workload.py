@@ -6,6 +6,7 @@ import jax.numpy as jnp
 import pytest
 
 import tunix_craftext.rlcluster_workload as workload
+import tunix_craftext.tunix.rlcluster_workload as package_workload
 from tunix_craftext.rlcluster_workload import (
     AgenticGrpoWorkloadSpec,
     PpoModelAssets,
@@ -23,6 +24,13 @@ from tunix_craftext.rlcluster_workload import (
 from tunix_craftext.tunix_topology import load_tunix_topology
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_tunix_workload_package_preserves_legacy_shim_identity() -> None:
+    assert package_workload.RLClusterWorkloadSpec is RLClusterWorkloadSpec
+    assert package_workload.AgenticGrpoWorkloadSpec is AgenticGrpoWorkloadSpec
+    assert package_workload.RLClusterWorkloadError is RLClusterWorkloadError
+    assert package_workload.build_rlcluster_config is build_rlcluster_config
 
 
 def test_rlcluster_config_binds_all_roles_and_static_batch_knobs() -> None:
@@ -95,8 +103,10 @@ def test_agentic_grpo_assets_use_distinct_role_meshes_and_storage_dtypes(monkeyp
         calls.append((mesh, dtype))
         return {"snapshot": snapshot, "mesh": mesh, "dtype": dtype}
 
-    monkeypatch.setattr(workload, "load_qwen_model_on_mesh", load_model)
-    monkeypatch.setattr(workload, "load_qwen_tokenizer", lambda snapshot: {"snapshot": snapshot})
+    monkeypatch.setattr(package_workload, "load_qwen_model_on_mesh", load_model)
+    monkeypatch.setattr(
+        package_workload, "load_qwen_tokenizer", lambda snapshot: {"snapshot": snapshot}
+    )
     topology = load_tunix_topology(ROOT / "configs/topology/qwen_agentic_grpo_local.yaml")
 
     assets = load_agentic_grpo_qwen_assets(ROOT / "artifacts/models/qwen25-05b-instruct", topology)
@@ -114,10 +124,12 @@ def test_ppo_qwen_assets_bind_actor_critic_reference_and_tokenizer(monkeypatch) 
         calls.append((str(snapshot), dtype))
         return {"snapshot": snapshot, "mesh": mesh, "dtype": dtype}
 
-    monkeypatch.setattr(workload, "load_qwen_model_on_mesh", load_model)
-    monkeypatch.setattr(workload, "load_qwen_tokenizer", lambda snapshot: {"snapshot": snapshot})
+    monkeypatch.setattr(package_workload, "load_qwen_model_on_mesh", load_model)
     monkeypatch.setattr(
-        workload,
+        package_workload, "load_qwen_tokenizer", lambda snapshot: {"snapshot": snapshot}
+    )
+    monkeypatch.setattr(
+        package_workload,
         "create_value_critic_from_actor",
         lambda actor, *, seed=0: {"critic_from": actor, "seed": seed},
     )
@@ -143,10 +155,12 @@ def test_ppo_gemma_assets_use_gemma_loader_and_native_critic(monkeypatch) -> Non
         calls.append(dtype)
         return {"family": "gemma", "dtype": dtype}
 
-    monkeypatch.setattr(workload, "load_gemma_model_on_mesh", load_model)
-    monkeypatch.setattr(workload, "load_gemma_tokenizer", lambda snapshot: {"snapshot": snapshot})
+    monkeypatch.setattr(package_workload, "load_gemma_model_on_mesh", load_model)
     monkeypatch.setattr(
-        workload,
+        package_workload, "load_gemma_tokenizer", lambda snapshot: {"snapshot": snapshot}
+    )
+    monkeypatch.setattr(
+        package_workload,
         "create_value_critic_from_actor",
         lambda actor, *, seed=0: {"critic_from": actor, "seed": seed},
     )

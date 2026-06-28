@@ -119,9 +119,12 @@ def main(arguments: Sequence[str] | None = None) -> None:
     import jax
 
     from tunix_craftext.config import load_mvp_config
-    from tunix_craftext.preflight import pinned_qwen_tensor_shape, validate_agentic_grpo_preflight
-    from tunix_craftext.rlcluster_workload import AgenticGrpoWorkloadSpec
-    from tunix_craftext.tunix_topology import load_tunix_topology
+    from tunix_craftext.tunix import (
+        AgenticGrpoWorkloadSpec,
+        load_tunix_topology,
+        pinned_qwen_tensor_shape,
+        validate_agentic_grpo_preflight,
+    )
 
     config = load_mvp_config(args.config)
     topology = load_tunix_topology(args.topology)
@@ -219,7 +222,7 @@ def main(arguments: Sequence[str] | None = None) -> None:
         CrafTextStepTool,
         agentic_environment_kwargs,
     )
-    from tunix_craftext.rlcluster_workload import (
+    from tunix_craftext.tunix import (
         build_agentic_grpo_cluster,
         load_agentic_grpo_qwen_assets,
     )

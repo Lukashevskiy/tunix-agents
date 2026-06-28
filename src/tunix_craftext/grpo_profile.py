@@ -20,7 +20,7 @@ import yaml
 
 from .config import ConfigError
 from .provenance import git_revision
-from .rlcluster_workload import AgenticGrpoWorkloadSpec
+from .tunix import AgenticGrpoWorkloadSpec
 
 
 class GrpoProfileError(ConfigError):
