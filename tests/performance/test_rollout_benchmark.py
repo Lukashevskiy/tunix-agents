@@ -3,7 +3,7 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
-from tunix_craftext.rollout import collect_rollout, collect_rollout_scan
+from tunix_craftext.rollouts.reference import collect_rollout, collect_rollout_scan
 
 
 @pytest.mark.performance

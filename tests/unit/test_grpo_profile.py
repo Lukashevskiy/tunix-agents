@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from tunix_craftext.grpo_profile import (
+from tunix_craftext.training.grpo_profile import (
     GrpoProfileError,
     build_grpo_evidence_manifest,
     load_agentic_grpo_profile,

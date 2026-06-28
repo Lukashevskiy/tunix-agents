@@ -1,5 +1,5 @@
-from tunix_craftext.llm import LlmRequest, ScriptedLlmBackend
-from tunix_craftext.prompts import ActionCatalog, RenderedPrompt
+from tunix_craftext.env.prompts import ActionCatalog, RenderedPrompt
+from tunix_craftext.models.llm import LlmRequest, ScriptedLlmBackend
 
 
 def test_scripted_llm_preserves_raw_completion_for_replay() -> None:

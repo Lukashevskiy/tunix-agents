@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
-from tunix_craftext.replay import ReplayArtifact, ReplayStep
+from tunix_craftext.artifacts.replay import ReplayArtifact, ReplayStep
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location(

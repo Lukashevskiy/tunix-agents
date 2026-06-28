@@ -9,9 +9,9 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from tunix_craftext.llm import LlmRequest, LlmResponse
-from tunix_craftext.prompts import ActionCatalog, RenderedPrompt
-from tunix_craftext.tunix_actor import (
+from tunix_craftext.env.prompts import ActionCatalog, RenderedPrompt
+from tunix_craftext.models.llm import LlmRequest, LlmResponse
+from tunix_craftext.models.tunix_actor import (
     CausalLmScoringModel,
     LinearValueHead,
     build_gemma_tunix_actor_from_components,

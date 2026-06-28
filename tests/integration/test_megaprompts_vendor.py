@@ -8,9 +8,9 @@ import jax
 import numpy as np
 import pytest
 
-from tunix_craftext.config import load_mvp_config
-from tunix_craftext.prompts import ActionCatalog, MegaPromptRenderer, PromptContext
-from tunix_craftext.runtime import build_craftext_runtime
+from tunix_craftext.env.config import load_mvp_config
+from tunix_craftext.env.prompts import ActionCatalog, MegaPromptRenderer, PromptContext
+from tunix_craftext.env.runtime import build_craftext_runtime
 
 ROOT = Path(__file__).resolve().parents[2]
 

@@ -14,30 +14,8 @@ from .adapters import (
     EnvironmentReset,
     EnvironmentStep,
 )
-from .checkpoints import CheckpointMetadata, restore_checkpoint, save_checkpoint
-from .config import ConfigError, MvpRunConfig, load_mvp_config
-from .contracts import RolloutBatch, Transition
-from .episode import collect_text_episode
-from .experience_builders import (
-    ExperienceBuilder,
-    PpoExperienceBuilder,
-    TokenPPOExperience,
-    UniversalMDPStep,
-    broadcast_step_values_to_tokens,
-    compute_mdp_gae,
-)
-from .hybrid_rollout import (
-    HybridPpoStep,
-    HybridPpoTrajectory,
-    compute_masked_step_token_ppo_loss,
-    hybrid_step_from_text_trajectory,
-    hybrid_trajectory_from_steps,
-    last_valid_token_values,
-    shaped_step_rewards_from_text_trajectory,
-)
-from .interop import LoraAdapter, ModelTemplate, TensorRule, convert_state_dict, merge_lora_adapters
-from .llm import LlmBackend, LlmRequest, LlmResponse, ScriptedLlmBackend
-from .observability import (
+from .artifacts.checkpoints import CheckpointMetadata, restore_checkpoint, save_checkpoint
+from .artifacts.observability import (
     ArtifactSink,
     JsonlRunLogger,
     LoggerMethodMapping,
@@ -52,18 +30,25 @@ from .observability import (
     validation_visualization_artifact,
     weights_artifact,
 )
-from .profiling import PhaseProfiler, ProfileEvent, block_until_ready, save_profile
-from .prompts import ActionCatalog, MegaPromptRenderer, PromptContext, RenderedPrompt
-from .random_policy import ActionSamplingError, sample_masked_actions, validate_action_mask
-from .replay import ReplayArtifact, ReplayStep, save_replay
-from .research.llm_ppo import (
-    LlmPpoEvaluation,
-    evaluate_llm_actor_critic_ppo,
-    evaluate_separate_llm_actor_critic_ppo,
+from .artifacts.profiling import PhaseProfiler, ProfileEvent, block_until_ready, save_profile
+from .artifacts.replay import ReplayArtifact, ReplayStep, save_replay
+from .artifacts.text_trajectory import (
+    TextTrajectoryBatch,
+    TextTrajectoryError,
+    text_trajectory_from_replay,
 )
-from .rollout import collect_rollout, collect_rollout_scan
-from .runtime import CrafTextRuntime, build_craftext_runtime
-from .text_policy import (
+from .artifacts.trajectory_gif import (
+    frames_from_replay_payload,
+    load_replay_payload,
+    normalize_observation_image,
+    scale_frame,
+    write_gif,
+)
+from .core.contracts import RolloutBatch, Transition
+from .env.config import ConfigError, MvpRunConfig, load_mvp_config
+from .env.prompts import ActionCatalog, MegaPromptRenderer, PromptContext, RenderedPrompt
+from .env.runtime import CrafTextRuntime, build_craftext_runtime
+from .env.text_policy import (
     DecodedAction,
     DecodeMetrics,
     TextPolicy,
@@ -71,13 +56,32 @@ from .text_policy import (
     decode_action,
     decode_action_outcome,
 )
-from .text_trajectory import TextTrajectoryBatch, TextTrajectoryError, text_trajectory_from_replay
-from .trajectory_gif import (
-    frames_from_replay_payload,
-    load_replay_payload,
-    normalize_observation_image,
-    scale_frame,
-    write_gif,
+from .interop import LoraAdapter, ModelTemplate, TensorRule, convert_state_dict, merge_lora_adapters
+from .models.llm import LlmBackend, LlmRequest, LlmResponse, ScriptedLlmBackend
+from .research.llm_ppo import (
+    LlmPpoEvaluation,
+    evaluate_llm_actor_critic_ppo,
+    evaluate_separate_llm_actor_critic_ppo,
+)
+from .rollouts.hybrid import (
+    HybridPpoStep,
+    HybridPpoTrajectory,
+    compute_masked_step_token_ppo_loss,
+    hybrid_step_from_text_trajectory,
+    hybrid_trajectory_from_steps,
+    last_valid_token_values,
+    shaped_step_rewards_from_text_trajectory,
+)
+from .rollouts.random_policy import ActionSamplingError, sample_masked_actions, validate_action_mask
+from .rollouts.reference import collect_rollout, collect_rollout_scan
+from .rollouts.text_episode import collect_text_episode
+from .training.experience_builders import (
+    ExperienceBuilder,
+    PpoExperienceBuilder,
+    TokenPPOExperience,
+    UniversalMDPStep,
+    broadcast_step_values_to_tokens,
+    compute_mdp_gae,
 )
 from .tunix import (
     TopologyConfigError,

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from tunix_craftext.trajectory_gif import (
+from tunix_craftext.artifacts.trajectory_gif import (
     frames_from_replay_payload,
     load_replay_payload,
     normalize_observation_image,

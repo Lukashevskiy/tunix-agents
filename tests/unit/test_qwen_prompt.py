@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from tunix_craftext.tunix_adapter import (
+from tunix_craftext.models.tunix_adapter import (
     QWEN_ACTION_SYSTEM_PROMPT,
     format_qwen_action_prompt,
     qwen_required_cache_size,

@@ -1,6 +1,6 @@
 """Contract tests for Qwen prompt-token and hidden-state feature boundaries."""
 
-from tunix_craftext.tunix_adapter import qwen_chat_token_ids
+from tunix_craftext.models.tunix_adapter import qwen_chat_token_ids
 
 
 def test_qwen_chat_token_ids_adds_bos_only_when_tokenizer_declares_one() -> None:

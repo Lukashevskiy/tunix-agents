@@ -2,7 +2,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from tunix_craftext.rollout import (
+from tunix_craftext.rollouts.reference import (
     collect_rollout,
     collect_rollout_scan,
     collect_rollout_scan_indexed,

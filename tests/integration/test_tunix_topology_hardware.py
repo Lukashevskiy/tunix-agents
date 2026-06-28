@@ -7,7 +7,7 @@ from pathlib import Path
 import jax
 import pytest
 
-from tunix_craftext.tunix_topology import load_tunix_topology, tunix_role_to_meshes
+from tunix_craftext.tunix.topology import load_tunix_topology, tunix_role_to_meshes
 
 ROOT = Path(__file__).resolve().parents[2]
 

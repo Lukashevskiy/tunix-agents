@@ -9,13 +9,13 @@ import numpy as np
 import pytest
 from tunix.rl import rl_cluster as rl_cluster_lib  # type: ignore[import-untyped]
 
-from tunix_craftext.agentic_ppo import (
+from tunix_craftext.training.agentic_ppo import (
     AgenticPPOConfig,
     AgenticPPOLearner,
     configure_agentic_ppo_trainers,
     universal_mdp_steps_from_trajectory,
 )
-from tunix_craftext.experience_builders import PpoExperienceBuilder
+from tunix_craftext.training.experience_builders import PpoExperienceBuilder
 
 
 class _Trainer:

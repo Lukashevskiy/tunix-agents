@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from tunix_craftext.observability import (
+from tunix_craftext.artifacts.observability import (
     ArtifactSink,
     JsonlRunLogger,
     LoggerMethodMapping,

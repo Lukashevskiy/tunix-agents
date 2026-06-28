@@ -7,8 +7,8 @@ import numpy as np
 import pytest
 
 from tunix_craftext.adapters import CrafTextAdapter
-from tunix_craftext.prompts import ActionCatalog, MegaPromptRenderer, PromptContext
-from tunix_craftext.text_policy import TextPolicy, act
+from tunix_craftext.env.prompts import ActionCatalog, MegaPromptRenderer, PromptContext
+from tunix_craftext.env.text_policy import TextPolicy, act
 
 
 @dataclass(frozen=True)

@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from tunix_craftext.config import ConfigError, load_mvp_config
+from tunix_craftext.env.config import ConfigError, load_mvp_config
 
 ROOT = Path(__file__).resolve().parents[2]
 

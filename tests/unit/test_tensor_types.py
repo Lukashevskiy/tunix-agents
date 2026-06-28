@@ -2,9 +2,9 @@
 
 from typing import get_type_hints
 
-from tunix_craftext.contracts import RolloutBatch, Transition
-from tunix_craftext.random_policy import sample_masked_actions
-from tunix_craftext.tensor_types import (
+from tunix_craftext.artifacts.text_trajectory import TextTrajectoryBatch
+from tunix_craftext.core.contracts import RolloutBatch, Transition
+from tunix_craftext.core.tensor_types import (
     ActionMask,
     BatchFloat,
     BatchLegacyKey,
@@ -13,7 +13,7 @@ from tunix_craftext.tensor_types import (
     TokenBatchBool,
     TokenBatchFloat,
 )
-from tunix_craftext.text_trajectory import TextTrajectoryBatch
+from tunix_craftext.rollouts.random_policy import sample_masked_actions
 
 
 def test_rollout_and_token_boundaries_expose_jaxtyping_axis_aliases() -> None:

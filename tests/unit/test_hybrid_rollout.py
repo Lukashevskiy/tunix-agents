@@ -5,7 +5,9 @@ from __future__ import annotations
 import jax.numpy as jnp
 import pytest
 
-from tunix_craftext.hybrid_rollout import (
+from tunix_craftext.artifacts.replay import ReplayArtifact, ReplayStep
+from tunix_craftext.artifacts.text_trajectory import text_trajectory_from_replay
+from tunix_craftext.rollouts.hybrid import (
     HybridPpoStep,
     compute_masked_step_token_ppo_loss,
     hybrid_step_from_text_trajectory,
@@ -13,8 +15,6 @@ from tunix_craftext.hybrid_rollout import (
     last_valid_token_values,
     shaped_step_rewards_from_text_trajectory,
 )
-from tunix_craftext.replay import ReplayArtifact, ReplayStep
-from tunix_craftext.text_trajectory import text_trajectory_from_replay
 
 
 def _step(*, step_mask: jnp.ndarray | None = None) -> HybridPpoStep:

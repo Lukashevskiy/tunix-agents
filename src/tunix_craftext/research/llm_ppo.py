@@ -13,10 +13,10 @@ from dataclasses import dataclass
 import jax
 import jax.numpy as jnp
 
-from ..llm_actor import LlmActorScores
-from ..tensor_types import TokenBatchBool
-from ..text_trajectory import TextTrajectoryBatch
-from ..tunix_actor import LlmActorTokenScores, LlmCriticValues, merge_actor_critic_scores
+from ..artifacts.text_trajectory import TextTrajectoryBatch
+from ..core.tensor_types import TokenBatchBool
+from ..models.llm_actor import LlmActorScores
+from ..models.tunix_actor import LlmActorTokenScores, LlmCriticValues, merge_actor_critic_scores
 from .algorithms import masked_token_ppo_loss, masked_token_returns
 
 

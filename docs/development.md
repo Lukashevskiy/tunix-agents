@@ -53,7 +53,7 @@ pyenv exec python -m uv run make verify
 ## Tensor contracts: jaxtyping
 
 `jaxtyping` — прямая зависимость проекта. Общие aliases лежат в
-`tunix_craftext.tensor_types`: `TimeBatchFloat`/`TimeBatchBool` означают rollout `[T, B]`,
+`tunix_craftext.core.tensor_types`: `TimeBatchFloat`/`TimeBatchBool` означают rollout `[T, B]`,
 `TokenBatch*` — padded text batch `[B, L]`, а `ActionMask` — legal actions `[B, A]`.
 Новые numerical public APIs должны использовать эти aliases или явный `jaxtyping` shape/dtype,
 а не голый `jax.Array`.

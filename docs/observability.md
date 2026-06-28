@@ -147,7 +147,7 @@ TensorBoard, W&B, Prometheus и Comet ML являются вторичными s
 Comet подключается отдельным optional adapter, а не импортируется core-модулем:
 
 ```python
-from tunix_craftext.comet_adapter import CometMlSink
+from tunix_craftext.artifacts.comet_adapter import CometMlSink
 
 comet = CometMlSink.create_experiment(
     project_name="tunix-craftext",

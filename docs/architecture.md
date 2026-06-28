@@ -42,7 +42,7 @@ Terminal state отделён от truncation: GAE маскирует насто
 
 ## Numerical shape contracts
 
-Численные границы используют `jaxtyping` aliases из `tunix_craftext.tensor_types`:
+Численные границы используют `jaxtyping` aliases из `tunix_craftext.core.tensor_types`:
 rollout tensors — `TimeBatch*` (`[T, B]`), text learner tensors — `TokenBatch*`
 (`[B, L]`), legal-action mask — `ActionMask` (`[B, A]`). Это делает dtype/axes
 видимыми в public signatures, не притворяясь, что opaque Craftax/CrafText vendor

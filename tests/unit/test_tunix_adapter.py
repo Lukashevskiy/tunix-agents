@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from tunix_craftext.tunix_adapter import (
+from tunix_craftext.models.tunix_adapter import (
     GEMMA_ACTION_SYSTEM_PROMPT,
     GEMMA_MODEL_ID,
     GEMMA_TUNIX_CONFIG_ID,

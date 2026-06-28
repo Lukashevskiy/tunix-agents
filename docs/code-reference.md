@@ -17,11 +17,12 @@
 | Training builders | `tunix_craftext.training` | Universal MDP step contract, MDP-time GAE over `[T, B]`, advantage/return broadcasting на generated tokens, Agentic PPO bridge, GRPO profile/evidence and Flashbax staging. |
 | Replay/training artifacts | `tunix_craftext.artifacts` | Replay v3 хранит prompt/completion/action/reward/token evidence, `masked_action`, fallback, text trajectory batches, checkpoints, profiling, provenance and run observability. |
 | Research objectives/learner | `tunix_craftext.research.algorithms`, `tunix_craftext.research.algorithm_registry`, `tunix_craftext.research.learner`, `tunix_craftext.artifacts.checkpoints` | PPO/returns/loss functions чистые и JAX-friendly, но это research/smoke слой; production GRPO/PPO идёт через Tunix Agentic `RLCluster`. |
-| Model/cluster interoperability | `tunix_craftext.interop`, `tunix_craftext.tunix`, `tunix_craftext.models.tunix_adapter` | LoRA/state-dict conversion, declared Tunix role→mesh mapping, preflight и hardware-gated RLCluster config отделены от core rollout. Старые `tunix_topology`/`rlcluster_workload`/`preflight` пути оставлены как compatibility shims. |
+| Model/cluster interoperability | `tunix_craftext.interop`, `tunix_craftext.tunix`, `tunix_craftext.models.tunix_adapter` | LoRA/state-dict conversion, declared Tunix role→mesh mapping, preflight и hardware-gated RLCluster config отделены от core rollout. |
 
-Top-level modules such as `tunix_craftext.prompts`, `tunix_craftext.rollout` and
-`tunix_craftext.tunix_adapter` are compatibility shims. New code should prefer the
-semantic packages above; old notebooks and scripts remain valid during migration.
+Top-level runtime modules were removed after the semantic package split. New code should import
+from `core`, `env`, `rollouts`, `models`, `training`, `artifacts`, `tunix`, and `research`
+directly. The root `tunix_craftext` package remains a compact public facade for common symbols,
+but the old root-level rollout/config module files no longer exist.
 
 ## Минимальный CrafText runtime
 

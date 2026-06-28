@@ -4,7 +4,7 @@ The module defines signatures and helpers for collecting numeric rollouts in a
 framework-neutral form.  These collectors are intentionally reference/contract
 tools for CPU tests, deterministic fixtures and fixed-shape JAX parity checks.
 Production LLM-RL with growing prompt history should use a host-orchestrated
-hybrid rollout boundary such as :mod:`tunix_craftext.hybrid_rollout`.
+hybrid rollout boundary such as :mod:`tunix_craftext.rollouts.hybrid`.
 """
 
 from __future__ import annotations

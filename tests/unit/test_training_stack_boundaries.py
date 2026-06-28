@@ -16,19 +16,6 @@ RESEARCH_MODULES = {
     "tunix_craftext.research.learner",
     "tunix_craftext.research.llm_ppo",
 }
-LEGACY_RESEARCH_MODULES = {
-    "tunix_craftext.algorithms",
-    "tunix_craftext.algorithm_registry",
-    "tunix_craftext.learner",
-    "tunix_craftext.llm_ppo",
-}
-ALLOWED_COMPATIBILITY_FILES = {
-    SRC / "__init__.py",
-    SRC / "algorithms.py",
-    SRC / "algorithm_registry.py",
-    SRC / "learner.py",
-    SRC / "llm_ppo.py",
-}
 SEMANTIC_PACKAGES = {
     "core": {"contracts.py", "resources.py", "tensor_types.py"},
     "env": {"agentic_craftext.py", "config.py", "prompts.py", "runtime.py", "text_policy.py"},
@@ -59,39 +46,8 @@ SEMANTIC_PACKAGES = {
     },
     "tunix": {"preflight.py", "rlcluster_workload.py", "topology.py"},
 }
-TOP_LEVEL_SHIMS = {
-    "agentic_craftext.py",
-    "agentic_grpo_smoke.py",
-    "agentic_ppo.py",
-    "batched_rollout.py",
-    "checkpoints.py",
-    "comet_adapter.py",
-    "config.py",
-    "contracts.py",
-    "episode.py",
-    "experience_builders.py",
-    "flashbax_replay.py",
-    "grpo_profile.py",
-    "hybrid_rollout.py",
-    "llm.py",
-    "llm_actor.py",
-    "model_profile.py",
-    "observability.py",
-    "profiling.py",
-    "prompts.py",
-    "provenance.py",
-    "random_policy.py",
-    "replay.py",
-    "resources.py",
-    "rollout.py",
-    "runtime.py",
-    "tensor_types.py",
-    "text_policy.py",
-    "text_trajectory.py",
-    "trajectory_gif.py",
-    "tunix_actor.py",
-    "tunix_adapter.py",
-}
+ALLOWED_ROOT_FILES = {"__init__.py"}
+ALLOWED_ROOT_DIRECTORIES = set(SEMANTIC_PACKAGES) | {"adapters", "interop", "research"}
 
 
 def test_research_ppo_stack_is_physically_separated_from_production_modules() -> None:
@@ -107,41 +63,31 @@ def test_research_ppo_stack_is_physically_separated_from_production_modules() ->
         assert path.is_file(), f"missing research module: {path.relative_to(ROOT)}"
 
     for path in SRC.rglob("*.py"):
-        if path in ALLOWED_COMPATIBILITY_FILES or "research" in path.parts:
+        if path.name == "__init__.py" or "research" in path.parts:
             continue
         imports = _absolute_imports(path)
-        forbidden = (imports & RESEARCH_MODULES) | (imports & LEGACY_RESEARCH_MODULES)
+        forbidden = imports & RESEARCH_MODULES
         assert not forbidden, f"{path.relative_to(ROOT)} imports research-only PPO: {forbidden}"
 
 
-def test_legacy_training_modules_are_thin_compatibility_shims() -> None:
-    """Compatibility paths may exist, but they must not contain trainer logic."""
-    for filename in ("algorithms.py", "algorithm_registry.py", "learner.py", "llm_ppo.py"):
-        path = SRC / filename
-        tree = ast.parse(path.read_text(encoding="utf-8"))
-        definitions = [
-            node for node in tree.body if isinstance(node, ast.FunctionDef | ast.ClassDef)
-        ]
-        assert definitions == [], f"{filename} must re-export only; move logic to research/"
-        assert "Compatibility shim" in ast.get_docstring(tree, clean=False)
+def test_root_package_contains_only_public_facade_and_semantic_packages() -> None:
+    """Runtime modules live in semantic packages, not as duplicate root shims."""
+    root_files = {path.name for path in SRC.iterdir() if path.is_file()}
+    root_directories = {
+        path.name for path in SRC.iterdir() if path.is_dir() and path.name != "__pycache__"
+    }
+
+    assert root_files == ALLOWED_ROOT_FILES
+    assert root_directories == ALLOWED_ROOT_DIRECTORIES
 
 
-def test_semantic_packages_own_the_runtime_code_and_top_level_paths_are_shims() -> None:
-    """Runtime logic lives in domain packages; root modules stay migration facades."""
+def test_semantic_packages_own_the_runtime_code() -> None:
+    """Runtime logic lives in domain packages with explicit ownership."""
     for package, filenames in SEMANTIC_PACKAGES.items():
         package_root = SRC / package
         assert (package_root / "__init__.py").is_file(), f"missing package {package}"
         for filename in filenames:
             assert (package_root / filename).is_file(), f"missing {package}/{filename}"
-
-    for filename in TOP_LEVEL_SHIMS:
-        path = SRC / filename
-        tree = ast.parse(path.read_text(encoding="utf-8"))
-        definitions = [
-            node for node in tree.body if isinstance(node, ast.FunctionDef | ast.ClassDef)
-        ]
-        assert definitions == [], f"{filename} must re-export only; move logic to packages/"
-        assert "Compatibility shim" in ast.get_docstring(tree, clean=False)
 
 
 def test_training_stack_audit_documents_current_ownership_and_migration() -> None:

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import jax.numpy as jnp
 
-from tunix_craftext.profiling import PhaseProfiler, block_until_ready, save_profile
+from tunix_craftext.artifacts.profiling import PhaseProfiler, block_until_ready, save_profile
 
 
 def test_phase_profiler_records_nested_sections() -> None:

@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from tunix_craftext.llm import LlmRequest
-from tunix_craftext.prompts import ActionCatalog, RenderedPrompt
-from tunix_craftext.tunix_adapter import QwenTunixBackend
+from tunix_craftext.env.prompts import ActionCatalog, RenderedPrompt
+from tunix_craftext.models.llm import LlmRequest
+from tunix_craftext.models.tunix_adapter import QwenTunixBackend
 
 ROOT = Path(__file__).resolve().parents[2]
 SNAPSHOT = ROOT / "artifacts" / "models" / "qwen25-05b-instruct"

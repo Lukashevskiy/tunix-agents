@@ -12,8 +12,8 @@ import jax.numpy as jnp
 import optax  # type: ignore[import-untyped]
 from flax.training.train_state import TrainState
 
-from ..tensor_types import BatchFloat, BatchInt, TokenBatchBool, TokenBatchFloat
-from ..text_trajectory import TextTrajectoryBatch
+from ..artifacts.text_trajectory import TextTrajectoryBatch
+from ..core.tensor_types import BatchFloat, BatchInt, TokenBatchBool, TokenBatchFloat
 from .algorithms import masked_token_ppo_loss, masked_token_returns, ppo_loss
 
 

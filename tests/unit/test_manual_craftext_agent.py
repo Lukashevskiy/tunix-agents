@@ -10,8 +10,8 @@ from types import SimpleNamespace
 import jax.numpy as jnp
 import pytest
 
-from tunix_craftext.config import load_mvp_config
-from tunix_craftext.replay import ReplayArtifact, ReplayStep
+from tunix_craftext.artifacts.replay import ReplayArtifact, ReplayStep
+from tunix_craftext.env.config import load_mvp_config
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location(

@@ -7,10 +7,10 @@ from pathlib import Path
 import jax.numpy as jnp
 import pytest
 
-from tunix_craftext.llm import LlmRequest
-from tunix_craftext.llm_actor import DeterministicLlmActor
-from tunix_craftext.model_profile import load_model_profile
-from tunix_craftext.prompts import ActionCatalog, RenderedPrompt
+from tunix_craftext.env.prompts import ActionCatalog, RenderedPrompt
+from tunix_craftext.models.llm import LlmRequest
+from tunix_craftext.models.llm_actor import DeterministicLlmActor
+from tunix_craftext.models.profile import load_model_profile
 
 ROOT = Path(__file__).resolve().parents[2]
 

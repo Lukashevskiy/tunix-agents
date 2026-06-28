@@ -5,9 +5,9 @@ from pathlib import Path
 import jax.numpy as jnp
 import pytest
 
-import tunix_craftext.rlcluster_workload as workload
 import tunix_craftext.tunix.rlcluster_workload as package_workload
-from tunix_craftext.rlcluster_workload import (
+import tunix_craftext.tunix.rlcluster_workload as workload
+from tunix_craftext.tunix.rlcluster_workload import (
     AgenticGrpoWorkloadSpec,
     PpoModelAssets,
     RLClusterWorkloadError,
@@ -21,7 +21,7 @@ from tunix_craftext.rlcluster_workload import (
     load_ppo_gemma_assets,
     load_ppo_qwen_assets,
 )
-from tunix_craftext.tunix_topology import load_tunix_topology
+from tunix_craftext.tunix.topology import load_tunix_topology
 
 ROOT = Path(__file__).resolve().parents[2]
 

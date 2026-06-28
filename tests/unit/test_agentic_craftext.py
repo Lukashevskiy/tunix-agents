@@ -17,15 +17,15 @@ from tunix.rl.agentic.agents.agent_types import Action
 from tunix.rl.agentic.trajectory.trajectory_collect_engine import TrajectoryCollectEngine
 from tunix.rl.rollout.base_rollout import RolloutOutput
 
-from tunix_craftext.agentic_craftext import (
+from tunix_craftext.env.agentic_craftext import (
     CrafTextAgenticEnvironment,
     agentic_environment_kwargs,
     agentic_task,
     build_craftext_agentic_environment,
     build_craftext_tool_agent,
 )
-from tunix_craftext.agentic_grpo_smoke import grouped_advantages
-from tunix_craftext.prompts import ActionCatalog, PromptContext, RenderedPrompt
+from tunix_craftext.env.prompts import ActionCatalog, PromptContext, RenderedPrompt
+from tunix_craftext.training.agentic_grpo_smoke import grouped_advantages
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -145,7 +145,7 @@ def test_agentic_environment_logs_reset_and_invalid_action_without_prompt_conten
         seed=7,
     )
 
-    with caplog.at_level(logging.INFO, logger="tunix_craftext.agentic_craftext"):
+    with caplog.at_level(logging.INFO, logger="tunix_craftext.env.agentic_craftext"):
         environment.reset()
         environment.step(_action("FLY"))
 

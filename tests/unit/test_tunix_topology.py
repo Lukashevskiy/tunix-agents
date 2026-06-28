@@ -8,7 +8,7 @@ import jax
 import pytest
 
 import tunix_craftext.tunix as tunix_package
-from tunix_craftext.tunix_topology import (
+from tunix_craftext.tunix.topology import (
     TopologyConfigError,
     TunixTopology,
     load_tunix_topology,

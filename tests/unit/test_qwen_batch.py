@@ -6,9 +6,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from tunix_craftext.llm import LlmRequest
-from tunix_craftext.prompts import ActionCatalog, RenderedPrompt
-from tunix_craftext.tunix_adapter import QWEN_ACTION_SYSTEM_PROMPT, QwenTunixBackend
+from tunix_craftext.env.prompts import ActionCatalog, RenderedPrompt
+from tunix_craftext.models.llm import LlmRequest
+from tunix_craftext.models.tunix_adapter import QWEN_ACTION_SYSTEM_PROMPT, QwenTunixBackend
 
 
 class _Tokenizer:

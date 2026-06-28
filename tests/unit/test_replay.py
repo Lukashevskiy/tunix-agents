@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from tunix_craftext.replay import ReplayArtifact, ReplayStep, save_replay
+from tunix_craftext.artifacts.replay import ReplayArtifact, ReplayStep, save_replay
 
 
 def test_replay_is_versioned_and_preserves_raw_completion(tmp_path: Path) -> None:

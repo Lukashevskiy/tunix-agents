@@ -7,15 +7,15 @@ from pathlib import Path
 import jax
 import pytest
 
-from tunix_craftext.batched_rollout import (
+from tunix_craftext.env.config import load_mvp_config
+from tunix_craftext.env.prompts import MegaPromptRenderer
+from tunix_craftext.env.runtime import build_craftext_runtime
+from tunix_craftext.models.tunix_adapter import QwenTunixBackend
+from tunix_craftext.rollouts.batched import (
     collect_batched_text_decision,
     collect_batched_text_rollout,
     replays_from_batched_rollout,
 )
-from tunix_craftext.config import load_mvp_config
-from tunix_craftext.prompts import MegaPromptRenderer
-from tunix_craftext.runtime import build_craftext_runtime
-from tunix_craftext.tunix_adapter import QwenTunixBackend
 
 ROOT = Path(__file__).resolve().parents[2]
 SNAPSHOT = ROOT / "artifacts" / "models" / "qwen25-05b-instruct"

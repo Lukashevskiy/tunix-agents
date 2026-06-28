@@ -5,7 +5,7 @@ text loop and JAX environment execution.  Host code owns prompt history,
 Tunix/LLM generation and actor/critic RPCs; accelerator-friendly code owns
 batched CrafText transitions via ``jax.vmap(adapter.step)``.
 
-The older :mod:`tunix_craftext.rollout` collectors remain reference contracts
+The older :mod:`tunix_craftext.rollouts.reference` collectors remain reference contracts
 for fixed-shape CPU/JAX tests.  Real LLM PPO data must carry token log-probs,
 critic values and two masks: generated-token masks for text padding and
 step-valid masks for post-terminal rollout padding.

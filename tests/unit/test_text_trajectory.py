@@ -5,8 +5,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from tunix_craftext.replay import ReplayArtifact, ReplayStep
-from tunix_craftext.text_trajectory import TextTrajectoryError, text_trajectory_from_replay
+from tunix_craftext.artifacts.replay import ReplayArtifact, ReplayStep
+from tunix_craftext.artifacts.text_trajectory import (
+    TextTrajectoryError,
+    text_trajectory_from_replay,
+)
 
 
 def test_replay_becomes_padded_token_batch_with_terminal_reward() -> None:

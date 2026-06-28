@@ -191,7 +191,7 @@ from the frozen reference on the same fixed task set.
 
 ## 3.5. Agentic PPO / Critic Extension Lane
 
-- [x] Добавить `tunix_craftext.agentic_ppo`: `AgenticPPOConfig`,
+- [x] Добавить `tunix_craftext.training.agentic_ppo`: `AgenticPPOConfig`,
   `AgenticPPOTrainExample` и `AgenticPPOLearner` поверх upstream Tunix
   `AgenticRLLearner`, не через обычный text-only `PPOLearner`.
 - [x] Подключить registered Tunix `ppo` actor loss и `ppo` value loss к

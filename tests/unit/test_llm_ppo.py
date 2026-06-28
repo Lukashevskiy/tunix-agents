@@ -5,13 +5,13 @@ from __future__ import annotations
 import jax.numpy as jnp
 import pytest
 
-from tunix_craftext.llm_actor import LlmActorScores
+from tunix_craftext.artifacts.text_trajectory import TextTrajectoryBatch
+from tunix_craftext.models.llm_actor import LlmActorScores
+from tunix_craftext.models.tunix_actor import LlmActorTokenScores, LlmCriticValues
 from tunix_craftext.research.llm_ppo import (
     evaluate_llm_actor_critic_ppo,
     evaluate_separate_llm_actor_critic_ppo,
 )
-from tunix_craftext.text_trajectory import TextTrajectoryBatch
-from tunix_craftext.tunix_actor import LlmActorTokenScores, LlmCriticValues
 
 
 def _batch() -> TextTrajectoryBatch:

@@ -2,7 +2,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from tunix_craftext.random_policy import (
+from tunix_craftext.rollouts.random_policy import (
     ActionSamplingError,
     sample_masked_actions,
     validate_action_mask,

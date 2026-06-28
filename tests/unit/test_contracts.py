@@ -3,7 +3,7 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
-from tunix_craftext.contracts import RolloutBatch, Transition
+from tunix_craftext.core.contracts import RolloutBatch, Transition
 
 
 def test_rollout_contract_accepts_time_major_batch() -> None:

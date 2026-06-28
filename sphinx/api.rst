@@ -4,13 +4,13 @@ Public API
 Trajectory contracts
 --------------------
 
-.. automodule:: tunix_craftext.contracts
+.. automodule:: tunix_craftext.core.contracts
    :members:
 
 Rollout collection
 ------------------
 
-.. automodule:: tunix_craftext.rollout
+.. automodule:: tunix_craftext.rollouts.reference
    :members:
 
 Environment adapters

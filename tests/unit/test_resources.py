@@ -1,7 +1,12 @@
 import jax
 from jax.sharding import PartitionSpec
 
-from tunix_craftext.resources import ResourceConfig, batch_sharding, data_mesh, replicated_sharding
+from tunix_craftext.core.resources import (
+    ResourceConfig,
+    batch_sharding,
+    data_mesh,
+    replicated_sharding,
+)
 
 
 def test_default_resource_config_builds_visible_device_mesh() -> None:

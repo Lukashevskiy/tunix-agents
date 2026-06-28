@@ -9,9 +9,9 @@ import numpy as np
 import pytest
 
 from tunix_craftext.adapters import CraftaxAdapter
-from tunix_craftext.episode import collect_text_episode
-from tunix_craftext.llm import LlmRequest, LlmResponse, ScriptedLlmBackend
-from tunix_craftext.prompts import ActionCatalog, MegaPromptRenderer
+from tunix_craftext.env.prompts import ActionCatalog, MegaPromptRenderer
+from tunix_craftext.models.llm import LlmRequest, LlmResponse, ScriptedLlmBackend
+from tunix_craftext.rollouts.text_episode import collect_text_episode
 
 
 @dataclass(frozen=True)

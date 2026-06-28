@@ -128,7 +128,7 @@ agentic rollout/tool/reward/grouping semantics до critic-free `GRPOLearner` з
 PPO-Lag/CPO слои должны переиспользовать этот transport и добавить value/cost critic, а не
 переписывать CrafText environment loop.
 
-Для critic-backed agentic path добавлен проектный bridge `tunix_craftext.agentic_ppo`.
+Для critic-backed agentic path добавлен проектный bridge `tunix_craftext.training.agentic_ppo`.
 Он не использует обычный text-only `PPOLearner`: вместо этого наследуется от upstream
 Tunix `AgenticRLLearner`, то есть сохраняет тот же async `RolloutOrchestrator`,
 `TrajectoryCollectEngine`, `ToolAgent` и `BaseTaskEnv` transport. `AgenticPPOLearner`

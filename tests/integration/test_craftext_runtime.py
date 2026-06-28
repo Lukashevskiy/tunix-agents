@@ -7,11 +7,11 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
-from tunix_craftext.agentic_craftext import CrafTextAgenticEnvironment, agentic_task
-from tunix_craftext.config import load_mvp_config
-from tunix_craftext.prompts import PromptContext, RenderedPrompt
-from tunix_craftext.rollout import collect_rollout, collect_rollout_scan_indexed
-from tunix_craftext.runtime import build_craftext_runtime
+from tunix_craftext.env.agentic_craftext import CrafTextAgenticEnvironment, agentic_task
+from tunix_craftext.env.config import load_mvp_config
+from tunix_craftext.env.prompts import PromptContext, RenderedPrompt
+from tunix_craftext.env.runtime import build_craftext_runtime
+from tunix_craftext.rollouts.reference import collect_rollout, collect_rollout_scan_indexed
 
 ROOT = Path(__file__).resolve().parents[2]
 

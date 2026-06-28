@@ -9,7 +9,7 @@ from types import ModuleType, SimpleNamespace
 import pytest
 
 from tunix_craftext.adapters import CagedCrafTextAdapter, CrafTextAdapter
-from tunix_craftext.runtime import RuntimeError, build_craftext_runtime
+from tunix_craftext.env.runtime import RuntimeError, build_craftext_runtime
 
 
 @dataclass

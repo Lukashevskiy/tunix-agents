@@ -8,7 +8,7 @@ be reused across different actor-critic training pipelines.
 import jax
 import jax.numpy as jnp
 
-from ..tensor_types import (
+from ..core.tensor_types import (
     BatchFloat,
     TimeBatchBool,
     TimeBatchFloat,

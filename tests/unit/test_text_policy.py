@@ -1,7 +1,7 @@
 import pytest
 
-from tunix_craftext.prompts import ActionCatalog, PromptContractError, RenderedPrompt
-from tunix_craftext.text_policy import decode_action, decode_action_outcome
+from tunix_craftext.env.prompts import ActionCatalog, PromptContractError, RenderedPrompt
+from tunix_craftext.env.text_policy import decode_action, decode_action_outcome
 
 
 def test_decoder_maps_model_action_to_the_prompt_bound_id() -> None:

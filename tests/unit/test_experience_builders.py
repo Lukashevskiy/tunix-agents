@@ -6,7 +6,7 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
-from tunix_craftext.experience_builders import (
+from tunix_craftext.training.experience_builders import (
     PpoExperienceBuilder,
     UniversalMDPStep,
     broadcast_step_values_to_tokens,

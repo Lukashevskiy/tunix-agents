@@ -6,7 +6,11 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from tunix_craftext.checkpoints import CheckpointMetadata, restore_checkpoint, save_checkpoint
+from tunix_craftext.artifacts.checkpoints import (
+    CheckpointMetadata,
+    restore_checkpoint,
+    save_checkpoint,
+)
 from tunix_craftext.research.learner import create_state, ppo_update
 
 

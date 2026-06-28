@@ -7,13 +7,13 @@ import jax.numpy as jnp
 import pytest
 
 from tunix_craftext.adapters import CrafTextAdapter
-from tunix_craftext.batched_rollout import (
+from tunix_craftext.env.prompts import ActionCatalog, PromptContext, RenderedPrompt
+from tunix_craftext.models.llm import LlmResponse
+from tunix_craftext.rollouts.batched import (
     collect_batched_text_decision,
     collect_batched_text_rollout,
     replays_from_batched_rollout,
 )
-from tunix_craftext.llm import LlmResponse
-from tunix_craftext.prompts import ActionCatalog, PromptContext, RenderedPrompt
 
 
 class _Environment:
@@ -144,8 +144,8 @@ def test_batched_rollout_resets_only_finished_rows_and_exports_replays() -> None
 
 def test_batched_rollout_replay_feeds_token_ppo_training_path() -> None:
     """Replay export preserves token provenance and masks fallback rows before PPO loss."""
+    from tunix_craftext.artifacts.text_trajectory import text_trajectory_from_replay
     from tunix_craftext.research.algorithms import masked_token_ppo_loss, masked_token_returns
-    from tunix_craftext.text_trajectory import text_trajectory_from_replay
 
     class TokenBackend(_Backend):
         def complete_batch(self, requests):

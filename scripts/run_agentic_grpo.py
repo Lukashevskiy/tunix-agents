@@ -84,7 +84,7 @@ def main(arguments: Sequence[str] | None = None) -> None:
     """Build assets, cluster and learner, then perform the requested GRPO updates."""
     args = parse_args(arguments)
 
-    from tunix_craftext.grpo_profile import (
+    from tunix_craftext.training.grpo_profile import (
         build_grpo_evidence_manifest,
         load_agentic_grpo_profile,
     )
@@ -180,7 +180,7 @@ def main(arguments: Sequence[str] | None = None) -> None:
         return
 
     if args.scripted_smoke:
-        from tunix_craftext.agentic_grpo_smoke import (
+        from tunix_craftext.training.agentic_grpo_smoke import (
             collect_scripted_grpo_group_sync,
             save_scripted_grpo_smoke,
         )

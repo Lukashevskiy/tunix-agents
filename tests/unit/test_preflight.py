@@ -5,9 +5,9 @@ from pathlib import Path
 import pytest
 
 import tunix_craftext.tunix as tunix_package
-from tunix_craftext.preflight import QwenTensorShape, validate_agentic_grpo_preflight
-from tunix_craftext.rlcluster_workload import AgenticGrpoWorkloadSpec, RLClusterWorkloadError
-from tunix_craftext.tunix_topology import TunixTopology, load_tunix_topology
+from tunix_craftext.tunix.preflight import QwenTensorShape, validate_agentic_grpo_preflight
+from tunix_craftext.tunix.rlcluster_workload import AgenticGrpoWorkloadSpec, RLClusterWorkloadError
+from tunix_craftext.tunix.topology import TunixTopology, load_tunix_topology
 
 ROOT = Path(__file__).resolve().parents[2]
 

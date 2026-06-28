@@ -40,7 +40,7 @@ except ImportError as error:  # pragma: no cover - exercised without the optiona
 
 # Keep the historical logger name stable while the implementation lives in
 # ``tunix_craftext.env``. Existing dashboards/tests filter this channel.
-_LOGGER = logging.getLogger("tunix_craftext.agentic_craftext")
+_LOGGER = logging.getLogger("tunix_craftext.env.agentic_craftext")
 _TOOL_NAME = "craftext_step"
 
 

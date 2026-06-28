@@ -115,7 +115,7 @@ host-orchestrated rollout перед PPO update:
 
 - `research/learner.py`, `research/algorithms.py`, `research/llm_ppo.py`: нужны notebook
   10/11/12 и unit tests для loss contracts. Они уже не production modules; старые
-  `tunix_craftext.learner`, `tunix_craftext.algorithms` и `tunix_craftext.llm_ppo`
+  `tunix_craftext.research.learner`, `tunix_craftext.research.algorithms` и `tunix_craftext.research.llm_ppo`
   остаются только для совместимости.
 - `rollouts/reference.py`, `rollouts/batched.py`, `rollouts/text_episode.py`: нужны reference/perf/env evidence.
 - `training/flashbax_replay.py`: нужен для будущего bounded staging и синхронного PPO window.

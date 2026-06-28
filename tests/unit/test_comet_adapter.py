@@ -4,8 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tunix_craftext.comet_adapter import CometMlSink
-from tunix_craftext.observability import MetricRecord, RunArtifact, ValidationTrajectoryRecord
+from tunix_craftext.artifacts.comet_adapter import CometMlSink
+from tunix_craftext.artifacts.observability import (
+    MetricRecord,
+    RunArtifact,
+    ValidationTrajectoryRecord,
+)
 
 
 class FakeExperiment:

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from tunix_craftext.model_profile import ModelProfileError, load_model_profile
+from tunix_craftext.models.profile import ModelProfileError, load_model_profile
 
 ROOT = Path(__file__).resolve().parents[2]
 

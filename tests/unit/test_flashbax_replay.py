@@ -6,8 +6,8 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from tunix_craftext.flashbax_replay import make_text_replay_buffer
-from tunix_craftext.text_trajectory import TextTrajectoryBatch
+from tunix_craftext.artifacts.text_trajectory import TextTrajectoryBatch
+from tunix_craftext.training.flashbax_replay import make_text_replay_buffer
 
 
 def _batch() -> TextTrajectoryBatch:

@@ -2,6 +2,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
+from tunix_craftext.artifacts.text_trajectory import TextTrajectoryBatch
 from tunix_craftext.research.learner import (
     create_state,
     create_token_state,
@@ -10,7 +11,6 @@ from tunix_craftext.research.learner import (
     token_actor_critic_outputs,
     token_ppo_update,
 )
-from tunix_craftext.text_trajectory import TextTrajectoryBatch
 
 
 def test_ppo_update_is_finite_and_changes_parameters() -> None:

@@ -11,7 +11,7 @@ from dataclasses import dataclass
 import jax
 from flax import struct
 
-from ..tensor_types import BatchFloat
+from ..core.tensor_types import BatchFloat
 from .algorithms import generalized_advantage_estimation, ppo_loss
 
 

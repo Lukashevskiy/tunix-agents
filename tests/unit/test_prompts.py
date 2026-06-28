@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from tunix_craftext.prompts import (
+from tunix_craftext.env.prompts import (
     ActionCatalog,
     MegaPromptRenderer,
     PromptContext,

@@ -6,12 +6,12 @@ from pathlib import Path
 
 import pytest
 
-from tunix_craftext.config import load_mvp_config
-from tunix_craftext.episode import collect_text_episode
-from tunix_craftext.prompts import MegaPromptRenderer
-from tunix_craftext.runtime import build_craftext_runtime
-from tunix_craftext.text_trajectory import text_trajectory_from_replay
-from tunix_craftext.tunix_adapter import QwenTunixBackend
+from tunix_craftext.artifacts.text_trajectory import text_trajectory_from_replay
+from tunix_craftext.env.config import load_mvp_config
+from tunix_craftext.env.prompts import MegaPromptRenderer
+from tunix_craftext.env.runtime import build_craftext_runtime
+from tunix_craftext.models.tunix_adapter import QwenTunixBackend
+from tunix_craftext.rollouts.text_episode import collect_text_episode
 
 ROOT = Path(__file__).resolve().parents[2]
 SNAPSHOT = ROOT / "artifacts" / "models" / "qwen25-05b-instruct"
