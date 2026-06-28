@@ -83,12 +83,15 @@ Smoke with three repeats полезен только для проверки pip
 
 ## Обязательный CPU quality gate
 
-На каждом PR и push в `main` workflow `CPU quality gate` запускает Ruff, mypy,
-unit/fake-agentic suite и coverage gate на Python 3.12. Coverage считается по
-`src/tunix_craftext` с branch-aware режимом и минимальным порогом 83%; отчёт
-пишется в `coverage.xml` и `term-missing`. Он намеренно не запускает real Qwen,
-accelerator или performance lanes: эти доказательства принадлежат отдельным
-hardware/nightly gates из roadmap.
+На каждом PR и push в `main` workflow `CPU quality gate` устанавливает
+`dev+tunix` extras и запускает Ruff, mypy, unit/fake-agentic suite и coverage
+gate на Python 3.12. Tunix extra нужен потому, что unit suite проверяет публичные
+Tunix bridge contracts (`RLCluster`, Agentic PPO/GRPO, role topology), но этот
+gate не загружает model weights. Coverage считается по `src/tunix_craftext` с
+branch-aware режимом и минимальным порогом 83%; отчёт пишется в `coverage.xml` и
+`term-missing`. Он намеренно не запускает real Qwen, accelerator или performance
+lanes: эти доказательства принадлежат отдельным hardware/nightly gates из
+roadmap.
 
 Agentic GRPO profile относится к CPU quality gate: unit tests обязаны доказывать, что
 `configs/grpo/qwen_agentic_local.yaml` валиден, unknown keys отклоняются, profile/vendor SHA256

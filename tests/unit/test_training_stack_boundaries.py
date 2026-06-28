@@ -74,6 +74,16 @@ def test_training_stack_audit_documents_current_ownership_and_migration() -> Non
     assert "cost critic" in audit
 
 
+def test_cpu_quality_gate_installs_tunix_extra_for_tunix_unit_contracts() -> None:
+    """Unit tests import Tunix bridge APIs, so CI must install the Tunix extra."""
+    workflow = (ROOT / ".github" / "workflows" / "quality.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "uv sync --locked --extra dev --extra tunix" in workflow
+    assert "pytest tests/unit" in workflow
+
+
 def test_jupyter_checkpoints_are_not_tracked_by_git() -> None:
     """Generated notebook checkpoints are local editor state, never repository evidence."""
     tracked = subprocess.check_output(["git", "ls-files"], cwd=ROOT, text=True).splitlines()

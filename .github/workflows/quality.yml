@@ -19,7 +19,7 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-      - run: uv sync --locked --extra dev
+      - run: uv sync --locked --extra dev --extra tunix
       - run: uv run ruff check src tests scripts
       - run: uv run mypy src/tunix_craftext
       - run: uv run pytest tests/unit --cov=src/tunix_craftext --cov-report=term-missing:skip-covered --cov-report=xml --cov-fail-under=83
