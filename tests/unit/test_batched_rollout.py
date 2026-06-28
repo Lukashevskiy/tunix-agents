@@ -10,6 +10,7 @@ from tunix_craftext.adapters import CrafTextAdapter
 from tunix_craftext.env.prompts import ActionCatalog, PromptContext, RenderedPrompt
 from tunix_craftext.models.llm import LlmResponse
 from tunix_craftext.rollouts.batched import (
+    EnvironmentDevicePolicy,
     collect_batched_text_decision,
     collect_batched_text_rollout,
     replays_from_batched_rollout,
@@ -72,6 +73,77 @@ def test_batched_decision_uses_one_llm_batch_and_one_vmap_environment_step() -> 
     assert result.fallback_used.tolist() == [False, True]
     assert result.transition.state.tolist() == [11, 20]
     assert result.transition.reward.tolist() == [1.0, 0.0]
+
+
+def test_batched_decision_can_place_and_jit_environment_step_on_selected_device() -> None:
+    """Accelerator lane keeps env keys/state/actions on an explicit JAX device."""
+    adapter = CrafTextAdapter(_Environment(), None, action_count=2)
+    device = jax.devices()[0]
+    result = collect_batched_text_decision(
+        adapter,
+        _Renderer(),
+        _Backend(),
+        states=jnp.asarray([10, 20]),
+        action_masks=jnp.ones((2, 2), dtype=bool),
+        actions=ActionCatalog(("NOOP", "DO")),
+        keys=jax.random.split(jax.random.PRNGKey(0), 2),
+        goal="test",
+        max_new_tokens=4,
+        invalid_action="fallback",
+        fallback_action_id=0,
+        device_policy=EnvironmentDevicePolicy(
+            backend=jax.default_backend(),
+            device_index=0,
+            jit_step=True,
+        ),
+    )
+
+    assert result.transition.reward.tolist() == [1.0, 0.0]
+    assert result.transition.reward.devices() == {device}
+    assert result.transition.action_mask.devices() == {device}
+
+
+def test_batched_rollout_can_jit_reset_and_step_with_device_policy() -> None:
+    """Full rollout path supports explicit colocated env reset/step execution."""
+    adapter = CrafTextAdapter(_Environment(), None, action_count=2)
+    rollout = collect_batched_text_rollout(
+        adapter,
+        _Renderer(),
+        _Backend(),
+        actions=ActionCatalog(("NOOP", "DO")),
+        batch_size=2,
+        horizon=2,
+        seed=0,
+        goal="test",
+        max_new_tokens=4,
+        invalid_action="fallback",
+        fallback_action_id=0,
+        device_policy=EnvironmentDevicePolicy(backend=jax.default_backend(), device_index=0),
+    )
+
+    assert len(rollout.decisions) == 2
+    assert rollout.decisions[0].transition.reward.devices() == {jax.devices()[0]}
+
+
+def test_environment_device_policy_rejects_unavailable_backend() -> None:
+    """Unavailable accelerator backends fail before a rollout silently falls back."""
+    adapter = CrafTextAdapter(_Environment(), None, action_count=2)
+
+    with pytest.raises(ValueError, match="backend is not available"):
+        collect_batched_text_decision(
+            adapter,
+            _Renderer(),
+            _Backend(),
+            states=jnp.asarray([10, 20]),
+            action_masks=jnp.ones((2, 2), dtype=bool),
+            actions=ActionCatalog(("NOOP", "DO")),
+            keys=jax.random.split(jax.random.PRNGKey(0), 2),
+            goal="test",
+            max_new_tokens=4,
+            invalid_action="fallback",
+            fallback_action_id=0,
+            device_policy=EnvironmentDevicePolicy(backend="not-a-backend"),
+        )
 
 
 def test_batched_decision_falls_back_when_model_selects_masked_action() -> None:

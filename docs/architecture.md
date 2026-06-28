@@ -55,6 +55,13 @@ logprobs, critic values, entropy, token masks и PPO smoke learner теперь 
 shape aliases, поэтому случайное смешивание `[B, A]`, `[B, L]` и `[B, L, V]` видно уже
 в type hints и тестируется unit-аудитом.
 
+Batched text rollout имеет отдельный colocated accelerator mode через
+`EnvironmentDevicePolicy`: reset/step компилируются как `jit(vmap(...))`, а keys/state/action
+masks/action ids явно размещаются на выбранном JAX device (`backend="cuda"`/`"gpu"`,
+`device_index=0`). Это позволяет держать Craftax/CrafText transition на той же GPU, где живёт
+single-device Tunix/Qwen/Gemma backend. Текстовые части — MegaPrompts render, LLM completion
+object creation и action decode — остаются host boundary по определению.
+
 ## Three-layer environment adapter boundary
 
 `CraftaxAdapter` — нижний чистый boundary для любого Craftax-compatible env: он принимает

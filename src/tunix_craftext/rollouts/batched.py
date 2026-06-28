@@ -23,6 +23,24 @@ from ..models.llm import BatchLlmBackend, LlmRequest, LlmResponse
 
 
 @dataclass(frozen=True)
+class EnvironmentDevicePolicy:
+    """Placement policy for batched JAX environment reset/step execution.
+
+    The default leaves JAX free to use its normal device placement. Supplying a
+    backend such as ``"cuda"``/``"gpu"`` and ``device_index=0`` explicitly places
+    keys, states, action masks and decoded action ids on the selected device
+    before vmapped reset/step.  Prompt rendering and action decoding remain
+    host-side because they are text/Python boundaries.
+    """
+
+    backend: str | None = None
+    device_index: int = 0
+    jit_reset: bool = True
+    jit_step: bool = True
+    place_inputs: bool = True
+
+
+@dataclass(frozen=True)
 class BatchedTextDecision:
     """Evidence and transition for one batch of parallel text-environment decisions."""
 
@@ -50,11 +68,53 @@ def _item_at(tree: object, index: int) -> object:
 
 def _replace_finished(current: object, reset: object, finished: jax.Array) -> object:
     """Select reset leaves only for finished leading-batch rows."""
+
     def select(current_leaf: jax.Array, reset_leaf: jax.Array) -> jax.Array:
         shape = (finished.shape[0],) + (1,) * (current_leaf.ndim - 1)
         return jnp.where(finished.reshape(shape), reset_leaf, current_leaf)
 
     return jax.tree.map(select, current, reset)
+
+
+def _resolve_device(policy: EnvironmentDevicePolicy | None) -> jax.Device | None:
+    """Resolve an optional environment device placement policy."""
+    if policy is None or policy.backend is None:
+        return None
+    backend = "gpu" if policy.backend == "cuda" else policy.backend
+    try:
+        devices = jax.devices(backend)
+    except RuntimeError as error:
+        raise ValueError(
+            f"JAX backend is not available for environment: {policy.backend}"
+        ) from error
+    if not 0 <= policy.device_index < len(devices):
+        raise ValueError(
+            f"environment device_index {policy.device_index} outside visible {backend} devices"
+        )
+    return devices[policy.device_index]
+
+
+def _place_for_environment(value: object, device: jax.Device | None, *, enabled: bool) -> object:
+    """Place an arbitrary JAX PyTree on the selected environment device."""
+    if device is None or not enabled:
+        return value
+    return jax.device_put(value, device)
+
+
+def _batched_reset(
+    adapter: CraftaxAdapter[object, object, object], policy: EnvironmentDevicePolicy | None
+):
+    """Return a vmapped and optionally jitted reset function."""
+    reset = jax.vmap(adapter.reset)
+    return jax.jit(reset) if policy is not None and policy.jit_reset else reset
+
+
+def _batched_step(
+    adapter: CraftaxAdapter[object, object, object], policy: EnvironmentDevicePolicy | None
+):
+    """Return a vmapped and optionally jitted step function."""
+    step = jax.vmap(adapter.step)
+    return jax.jit(step) if policy is not None and policy.jit_step else step
 
 
 def collect_batched_text_decision(
@@ -71,6 +131,7 @@ def collect_batched_text_decision(
     dialog: Sequence[tuple[str, ...]] | None = None,
     invalid_action: Literal["error", "fallback"] = "error",
     fallback_action_id: int | None = None,
+    device_policy: EnvironmentDevicePolicy | None = None,
 ) -> BatchedTextDecision:
     """Render, complete, decode and step an ordered environment batch.
 
@@ -90,6 +151,13 @@ def collect_batched_text_decision(
         fallback_action_id is None or not 0 <= fallback_action_id < adapter.action_count
     ):
         raise ValueError("fallback_action_id must be inside the action catalog")
+    device = _resolve_device(device_policy)
+    place_inputs = True if device_policy is None else device_policy.place_inputs
+    states = _place_for_environment(states, device, enabled=place_inputs)
+    action_masks = cast(
+        jax.Array, _place_for_environment(action_masks, device, enabled=place_inputs)
+    )
+    keys = cast(jax.Array, _place_for_environment(keys, device, enabled=place_inputs))
     dialogs = tuple(() for _ in range(batch_size)) if dialog is None else tuple(dialog)
     if len(dialogs) != batch_size:
         raise ValueError("dialog must contain one tuple per batch item")
@@ -148,13 +216,17 @@ def collect_batched_text_decision(
         decisions.append(decision)
         metrics.append(outcome)
     action_ids = jnp.asarray([decision.action_id for decision in decisions], dtype=jnp.int32)
-    transition = jax.vmap(adapter.step)(keys, states, action_ids)
+    action_ids = cast(jax.Array, _place_for_environment(action_ids, device, enabled=place_inputs))
+    transition = _batched_step(adapter, device_policy)(keys, states, action_ids)
     return BatchedTextDecision(
         prompts=prompts,
         responses=responses,
         actions=tuple(decisions),
         metrics=tuple(metrics),
-        fallback_used=jnp.asarray(fallback, dtype=bool),
+        fallback_used=cast(
+            jax.Array,
+            _place_for_environment(jnp.asarray(fallback, dtype=bool), device, enabled=place_inputs),
+        ),
         transition=transition,
     )
 
@@ -172,6 +244,7 @@ def collect_batched_text_rollout(
     max_new_tokens: int,
     invalid_action: Literal["error", "fallback"] = "error",
     fallback_action_id: int | None = None,
+    device_policy: EnvironmentDevicePolicy | None = None,
 ) -> BatchedTextRollout:
     """Collect a fixed-horizon multi-env rollout with explicit done-reset semantics.
 
@@ -181,8 +254,12 @@ def collect_batched_text_rollout(
     """
     if batch_size <= 0 or horizon <= 0:
         raise ValueError("batch_size and horizon must be positive")
+    device = _resolve_device(device_policy)
+    place_inputs = True if device_policy is None else device_policy.place_inputs
     keys = jax.random.split(jax.random.PRNGKey(seed), batch_size + horizon * 2 * batch_size)
-    reset = jax.vmap(adapter.reset)(keys[:batch_size])
+    keys = cast(jax.Array, _place_for_environment(keys, device, enabled=place_inputs))
+    batched_reset = _batched_reset(adapter, device_policy)
+    reset = batched_reset(keys[:batch_size])
     state = reset.state
     action_mask = reset.action_mask
     dialogs: tuple[tuple[str, ...], ...] = tuple(() for _ in range(batch_size))
@@ -206,9 +283,10 @@ def collect_batched_text_rollout(
             dialog=dialogs,
             invalid_action=invalid_action,
             fallback_action_id=fallback_action_id,
+            device_policy=device_policy,
         )
         finished = jnp.logical_or(decision.transition.terminated, decision.transition.truncated)
-        fresh = jax.vmap(adapter.reset)(reset_keys)
+        fresh = batched_reset(reset_keys)
         state = _replace_finished(decision.transition.state, fresh.state, finished)
         action_mask = cast(
             jax.Array,

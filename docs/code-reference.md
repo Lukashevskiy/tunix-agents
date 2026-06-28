@@ -88,6 +88,34 @@ replays = replays_from_batched_rollout(
 после этого вызывает `jax.vmap(CrafTextAdapter.step)`. Если model action masked, replay сохранит
 `masked_action=1` и `fallback_used=True` при включённом fallback.
 
+Для colocated single-GPU smoke/benchmark можно явно закрепить JAX-среду на том же accelerator,
+что и локальную Tunix-модель:
+
+```python
+from tunix_craftext.rollouts.batched import EnvironmentDevicePolicy
+
+rollout = collect_batched_text_rollout(
+    runtime.adapter,
+    renderer,
+    backend,
+    actions=runtime.actions,
+    batch_size=8,
+    horizon=32,
+    seed=config.run.seed,
+    goal="Stay alive and choose one currently valid action.",
+    max_new_tokens=8,
+    invalid_action="fallback",
+    fallback_action_id=fallback_action_id,
+    device_policy=EnvironmentDevicePolicy(backend="cuda", device_index=0),
+)
+```
+
+`EnvironmentDevicePolicy` делает `device_put` для keys/state/action masks/action ids и использует
+`jit(vmap(reset/step))`. Prompt rendering и strict text decode остаются host-side, поэтому это не
+устраняет все host↔device переходы, но фиксирует самый важный численный кусок: CrafText/Craftax
+state carry и transition step не должны случайно съезжать на CPU. Если CUDA backend недоступен,
+pipeline падает до rollout, а не молча переключается на CPU.
+
 ## Hybrid rollout → PPO-ready actor/critic evidence
 
 ```python
