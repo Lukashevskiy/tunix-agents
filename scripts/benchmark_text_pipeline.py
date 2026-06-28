@@ -109,9 +109,9 @@ def run_episode(
     """
     import jax
 
-    from tunix_craftext.llm import LlmRequest
-    from tunix_craftext.prompts import PromptContext
-    from tunix_craftext.text_policy import DecodedAction, decode_action_outcome
+    from tunix_craftext.env.prompts import PromptContext
+    from tunix_craftext.env.text_policy import DecodedAction, decode_action_outcome
+    from tunix_craftext.models.llm import LlmRequest
 
     action_labels = getattr(actions, "labels")
     fallback_action_id = actions.index_of("NOOP")
@@ -333,10 +333,10 @@ def main(arguments: Sequence[str] | None = None) -> None:
 
     import jax
 
-    from tunix_craftext.config import load_mvp_config
-    from tunix_craftext.prompts import MegaPromptRenderer
-    from tunix_craftext.runtime import build_craftext_runtime
-    from tunix_craftext.tunix_adapter import QwenTunixBackend
+    from tunix_craftext.env.config import load_mvp_config
+    from tunix_craftext.env.prompts import MegaPromptRenderer
+    from tunix_craftext.env.runtime import build_craftext_runtime
+    from tunix_craftext.models.tunix_adapter import QwenTunixBackend
 
     config = load_mvp_config(args.config)
     if config.policy.implementation != "tunix":

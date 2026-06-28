@@ -16,7 +16,7 @@
 ```python
 from pathlib import Path
 
-from tunix_craftext.observability import (
+from tunix_craftext.artifacts.observability import (
     JsonlRunLogger,
     MetricRecord,
     RunArtifact,
@@ -176,7 +176,7 @@ visualization, checkpoint, weights), затем отправить ссылку/
 сопоставить методы logger-а с базовым `ArtifactSink` контрактом:
 
 ```python
-from tunix_craftext.observability import LoggerMethodMapping, MappedLoggerSink
+from tunix_craftext.artifacts.observability import LoggerMethodMapping, MappedLoggerSink
 
 team_sink = MappedLoggerSink(
     team_logger,

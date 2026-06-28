@@ -29,6 +29,69 @@ ALLOWED_COMPATIBILITY_FILES = {
     SRC / "learner.py",
     SRC / "llm_ppo.py",
 }
+SEMANTIC_PACKAGES = {
+    "core": {"contracts.py", "resources.py", "tensor_types.py"},
+    "env": {"agentic_craftext.py", "config.py", "prompts.py", "runtime.py", "text_policy.py"},
+    "rollouts": {
+        "batched.py",
+        "hybrid.py",
+        "random_policy.py",
+        "reference.py",
+        "text_episode.py",
+    },
+    "models": {"llm.py", "llm_actor.py", "profile.py", "tunix_actor.py", "tunix_adapter.py"},
+    "training": {
+        "agentic_grpo_smoke.py",
+        "agentic_ppo.py",
+        "experience_builders.py",
+        "flashbax_replay.py",
+        "grpo_profile.py",
+    },
+    "artifacts": {
+        "checkpoints.py",
+        "comet_adapter.py",
+        "observability.py",
+        "profiling.py",
+        "provenance.py",
+        "replay.py",
+        "text_trajectory.py",
+        "trajectory_gif.py",
+    },
+    "tunix": {"preflight.py", "rlcluster_workload.py", "topology.py"},
+}
+TOP_LEVEL_SHIMS = {
+    "agentic_craftext.py",
+    "agentic_grpo_smoke.py",
+    "agentic_ppo.py",
+    "batched_rollout.py",
+    "checkpoints.py",
+    "comet_adapter.py",
+    "config.py",
+    "contracts.py",
+    "episode.py",
+    "experience_builders.py",
+    "flashbax_replay.py",
+    "grpo_profile.py",
+    "hybrid_rollout.py",
+    "llm.py",
+    "llm_actor.py",
+    "model_profile.py",
+    "observability.py",
+    "profiling.py",
+    "prompts.py",
+    "provenance.py",
+    "random_policy.py",
+    "replay.py",
+    "resources.py",
+    "rollout.py",
+    "runtime.py",
+    "tensor_types.py",
+    "text_policy.py",
+    "text_trajectory.py",
+    "trajectory_gif.py",
+    "tunix_actor.py",
+    "tunix_adapter.py",
+}
 
 
 def test_research_ppo_stack_is_physically_separated_from_production_modules() -> None:
@@ -60,6 +123,24 @@ def test_legacy_training_modules_are_thin_compatibility_shims() -> None:
             node for node in tree.body if isinstance(node, ast.FunctionDef | ast.ClassDef)
         ]
         assert definitions == [], f"{filename} must re-export only; move logic to research/"
+        assert "Compatibility shim" in ast.get_docstring(tree, clean=False)
+
+
+def test_semantic_packages_own_the_runtime_code_and_top_level_paths_are_shims() -> None:
+    """Runtime logic lives in domain packages; root modules stay migration facades."""
+    for package, filenames in SEMANTIC_PACKAGES.items():
+        package_root = SRC / package
+        assert (package_root / "__init__.py").is_file(), f"missing package {package}"
+        for filename in filenames:
+            assert (package_root / filename).is_file(), f"missing {package}/{filename}"
+
+    for filename in TOP_LEVEL_SHIMS:
+        path = SRC / filename
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        definitions = [
+            node for node in tree.body if isinstance(node, ast.FunctionDef | ast.ClassDef)
+        ]
+        assert definitions == [], f"{filename} must re-export only; move logic to packages/"
         assert "Compatibility shim" in ast.get_docstring(tree, clean=False)
 
 

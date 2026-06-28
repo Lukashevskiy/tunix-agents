@@ -15,7 +15,7 @@ from typing import Any
 import numpy as np
 import pygame
 
-from tunix_craftext.trajectory_gif import load_replay_payload, normalize_observation_image
+from tunix_craftext.artifacts.trajectory_gif import load_replay_payload, normalize_observation_image
 
 
 def load_trajectory(path: Path) -> dict[str, Any]:

@@ -1,6 +1,6 @@
 # Checkpoints и возобновление PPO
 
-`tunix_craftext.checkpoints` сохраняет обучаемую часть `flax.training.TrainState`
+`tunix_craftext.artifacts.checkpoints` сохраняет обучаемую часть `flax.training.TrainState`
 через Orbax: `step`, `params` и `opt_state`. Функции модели и Optax transform не
 сериализуются — при restore они намеренно берутся из локального `state_template`.
 Это сохраняет checkpoint переносимым между процессами и не превращает Python-callable
@@ -15,7 +15,11 @@ from pathlib import Path
 
 import jax
 
-from tunix_craftext.checkpoints import CheckpointMetadata, restore_checkpoint, save_checkpoint
+from tunix_craftext.artifacts.checkpoints import (
+    CheckpointMetadata,
+    restore_checkpoint,
+    save_checkpoint,
+)
 from tunix_craftext.research.learner import create_state
 
 state = create_state(jax.random.PRNGKey(0), observation_dim=3, actions=2)

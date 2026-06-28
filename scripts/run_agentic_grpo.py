@@ -118,7 +118,7 @@ def main(arguments: Sequence[str] | None = None) -> None:
 
     import jax
 
-    from tunix_craftext.config import load_mvp_config
+    from tunix_craftext.env.config import load_mvp_config
     from tunix_craftext.tunix import (
         AgenticGrpoWorkloadSpec,
         load_tunix_topology,
@@ -217,16 +217,16 @@ def main(arguments: Sequence[str] | None = None) -> None:
     from tunix.rl.agentic.agents.tool_agent import ToolAgent
     from tunix.rl.agentic.parser.chat_template_parser.parser import QwenChatTemplateParser
 
-    from tunix_craftext.agentic_craftext import (
+    from tunix_craftext.env.agentic_craftext import (
         CrafTextAgenticEnvironment,
         CrafTextStepTool,
         agentic_environment_kwargs,
     )
+    from tunix_craftext.models.tunix_adapter import load_qwen_hf_tokenizer
     from tunix_craftext.tunix import (
         build_agentic_grpo_cluster,
         load_agentic_grpo_qwen_assets,
     )
-    from tunix_craftext.tunix_adapter import load_qwen_hf_tokenizer
     logging.info("Loading Agentic GRPO Qwen assets from %s", args.snapshot)
     assets = load_agentic_grpo_qwen_assets(args.snapshot, topology)
     cluster = build_agentic_grpo_cluster(topology, spec, assets)

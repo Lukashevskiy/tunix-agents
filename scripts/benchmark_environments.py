@@ -108,9 +108,9 @@ def benchmark_point(path: Path, batch_size: int, horizon: int, repeats: int) -> 
     import jax
     import jax.numpy as jnp
 
-    from tunix_craftext.config import load_mvp_config
-    from tunix_craftext.random_policy import sample_masked_actions
-    from tunix_craftext.runtime import build_craftext_runtime
+    from tunix_craftext.env.config import load_mvp_config
+    from tunix_craftext.env.runtime import build_craftext_runtime
+    from tunix_craftext.rollouts.random_policy import sample_masked_actions
 
     config = load_mvp_config(path)
     config = replace(

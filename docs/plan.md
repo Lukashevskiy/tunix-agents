@@ -114,14 +114,14 @@ catalogue и deterministic initial environment state.
   скорректированы под PPO-first roadmap.
 - [x] Зафиксировать, что `collect_rollout_scan*` — reference/fixed-shape collector для
   CPU/JAX parity, а не production LLM-RL collector с динамической текстовой историей.
-- [x] Добавить `tunix_craftext.hybrid_rollout`: `HybridPpoStep`,
+- [x] Добавить `tunix_craftext.rollouts.hybrid`: `HybridPpoStep`,
   `HybridPpoTrajectory`, stacked `step_masks` и masked token-step PPO loss primitive.
 - [x] Добавить replay staging adapter: `hybrid_step_from_text_trajectory()` переводит
   `TextTrajectoryBatch` в `HybridPpoStep`, сохраняет `policy_token_mask` для fallback rows
   и `last_valid_token_values()` мостит token critic values `[B, L]` в step values `[B]`.
 - [x] Покрыть hybrid contract unit tests: shape validation, mismatched token logprobs,
   time-major step masks, generated-token padding и post-terminal rows.
-- [x] Добавить `tunix_craftext.experience_builders`: `UniversalMDPStep`,
+- [x] Добавить `tunix_craftext.training.experience_builders`: `UniversalMDPStep`,
   `TokenPPOExperience`, `compute_mdp_gae()` по MDP time axis и
   `PpoExperienceBuilder` с advantage broadcasting на valid generated tokens.
 - [x] Покрыть Experience Builder unit tests: MDP GAE не течёт через post-terminal rows,

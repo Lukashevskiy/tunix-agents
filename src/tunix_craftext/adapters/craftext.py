@@ -13,7 +13,7 @@ import jax
 import jax.numpy as jnp
 from jaxtyping import ArrayLike
 
-from ..tensor_types import JaxKey, ScalarBool, ScalarFloat, ScalarInt, SingleActionMask
+from ..core.tensor_types import JaxKey, ScalarBool, ScalarFloat, ScalarInt, SingleActionMask
 
 ParamsT = TypeVar("ParamsT")
 ObservationT = TypeVar("ObservationT")

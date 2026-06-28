@@ -20,14 +20,14 @@ RLCluster обучения.
 
 | Слой | Файлы | Статус | Что делать |
 | --- | --- | --- | --- |
-| Agentic environment transport | `agentic_craftext.py`, `prompts.py`, `text_policy.py`, `runtime.py`, `adapters/craftext.py` | production boundary | Оставить как общий транспорт для GRPO/PPO/PPO-Lag/CPO. |
+| Agentic environment transport | `env/agentic_craftext.py`, `env/prompts.py`, `env/text_policy.py`, `env/runtime.py`, `adapters/craftext.py` | production boundary | Оставить как общий транспорт для GRPO/PPO/PPO-Lag/CPO. |
 | Tunix topology/workload | `tunix/topology.py`, `tunix/rlcluster_workload.py`, `tunix/preflight.py`, `grpo_profile.py` | production boundary | Уже вынесено в semantic package `tunix_craftext.tunix`; старые root modules остались thin compatibility shims. |
-| Agentic GRPO | `agentic_grpo_smoke.py`, `scripts/run_agentic_grpo.py`, `configs/grpo/qwen_agentic_local.yaml` | текущий golden path до heavy update | Довести до real one-update на accelerator/local snapshot. |
-| Agentic PPO | `agentic_ppo.py`, `tests/unit/test_agentic_ppo.py` | current extension lane | Добавить hardware-gated one-update actor+critic, затем cost critic для PPO-Lag/CPO. |
-| Tunix LLM backend | `tunix_adapter.py`, `tunix_actor.py`, `llm_actor.py`, `model_profile.py` | смешанный production/research bridge | Разбить большой adapter на loaders, sampler backend, scoring и model profile modules. |
+| Agentic GRPO | `training/agentic_grpo_smoke.py`, `scripts/run_agentic_grpo.py`, `configs/grpo/qwen_agentic_local.yaml` | текущий golden path до heavy update | Довести до real one-update на accelerator/local snapshot. |
+| Agentic PPO | `training/agentic_ppo.py`, `tests/unit/test_agentic_ppo.py` | current extension lane | Добавить hardware-gated one-update actor+critic, затем cost critic для PPO-Lag/CPO. |
+| Tunix LLM backend | `models/tunix_adapter.py`, `models/tunix_actor.py`, `models/llm_actor.py`, `models/profile.py` | production/research bridge | Следующий split внутри `models`: loaders, sampler backend, scoring и profiles. |
 | Local PPO mechanics | `research/algorithms.py`, `research/algorithm_registry.py`, `research/learner.py`, `research/llm_ppo.py`, `checkpoints.py` | research/smoke | Уже вынесено из production namespace; старые top-level пути оставлены как thin compatibility shims. |
-| Replay staging | `flashbax_replay.py`, `replay.py`, `text_trajectory.py` | reusable staging | Оставить, но документационно ограничить on-policy/bounded staging. |
-| Local rollout examples | `rollout.py`, `batched_rollout.py`, `hybrid_rollout.py`, `episode.py`, `random_policy.py` | reference/contract boundary | `rollout.py` оставить fixed-shape reference; `batched_rollout.py` оставить synchronous host+JAX precursor; `hybrid_rollout.py` использовать как PPO-ready evidence contract с actor logprobs, critic values, token masks и step masks. Не считать это самостоятельным trainer. |
+| Replay staging | `training/flashbax_replay.py`, `artifacts/replay.py`, `artifacts/text_trajectory.py` | reusable staging | Оставить, но документационно ограничить on-policy/bounded staging. |
+| Local rollout examples | `rollouts/reference.py`, `rollouts/batched.py`, `rollouts/hybrid.py`, `rollouts/text_episode.py`, `rollouts/random_policy.py` | reference/contract boundary | `reference.py` оставить fixed-shape baseline; `batched.py` оставить synchronous host+JAX precursor; `hybrid.py` использовать как PPO-ready evidence contract с actor logprobs, critic values, token masks и step masks. Не считать это самостоятельным trainer. |
 | Interop | `interop/*` | support module | Оставить отдельно; Qwix/LoRA integration делать здесь. |
 
 ## Как сейчас реализован GRPO
@@ -39,7 +39,7 @@ GRPO реализуется не через локальный PPO loss, а че
 3. `tunix/topology.py` объявляет роли `actor`, `rollout`, `reference`; critic намеренно отсутствует.
 4. `tunix/rlcluster_workload.py::build_agentic_grpo_cluster_config()` строит Tunix `ClusterConfig` с
    `RLTrainingConfig`, `RolloutConfig`, checkpoint root и recomputed logprobs.
-5. `agentic_craftext.py` адаптирует CrafText в multi-turn tool-call environment для Tunix
+5. `env/agentic_craftext.py` адаптирует CrafText в multi-turn tool-call environment для Tunix
    `TrajectoryCollectEngine`.
 6. `scripts/run_agentic_grpo.py` собирает preflight/evidence, может выполнить `--dry-run` и
    `--scripted-smoke`, а heavy path должен создать real `RLCluster` и `GRPOLearner`.
@@ -54,7 +54,7 @@ GRPO реализуется не через локальный PPO loss, а че
 
 ### 1. Agentic PPO поверх Tunix
 
-`agentic_ppo.py` добавляет critic-backed PPO subclass поверх upstream
+`training/agentic_ppo.py` добавляет critic-backed PPO subclass поверх upstream
 `tunix.rl.agentic.agentic_rl_learner.AgenticRLLearner`.
 
 Что уже хорошо:
@@ -86,7 +86,7 @@ distributed actor/reference/critic lifecycle.
 
 Внешний PPO-аудит отдельно указал, что `jax.lax.scan` с динамически растущей LLM-историей
 приведёт к статическому padding/KV-cache overhead и не должен быть production collector.
-Поэтому добавлен `hybrid_rollout.py`: он фиксирует данные, которые обязан вернуть реальный
+Поэтому добавлен `rollouts/hybrid.py`: он фиксирует данные, которые обязан вернуть реальный
 host-orchestrated rollout перед PPO update:
 
 - discrete `action_ids` для `jax.vmap(CrafTextAdapter.step)`;
@@ -117,9 +117,9 @@ host-orchestrated rollout перед PPO update:
   10/11/12 и unit tests для loss contracts. Они уже не production modules; старые
   `tunix_craftext.learner`, `tunix_craftext.algorithms` и `tunix_craftext.llm_ppo`
   остаются только для совместимости.
-- `rollout.py`, `batched_rollout.py`, `episode.py`: нужны reference/perf/env evidence.
-- `flashbax_replay.py`: нужен для будущего bounded staging и синхронного PPO window.
-- `checkpoints.py`: локальный Orbax smoke остаётся regression test для optimizer-state restore,
+- `rollouts/reference.py`, `rollouts/batched.py`, `rollouts/text_episode.py`: нужны reference/perf/env evidence.
+- `training/flashbax_replay.py`: нужен для будущего bounded staging и синхронного PPO window.
+- `artifacts/checkpoints.py`: локальный Orbax smoke остаётся regression test для optimizer-state restore,
   даже если production Tunix checkpoints принадлежат Tunix trainers.
 
 ## Рекомендуемая физическая реорганизация
@@ -132,10 +132,10 @@ host-orchestrated rollout перед PPO update:
    `algorithms.py`, `learner.py`, `llm_ppo.py`, `algorithm_registry.py`.
 3. Compatibility imports в старых путях оставить на один-два цикла:
    `from tunix_craftext.research.learner import ...`.
-4. Следующим отдельным коммитом можно перенести `agentic_grpo.py`/`agentic_ppo.py`
-   в training/use-case слой, не смешивая это с Tunix asset/topology package.
-5. Разбить `tunix_adapter.py`:
-   `tunix_loaders.py`, `tunix_sampler.py`, `tunix_scoring.py`, `model_profiles.py`.
+4. Созданы semantic packages `core/`, `env/`, `rollouts/`, `models/`, `training/`,
+   `artifacts/`; старые top-level пути являются compatibility shims.
+5. Следующим отдельным коммитом разбить `models/tunix_adapter.py`:
+   `loaders.py`, `samplers.py`, `scoring.py`, `profiles.py`.
 6. Добавить migration test, который запрещает production modules импортировать
    `tunix_craftext.research.*`.
 

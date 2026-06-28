@@ -46,7 +46,7 @@ latency с compiled environment-only `make perf-env`.
 длинную серию от native JAX/model termination: artifact получает `status: partial` или `failed`
 и список child failures вместо молчаливой потери уже собранных измерений.
 
-Для notebook/script уровня используйте `PhaseProfiler` из `tunix_craftext.profiling`: он пишет
+Для notebook/script уровня используйте `PhaseProfiler` из `tunix_craftext.artifacts.profiling`: он пишет
 phase-level JSON для `prompt/llm/actor/env/replay/ppo` и опционально включает NVTX ranges, если
 `nvtx` установлен в NVIDIA контейнере. На accelerator lane эти JSON-артефакты дополняются
 Nsight Systems / `nsys-jax` trace; подробный протокол описан в [профилировании](profiling.md).

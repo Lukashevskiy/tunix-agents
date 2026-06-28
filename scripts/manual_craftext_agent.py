@@ -326,14 +326,14 @@ def collect_manual_episode(
     show_full_prompt: bool = False,
 ) -> object:
     """Run the interactive manual control loop and return a replay artifact."""
-    from tunix_craftext.config import load_mvp_config
-    from tunix_craftext.prompts import (
+    from tunix_craftext.artifacts.replay import ReplayArtifact, ReplayStep
+    from tunix_craftext.env.config import load_mvp_config
+    from tunix_craftext.env.prompts import (
         MegaPromptRenderer,
         PromptContext,
         compose_craftext_goal,
     )
-    from tunix_craftext.replay import ReplayArtifact, ReplayStep
-    from tunix_craftext.runtime import build_craftext_runtime
+    from tunix_craftext.env.runtime import build_craftext_runtime
 
     config = load_mvp_config(config_path)
     runtime = build_craftext_runtime(config)
@@ -451,7 +451,7 @@ def collect_manual_episode(
 def main(arguments: Sequence[str] | None = None) -> None:
     """Run manual control and persist replay/metrics artifacts."""
     args = parse_args(arguments)
-    from tunix_craftext.replay import save_replay
+    from tunix_craftext.artifacts.replay import save_replay
 
     artifact = collect_manual_episode(
         config_path=args.config,

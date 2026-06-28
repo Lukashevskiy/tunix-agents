@@ -38,8 +38,8 @@ def test_generated_api_reference_is_built_from_docstrings() -> None:
     )
 
     assert "Автодока API" in generated
-    assert "tunix_craftext.batched_rollout" in generated
+    assert "tunix_craftext.rollouts.batched" in generated
     assert "collect_batched_text_rollout" in generated
-    assert "tunix_craftext.hybrid_rollout" in generated
+    assert "tunix_craftext.rollouts.hybrid" in generated
     assert "HybridPpoStep" in generated
-    assert "tunix_craftext.text_trajectory" in generated
+    assert "tunix_craftext.artifacts.text_trajectory" in generated

@@ -10,14 +10,18 @@
 
 | Слой | Основные модули | Что гарантирует |
 | --- | --- | --- |
-| Environment boundary | `tunix_craftext.adapters`, `tunix_craftext.runtime`, `tunix_craftext.config` | Vendor CrafText/CagedCrafText превращаются в typed `reset/step`, `action_mask`, `terminated/truncated` и reproducible config runtime. |
-| Prompt/model boundary | `tunix_craftext.prompts`, `tunix_craftext.text_policy`, `tunix_craftext.llm`, `tunix_craftext.llm_actor`, `tunix_craftext.tunix_actor`, `tunix_craftext.tunix_adapter` | `EnvState` становится `RenderedPrompt`, LLM actor генерирует ordered completions и пересчитывает token scores/values, strict decoder не принимает неизвестные labels. |
-| Rollout transport | `tunix_craftext.rollout`, `tunix_craftext.batched_rollout`, `tunix_craftext.hybrid_rollout`, `tunix_craftext.contracts` | `rollout.py` остаётся fixed-shape reference; `batched_rollout` делает host prompt/LLM/decode + `jax.vmap(step)`; `hybrid_rollout` фиксирует PPO-ready actor logprobs, critic values, token masks и step masks. |
-| Experience builders | `tunix_craftext.experience_builders`, `tunix_craftext.agentic_ppo` | Universal MDP step contract, MDP-time GAE over `[T, B]`, advantage/return broadcasting на generated tokens и flattened token PPO experience. `AgenticPPOLearner` consumes rich `traj["mdp_steps"]` and emits Tunix PPO train examples; legacy concatenated trajectories stay smoke-only. |
-| Replay/training batch | `tunix_craftext.replay`, `tunix_craftext.text_trajectory`, `tunix_craftext.flashbax_replay` | Replay v3 хранит prompt/completion/action/reward/token evidence, `masked_action`, fallback и преобразуется в fixed-shape token batches. |
-| Research objectives/learner | `tunix_craftext.research.algorithms`, `tunix_craftext.research.algorithm_registry`, `tunix_craftext.research.learner`, `tunix_craftext.checkpoints` | PPO/returns/loss functions чистые и JAX-friendly, но это research/smoke слой; production GRPO/PPO идёт через Tunix Agentic `RLCluster`. |
-| Observability / profiling evidence | `tunix_craftext.observability`, `tunix_craftext.comet_adapter`, `tunix_craftext.profiling` | Append-only train/val metrics JSONL, validation trajectory references, generic artifact sink contract, mapped team logger adapter, optional Comet ML mirror, phase-level wall-time и NVTX ranges. |
-| Model/cluster interoperability | `tunix_craftext.interop`, `tunix_craftext.tunix`, `tunix_craftext.tunix_adapter` | LoRA/state-dict conversion, declared Tunix role→mesh mapping, preflight и hardware-gated RLCluster config отделены от core rollout. Старые `tunix_topology`/`rlcluster_workload`/`preflight` пути оставлены как compatibility shims. |
+| Core contracts | `tunix_craftext.core` | JAX/jaxtyping aliases, rollout contracts and resource mesh helpers shared by every layer. |
+| Environment boundary | `tunix_craftext.adapters`, `tunix_craftext.env` | Vendor CrafText/CagedCrafText превращаются в typed `reset/step`, `action_mask`, `terminated/truncated`, reproducible config runtime, prompt context и strict text policy. |
+| Model boundary | `tunix_craftext.models` | `RenderedPrompt` идёт в LLM backend, actor генерирует ordered completions и пересчитывает token scores/values; Tunix/Qwen/Gemma loaders живут отдельно от env/rollout. |
+| Rollout transport | `tunix_craftext.rollouts` | `reference` остаётся fixed-shape JAX baseline; `batched` делает host prompt/LLM/decode + `jax.vmap(step)`; `hybrid` фиксирует PPO-ready actor logprobs, critic values, token masks и step masks. |
+| Training builders | `tunix_craftext.training` | Universal MDP step contract, MDP-time GAE over `[T, B]`, advantage/return broadcasting на generated tokens, Agentic PPO bridge, GRPO profile/evidence and Flashbax staging. |
+| Replay/training artifacts | `tunix_craftext.artifacts` | Replay v3 хранит prompt/completion/action/reward/token evidence, `masked_action`, fallback, text trajectory batches, checkpoints, profiling, provenance and run observability. |
+| Research objectives/learner | `tunix_craftext.research.algorithms`, `tunix_craftext.research.algorithm_registry`, `tunix_craftext.research.learner`, `tunix_craftext.artifacts.checkpoints` | PPO/returns/loss functions чистые и JAX-friendly, но это research/smoke слой; production GRPO/PPO идёт через Tunix Agentic `RLCluster`. |
+| Model/cluster interoperability | `tunix_craftext.interop`, `tunix_craftext.tunix`, `tunix_craftext.models.tunix_adapter` | LoRA/state-dict conversion, declared Tunix role→mesh mapping, preflight и hardware-gated RLCluster config отделены от core rollout. Старые `tunix_topology`/`rlcluster_workload`/`preflight` пути оставлены как compatibility shims. |
+
+Top-level modules such as `tunix_craftext.prompts`, `tunix_craftext.rollout` and
+`tunix_craftext.tunix_adapter` are compatibility shims. New code should prefer the
+semantic packages above; old notebooks and scripts remain valid during migration.
 
 ## Минимальный CrafText runtime
 
@@ -25,8 +29,8 @@
 from pathlib import Path
 import jax
 
-from tunix_craftext.config import load_mvp_config
-from tunix_craftext.runtime import build_craftext_runtime
+from tunix_craftext.env.config import load_mvp_config
+from tunix_craftext.env.runtime import build_craftext_runtime
 
 root = Path.cwd()
 config = load_mvp_config(root / "configs/mvp/tiny_craftext.yaml")
@@ -45,12 +49,12 @@ print(runtime.actions.labels)
 ```python
 from pathlib import Path
 
-from tunix_craftext.batched_rollout import (
+from tunix_craftext.rollouts.batched import (
     collect_batched_text_rollout,
     replays_from_batched_rollout,
 )
-from tunix_craftext.prompts import MegaPromptRenderer
-from tunix_craftext.tunix_adapter import QwenTunixBackend
+from tunix_craftext.env.prompts import MegaPromptRenderer
+from tunix_craftext.models.tunix_adapter import QwenTunixBackend
 
 snapshot = Path("artifacts/models/qwen25-05b-instruct")
 renderer = MegaPromptRenderer(config.prompt.template)
@@ -86,7 +90,7 @@ replays = replays_from_batched_rollout(
 ## Hybrid rollout → PPO-ready actor/critic evidence
 
 ```python
-from tunix_craftext.hybrid_rollout import (
+from tunix_craftext.rollouts.hybrid import (
     HybridPpoStep,
     compute_masked_step_token_ppo_loss,
     hybrid_trajectory_from_steps,
@@ -120,7 +124,7 @@ reward signal, но fallback-token rows всё равно не попадают 
 ```python
 from pathlib import Path
 
-from tunix_craftext.model_profile import load_model_profile
+from tunix_craftext.models.profile import load_model_profile
 
 profile = load_model_profile(Path("configs/models/gemma3_270m_instruction.yaml"))
 print(profile.model_id)
@@ -134,7 +138,7 @@ print(profile.model_id)
 ```python
 import jax
 
-from tunix_craftext.tunix_actor import (
+from tunix_craftext.models.tunix_actor import (
     build_gemma_tunix_actor,
     init_linear_value_head,
 )
@@ -155,8 +159,8 @@ Gemma builder намеренно требует уже существующий 
 ## Replay → token batch → real actor/critic PPO evaluation
 
 ```python
+from tunix_craftext.artifacts.text_trajectory import text_trajectory_from_replay
 from tunix_craftext.research.llm_ppo import evaluate_separate_llm_actor_critic_ppo
-from tunix_craftext.text_trajectory import text_trajectory_from_replay
 
 batch = text_trajectory_from_replay(replays[0])
 actor_scores = actor.score_actor_tokens(

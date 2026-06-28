@@ -9,7 +9,7 @@
 
 ## Локальный PhaseProfiler
 
-`tunix_craftext.profiling.PhaseProfiler` нужен для измерения отдельных модулей pipeline:
+`tunix_craftext.artifacts.profiling.PhaseProfiler` нужен для измерения отдельных модулей pipeline:
 
 - `prompt.render`
 - `llm.generate`
@@ -21,7 +21,7 @@
 ```python
 from pathlib import Path
 
-from tunix_craftext.profiling import PhaseProfiler, block_until_ready, save_profile
+from tunix_craftext.artifacts.profiling import PhaseProfiler, block_until_ready, save_profile
 
 profiler = PhaseProfiler(enable_nvtx=False)
 

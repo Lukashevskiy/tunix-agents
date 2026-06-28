@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from tunix_craftext.trajectory_gif import (
+from tunix_craftext.artifacts.trajectory_gif import (
     frames_from_replay_payload,
     load_replay_payload,
     write_gif,

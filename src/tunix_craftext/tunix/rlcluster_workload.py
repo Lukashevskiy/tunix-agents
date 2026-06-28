@@ -10,7 +10,7 @@ import jax
 import jax.numpy as jnp
 import optax  # type: ignore[import-untyped]
 
-from ..tunix_adapter import (
+from ..models.tunix_adapter import (
     load_gemma_model_on_mesh,
     load_gemma_tokenizer,
     load_qwen_model_on_mesh,

@@ -167,8 +167,8 @@ profiles и checkpoints в `artifacts/runs/<run-id>/`. Внешние треке
 Для Comet ML используйте optional adapter:
 
 ```python
-from tunix_craftext.comet_adapter import CometMlSink
-from tunix_craftext.observability import JsonlRunLogger
+from tunix_craftext.artifacts.comet_adapter import CometMlSink
+from tunix_craftext.artifacts.observability import JsonlRunLogger
 
 local = JsonlRunLogger(run_dir)
 comet = CometMlSink.create_experiment(project_name="tunix-craftext")

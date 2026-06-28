@@ -15,9 +15,9 @@ accelerator/JAX boundary:
 
 ## Что принято из аудита
 
-1. `tunix_craftext.rollout.collect_rollout_scan*` не считается production LLM-RL collector.
+1. `tunix_craftext.rollouts.reference.collect_rollout_scan*` не считается production LLM-RL collector.
    Он остаётся reference-контрактом для fixed-shape tests и CPU/JAX parity.
-2. Добавлен отдельный слой `tunix_craftext.hybrid_rollout`, где PPO-ready step явно содержит:
+2. Добавлен отдельный слой `tunix_craftext.rollouts.hybrid`, где PPO-ready step явно содержит:
    `prompt_tokens`, `generation_tokens`, `actor_log_probs`, `values`,
    `generation_token_mask`, `step_mask` и optional `action_mask`.
 3. PPO actor loss должен маскироваться по двум осям:
@@ -45,8 +45,8 @@ accelerator/JAX boundary:
 
 ## Текущий кодовой результат
 
-- `tunix_craftext.hybrid_rollout.HybridPpoStep` — один PPO-ready батчевый шаг.
-- `tunix_craftext.hybrid_rollout.HybridPpoTrajectory` — tuple шагов + stacked `step_masks`
+- `tunix_craftext.rollouts.hybrid.HybridPpoStep` — один PPO-ready батчевый шаг.
+- `tunix_craftext.rollouts.hybrid.HybridPpoTrajectory` — tuple шагов + stacked `step_masks`
   формы `[T, B]`.
 - `hybrid_step_from_text_trajectory()` — adapter из replay-derived `TextTrajectoryBatch` в
   `HybridPpoStep`; он сохраняет generated-token evidence, исключает fallback rows из
