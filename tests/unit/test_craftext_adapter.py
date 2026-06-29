@@ -181,6 +181,24 @@ def test_craftext_reset_binds_configured_instruction_index() -> None:
     assert adapter.prompt_state(reset.state).timestep == 0
 
 
+def test_craftext_reset_with_instruction_overrides_runtime_default() -> None:
+    environment = InstructionTinyCrafText()
+    adapter = CrafTextAdapter(
+        environment,
+        params=object(),
+        action_count=3,
+        instructions=("collect wood", "find water"),
+        instruction_index=0,
+    )
+
+    reset = adapter.reset_with_instruction(key=5, instruction_index=1)
+    context = adapter.episode_context(reset.state)
+
+    assert adapter.instructions == ("collect wood", "find water")
+    assert environment.last_instruction_idx == 1
+    assert context.instruction == "find water"
+
+
 @pytest.mark.parametrize(
     ("kwargs", "message"),
     [

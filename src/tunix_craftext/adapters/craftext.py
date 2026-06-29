@@ -319,12 +319,34 @@ class CrafTextAdapter(CraftaxAdapter[ParamsT, ObservationT, StateT]):
         """Whether this adapter was built around a CrafText instruction wrapper."""
         return bool(self._instructions)
 
+    @property
+    def instructions(self) -> tuple[str, ...]:
+        """Return configured CrafText scenario instructions in vendor order."""
+        return self._instructions
+
     def reset(self, key: JaxKey) -> EnvironmentReset[ObservationT, StateT]:
         """Reset CrafText and bind the configured instruction when available."""
         if self._instruction_index is None:
             return super().reset(key)
+        return self.reset_with_instruction(key, self._instruction_index)
+
+    def reset_with_instruction(
+        self, key: JaxKey, instruction_index: int
+    ) -> EnvironmentReset[ObservationT, StateT]:
+        """Reset CrafText with an explicit scenario instruction row.
+
+        Agentic training can therefore sample tasks from CrafText's own
+        instruction list per batch row while keeping the adapter/runtime
+        reusable.
+        """
+        if not self._instructions:
+            raise AdapterContractError("CrafText instruction metadata is not configured")
+        if instruction_index < 0 or instruction_index >= len(self._instructions):
+            raise AdapterContractError(
+                "instruction_index must reference one configured instruction"
+            )
         observation, state = self._environment.reset(  # type: ignore[call-arg]
-            key, self._params, instruction_idx=self._instruction_index
+            key, self._params, instruction_idx=instruction_index
         )
         return EnvironmentReset(
             observation=observation, state=state, action_mask=self._fallback_mask()
@@ -397,6 +419,11 @@ class CagedCrafTextAdapter(CrafTextAdapter[ParamsT, ObservationT, StateT]):
             instruction_index=instruction_index,
         )
         self._text_constraints = text_constraints
+
+    @property
+    def text_constraints(self) -> tuple[str, ...]:
+        """Return configured CagedCrafText textual constraints in instruction order."""
+        return self._text_constraints
 
     def episode_context(self, state: StateT) -> CrafTextEpisodeContext[object]:
         """Resolve CrafText metadata and the selected Caged textual constraint."""

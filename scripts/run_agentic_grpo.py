@@ -8,6 +8,7 @@ import json
 import logging
 from collections.abc import Iterator, Sequence
 from pathlib import Path
+from typing import Any, cast
 
 import numpy as np
 
@@ -27,6 +28,33 @@ def task_batches(
         }
 
 
+def craftext_task_batches(
+    *,
+    config_path: Path,
+    seed: int,
+    batch_size: int,
+    count: int,
+    horizon: int,
+    goal_prefix: str,
+    mode: str = "cycle",
+) -> Iterator[dict[str, object]]:
+    """Yield task batches whose goals and instruction indices come from CrafText."""
+    from tunix_craftext.env.config import load_mvp_config
+    from tunix_craftext.env.runtime import build_craftext_runtime
+    from tunix_craftext.env.tasks import CrafTextTaskSampler
+
+    config = load_mvp_config(config_path)
+    runtime = build_craftext_runtime(config)
+    sampler = CrafTextTaskSampler.from_runtime(
+        runtime,
+        horizon=horizon,
+        mode=mode,  # type: ignore[arg-type]
+        fixed_instruction_index=config.environment.instruction_index,
+        goal_prefix=goal_prefix,
+    )
+    yield from sampler.batches(seed=seed, batch_size=batch_size, count=count)
+
+
 def parse_args(arguments: Sequence[str] | None = None) -> argparse.Namespace:
     """Parse one reproducible, local-weight Agentic GRPO run."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -43,6 +71,18 @@ def parse_args(arguments: Sequence[str] | None = None) -> argparse.Namespace:
         "--snapshot", type=Path, default=Path("artifacts/models/qwen25-05b-instruct")
     )
     parser.add_argument("--goal", default="Stay alive and inspect the world.")
+    parser.add_argument(
+        "--task-source",
+        choices=("profile-goal", "craftext-instructions"),
+        default="craftext-instructions",
+        help="Use profile goal as every task or sample goals from CrafText scenario instructions.",
+    )
+    parser.add_argument(
+        "--task-sampling",
+        choices=("cycle", "fixed", "random"),
+        default="cycle",
+        help="Sampling mode when --task-source craftext-instructions is active.",
+    )
     parser.add_argument("--max-steps", type=int, default=1)
     parser.add_argument("--batch-size", type=int, default=2)
     parser.add_argument("--num-generations", type=int, default=2)
@@ -144,7 +184,27 @@ def main(arguments: Sequence[str] | None = None) -> None:
     )
     validate_agentic_grpo_preflight(topology, spec, pinned_qwen_tensor_shape())
 
+    preview_batch = next(
+        craftext_task_batches(
+            config_path=args.config,
+            seed=config.run.seed,
+            batch_size=args.batch_size,
+            count=1,
+            horizon=config.environment.horizon,
+            goal_prefix=args.goal,
+            mode=args.task_sampling,
+        )
+        if args.task_source == "craftext-instructions"
+        else task_batches(
+            goal=args.goal,
+            seed=config.run.seed,
+            batch_size=args.batch_size,
+            count=1,
+            horizon=config.environment.horizon,
+        )
+    )
     if args.dry_run:
+        instruction_indices = preview_batch.get("instruction_index")
         print(
             json.dumps(
                 {
@@ -154,15 +214,16 @@ def main(arguments: Sequence[str] | None = None) -> None:
                     "snapshot": str(args.snapshot),
                     "snapshot_exists": args.snapshot.is_dir(),
                     "backend": jax.default_backend(),
-                    "batch_preview": next(
-                        task_batches(
-                            goal=args.goal,
-                            seed=config.run.seed,
-                            batch_size=args.batch_size,
-                            count=1,
-                            horizon=config.environment.horizon,
-                        )
-                    )["seed"].tolist(),
+                    "task_source": args.task_source,
+                    "task_sampling": args.task_sampling,
+                    "batch_preview": {
+                        "goal": preview_batch["goal"],
+                        "seed": np.asarray(preview_batch["seed"]).tolist(),
+                        "horizon": np.asarray(preview_batch["horizon"]).tolist(),
+                        "instruction_index": np.asarray(instruction_indices).tolist()
+                        if instruction_indices is not None
+                        else None,
+                    },
                     "workload": {
                         "max_steps": spec.max_steps,
                         "mini_batch_size": spec.mini_batch_size,
@@ -213,9 +274,14 @@ def main(arguments: Sequence[str] | None = None) -> None:
             "accelerator runner or pass --allow-cpu-smoke only to reproduce that upstream failure."
         )
 
-    from tunix.rl.agentic.agentic_grpo_learner import GRPOConfig, GRPOLearner
-    from tunix.rl.agentic.agents.tool_agent import ToolAgent
-    from tunix.rl.agentic.parser.chat_template_parser.parser import QwenChatTemplateParser
+    from tunix.rl.agentic.agentic_grpo_learner import (  # type: ignore[import-untyped]
+        GRPOConfig,
+        GRPOLearner,
+    )
+    from tunix.rl.agentic.agents.tool_agent import ToolAgent  # type: ignore[import-untyped]
+    from tunix.rl.agentic.parser.chat_template_parser.parser import (  # type: ignore[import-untyped]
+        QwenChatTemplateParser,
+    )
 
     from tunix_craftext.env.agentic_craftext import (
         CrafTextAgenticEnvironment,
@@ -250,18 +316,31 @@ def main(arguments: Sequence[str] | None = None) -> None:
             env_class=CrafTextAgenticEnvironment,
             env_kwargs=agentic_environment_kwargs(args.config),
         )
-        learner.train(
-            task_batches(
+        train_batches = (
+            craftext_task_batches(
+                config_path=args.config,
+                seed=config.run.seed,
+                batch_size=args.batch_size,
+                count=args.max_steps,
+                horizon=config.environment.horizon,
+                goal_prefix=args.goal,
+                mode=args.task_sampling,
+            )
+            if args.task_source == "craftext-instructions"
+            else task_batches(
                 goal=args.goal,
                 seed=config.run.seed,
                 batch_size=args.batch_size,
                 count=args.max_steps,
                 horizon=config.environment.horizon,
-            ),
+            )
+        )
+        learner.train(
+            train_batches,
             skip_jit=args.skip_jit,
         )
     finally:
-        cluster.close()
+        cast(Any, cluster).close()
 
 
 if __name__ == "__main__":

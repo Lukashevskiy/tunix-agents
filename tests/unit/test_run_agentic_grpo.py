@@ -34,6 +34,8 @@ def test_runner_arguments_keep_model_and_topology_explicit() -> None:
     assert not args.allow_cpu_smoke
     assert args.snapshot == Path("artifacts/models/qwen25-05b-instruct")
     assert args.dry_run
+    assert args.task_source == "craftext-instructions"
+    assert args.task_sampling == "cycle"
 
 
 def test_runner_exposes_scripted_grpo_smoke_without_model_assets() -> None:
@@ -41,3 +43,24 @@ def test_runner_exposes_scripted_grpo_smoke_without_model_assets() -> None:
 
     assert args.scripted_smoke
     assert args.scripted_output == Path("out.json")
+
+
+def test_craftext_task_batches_include_instruction_indices_from_runtime() -> None:
+    batches = list(
+        runner.craftext_task_batches(
+            config_path=ROOT / "configs/mvp/qwen_craftext.yaml",
+            seed=7,
+            batch_size=2,
+            count=1,
+            horizon=3,
+            goal_prefix="policy hint",
+            mode="cycle",
+        )
+    )
+
+    [batch] = batches
+    assert len(batch["goal"]) == 2
+    assert all("CrafText task:" in goal for goal in batch["goal"])
+    assert batch["seed"].tolist() == [7, 8]
+    assert batch["horizon"].tolist() == [3, 3]
+    assert batch["instruction_index"].tolist() == [0, 1]

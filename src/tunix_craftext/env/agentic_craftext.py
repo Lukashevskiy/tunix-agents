@@ -160,6 +160,13 @@ class CrafTextAgenticEnvironment(BaseTaskEnv):
         task_payload["horizon"] = horizon
         if not isinstance(horizon, int) or isinstance(horizon, bool) or horizon <= 0:
             raise ValueError("task.horizon must be a positive integer")
+        instruction_index = _python_scalar(task_payload.get("instruction_index"))
+        if instruction_index is not None and (
+            not isinstance(instruction_index, int)
+            or isinstance(instruction_index, bool)
+            or instruction_index < 0
+        ):
+            raise ValueError("task.instruction_index must be a non-negative integer")
         if len(actions.labels) != adapter.action_count:
             raise ValueError("action catalog length must equal adapter.action_count")
         super().__init__(task=task_payload, max_steps=horizon, **kwargs)
@@ -168,6 +175,7 @@ class CrafTextAgenticEnvironment(BaseTaskEnv):
         self._actions = actions
         self._goal = goal
         self._seed = seed
+        self._instruction_index = instruction_index
         self._state: object | None = None
         self._action_mask: jax.Array | None = None
 
@@ -239,10 +247,22 @@ class CrafTextAgenticEnvironment(BaseTaskEnv):
         _LOGGER.log(level, "agentic_craftext %s", context)
 
     def _initial_observation(self) -> dict[str, str]:
-        reset = self._adapter.reset(jax.random.fold_in(jax.random.PRNGKey(self._seed), 0))
+        key = jax.random.fold_in(jax.random.PRNGKey(self._seed), 0)
+        if self._instruction_index is None:
+            reset = self._adapter.reset(key)
+        else:
+            reset_with_instruction = getattr(self._adapter, "reset_with_instruction", None)
+            if reset_with_instruction is None:
+                raise ValueError("adapter does not support task.instruction_index")
+            reset = reset_with_instruction(key, self._instruction_index)
         self._state = reset.state
         self._action_mask = reset.action_mask
-        self._event("reset", seed=self._seed, horizon=self.max_steps)
+        self._event(
+            "reset",
+            seed=self._seed,
+            horizon=self.max_steps,
+            instruction_index=self._instruction_index,
+        )
         return {"question": self._render()}
 
     def _invalid_result(self, call_id: str, reason: str) -> EnvStepResult:

@@ -77,6 +77,10 @@ PYTHONPATH=src .venv/bin/python scripts/run_agentic_grpo.py \
 CrafText agentic tool-call loop с несколькими GRPO generations и group-normalized advantages, но
 без LLM/RLCluster weights. Это рабочий local gate перед реальным `GRPOLearner`; PPO/PPO-Lag/CPO
 потом добавляют value critic и cost critic поверх уже проверенного rollout/tool transport.
+По умолчанию GRPO task batches берут `goal` из CrafText scenario instructions: batch содержит
+и текст задачи, и `instruction_index`, поэтому reset среды выбирает тот же scenario row, который
+видит модель. Если нужно старое поведение с одной ручной целью из profile, используйте
+`--task-source profile-goal`; для CrafText задач доступны `--task-sampling cycle|fixed|random`.
 
 Перед запуском на большом GPU-сервере прогоните отдельный readiness gate. Он не обучает модель:
 проверяет profile/topology/preflight, видимость JAX devices, наличие snapshot, запись provenance,

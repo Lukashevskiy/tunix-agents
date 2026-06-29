@@ -61,6 +61,15 @@ class _Adapter:
         )
 
 
+class _InstructionAdapter(_Adapter):
+    def __init__(self) -> None:
+        self.last_instruction_index: int | None = None
+
+    def reset_with_instruction(self, _key: object, instruction_index: int) -> _Reset:
+        self.last_instruction_index = instruction_index
+        return _Reset(state=instruction_index, action_mask=(True, True))
+
+
 class _EightTurnAdapter:
     """Fixed eight-turn environment for the versioned Agentic GRPO fixture."""
 
@@ -133,6 +142,26 @@ def test_module_level_environment_accepts_tunix_numpy_task_scalars() -> None:
     observation, _ = environment.reset()
 
     assert observation == {"question": "state=0; goal=collect wood"}
+
+
+def test_agentic_environment_uses_task_instruction_index_for_reset() -> None:
+    adapter = _InstructionAdapter()
+    environment = CrafTextAgenticEnvironment(
+        {
+            "goal": "from craftext instruction",
+            "seed": np.int32(7),
+            "horizon": np.int32(3),
+            "instruction_index": np.int32(1),
+        },
+        adapter=adapter,
+        renderer=_Renderer(),
+        actions=ActionCatalog(("LEFT", "RIGHT")),
+    )
+
+    observation, _ = environment.reset()
+
+    assert adapter.last_instruction_index == 1
+    assert observation == {"question": "state=1; goal=from craftext instruction"}
 
 
 def test_agentic_environment_logs_reset_and_invalid_action_without_prompt_content(caplog) -> None:

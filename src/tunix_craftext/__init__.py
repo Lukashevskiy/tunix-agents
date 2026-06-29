@@ -48,6 +48,7 @@ from .core.contracts import RolloutBatch, Transition
 from .env.config import ConfigError, MvpRunConfig, load_mvp_config
 from .env.prompts import ActionCatalog, MegaPromptRenderer, PromptContext, RenderedPrompt
 from .env.runtime import CrafTextRuntime, build_craftext_runtime
+from .env.tasks import CrafTextTaskSampler, task_batches_from_craftext
 from .env.text_policy import (
     DecodedAction,
     DecodeMetrics,
@@ -125,6 +126,8 @@ __all__ = [
     "MegaPromptRenderer",
     "PromptContext",
     "RenderedPrompt",
+    "CrafTextTaskSampler",
+    "task_batches_from_craftext",
     "PhaseProfiler",
     "ProfileEvent",
     "block_until_ready",
