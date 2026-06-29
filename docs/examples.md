@@ -9,6 +9,11 @@ pyenv exec python -m uv run jupyter lab examples/notebooks
 
 Начинайте с контрактов rollout, затем adapter среды, конвертации модели/LoRA и
 `04_megaprompts_environment_to_prompt.ipynb` для реальной границы vendored template.
+Все notebooks, которые поднимают настоящий CrafText/CagedCrafText runtime, берут текст задачи
+через `CrafTextTaskSampler` из vendored scenario instructions. В non-agentic batched rollout
+используется fixed task, соответствующий `config.environment.instruction_index`; в agentic
+GRPO notebooks training batches содержат и `goal`, и `instruction_index`, чтобы модель видела
+тот же scenario row, на который reset-ится среда.
 
 `06_qwen_craftext_manual_episode.ipynb` — это полный проверяемый LLM smoke: он требует явный
 локальный снимок Qwen и проходит reset среды, рендеринг реального vendored MegaPrompts
