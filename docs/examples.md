@@ -59,6 +59,14 @@ boundary, topology/mesh preflight, Qwen snapshot assets, `RLCluster`, `ToolAgent
 а настоящий trainer запускается отдельными heavy ячейками после readiness validation. Он нужен как рабочая проверка
 agentic rollout/grouped rewards до добавления PPO critic/cost critic.
 
+`16_server_grpo_object_training.ipynb` — более строгий серверный object-first notebook для
+запуска на целевой GPU-машине. Он не вызывает `scripts/*.py`: вручную создаёт `JsonlRunLogger`,
+пишет provenance/metrics/artifacts, собирает scripted validation trajectory, проверяет GPU/snapshot,
+затем создаёт Qwen actor/reference assets, `RLCluster`, `GRPOLearner`, training batches и вызывает
+`learner.train(...)` напрямую. После run последние ячейки читают `metrics.jsonl`,
+`validation_trajectories.jsonl` и `artifacts.jsonl`, чтобы сразу проверить, что обучение,
+validation и checkpoint evidence не потерялись.
+
 Тот же путь доступен вне Jupyter и сохраняет как raw replay, так и summary metrics:
 
 ```bash
