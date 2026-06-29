@@ -136,6 +136,43 @@ trajectory artifact, а в `validation_trajectories.jsonl` писать комп
 Это позволяет открыть конкретный провал, увидеть prompt, completion, decoded action,
 fallback и состояние среды, а не гадать по усреднённой кривой.
 
+## Server readiness перед большим запуском
+
+Перед запуском на целевой машине с GPU сначала проверьте не обучение, а evidence-контур:
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/check_server_readiness.py \
+  --profile configs/grpo/qwen_agentic_local.yaml \
+  --mode evidence \
+  --require-accelerator \
+  --require-snapshot \
+  --output artifacts/runs/qwen-agentic-craftext-local-smoke/server-readiness.json
+```
+
+Команда должна записать:
+
+- `provenance.json` — profile hash, git revision, model/vendor/dependency provenance;
+- `metrics.jsonl` — scalar event `eval/server_readiness`;
+- `validation_trajectories.jsonl` — ссылку на validation artifact;
+- `artifacts.jsonl` — config/profile/checkpoint/validation artifact manifest;
+- `validation/server-readiness-*.json` — полный validation replay/smoke artifact;
+- `checkpoints/readiness-probe/` — проверку доступности checkpoint directory.
+
+Если нужен реальный CrafText/CagedCrafText tool-loop без LLM allocation:
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/check_server_readiness.py \
+  --profile configs/grpo/qwen_agentic_local.yaml \
+  --mode scripted \
+  --scripted-horizon 2 \
+  --require-accelerator \
+  --require-snapshot
+```
+
+`--require-accelerator` превращает CPU backend в failure, а не warning. `--require-snapshot`
+делает отсутствие локальных весов blocking ошибкой. Локально эти флаги можно не ставить, чтобы
+проверять только формат и запись evidence.
+
 ## Будущие sinks
 
 TensorBoard, W&B, Prometheus и Comet ML являются вторичными sinks. Они не должны

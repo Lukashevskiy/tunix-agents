@@ -78,6 +78,31 @@ CrafText agentic tool-call loop с несколькими GRPO generations и gr
 без LLM/RLCluster weights. Это рабочий local gate перед реальным `GRPOLearner`; PPO/PPO-Lag/CPO
 потом добавляют value critic и cost critic поверх уже проверенного rollout/tool transport.
 
+Перед запуском на большом GPU-сервере прогоните отдельный readiness gate. Он не обучает модель:
+проверяет profile/topology/preflight, видимость JAX devices, наличие snapshot, запись provenance,
+`metrics.jsonl`, `validation_trajectories.jsonl`, `artifacts.jsonl`, validation artifact и
+checkpoint directory probe.
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/check_server_readiness.py \
+  --profile configs/grpo/qwen_agentic_local.yaml \
+  --mode evidence \
+  --require-accelerator \
+  --require-snapshot \
+  --output artifacts/runs/qwen-agentic-craftext-local-smoke/server-readiness.json
+
+PYTHONPATH=src .venv/bin/python scripts/check_server_readiness.py \
+  --profile configs/grpo/qwen_agentic_local.yaml \
+  --mode scripted \
+  --scripted-horizon 2 \
+  --require-accelerator \
+  --require-snapshot
+```
+
+`evidence` проверяет файловый и observability-контур без среды. `scripted` дополнительно
+запускает короткий CrafText tool-call validation loop без LLM weights, чтобы убедиться, что
+validation trajectories реально создаются до дорогого модельного запуска.
+
 Планируемое дерево команд:
 
 | Команда | Для чего |
