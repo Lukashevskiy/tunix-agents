@@ -1,4 +1,5 @@
-PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
+UV_RUN_FLAGS ?=
+PYTHON ?= uv run $(UV_RUN_FLAGS) python
 PERF_ARTIFACT ?= artifacts/benchmarks/rollout-latest.json
 
 .PHONY: audit test coverage integration perf perf-env perf-text docs api-docs serve provenance sync-tasks verify verify-golden

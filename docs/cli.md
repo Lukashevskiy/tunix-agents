@@ -378,7 +378,7 @@ CLI tests не должны загружать Qwen weights и не должны
 
 - **Риск:** Typer dependency осложнит минимальную установку.  
   **Предохранитель:** если решим не добавлять в base, сделать `cli` extra и оставить Makefile commands
-  через `.venv/bin/python -m tunix_craftext.cli.app`.
+  через `uv run python -m tunix_craftext.cli.app`.
 
 ## Первый acceptance gate
 

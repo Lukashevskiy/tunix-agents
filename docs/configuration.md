@@ -37,7 +37,7 @@ reset, fixed-key mini-trajectory, batched rollout/replay export и JAX scan pari
 unit/integration lanes.
 
 ```bash
-pyenv exec python -m uv sync --extra envs --extra prompts
+uv sync --extra envs --extra prompts
 ```
 
 ## Agentic GRPO profile
@@ -58,7 +58,7 @@ profile — `configs/grpo/qwen_agentic_local.yaml`. Он связывает:
 `load_agentic_grpo_profile()` строго валидирует schema до загрузки весов. При запуске
 
 ```bash
-PYTHONPATH=src .venv/bin/python scripts/run_agentic_grpo.py \
+uv run python scripts/run_agentic_grpo.py \
   --profile configs/grpo/qwen_agentic_local.yaml
 ```
 

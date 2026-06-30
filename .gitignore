@@ -1,4 +1,5 @@
 .venv/
+.uv-cache/
 /vendor/megaprompts/megaprompt.egg-info/
 /vendor/caged-craftext/caged_craftext.egg-info/
 __pycache__/

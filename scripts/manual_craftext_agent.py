@@ -465,7 +465,7 @@ def main(arguments: Sequence[str] | None = None) -> None:
     print(f"replay: {args.replay_output}")
     print(f"metrics: {args.metrics_output}")
     print(
-        "visualize: PYTHONPATH=src .venv/bin/python "
+        "visualize: uv run python "
         f"scripts/visualize_trajectory.py --trajectory {args.replay_output}"
     )
 

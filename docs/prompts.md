@@ -10,8 +10,8 @@ payload — structured CrafText `EnvState` (map, inventory, coordinates); pixel 
 даёт `PromptContractError` вместо silent fallback.
 
 ```bash
-pyenv exec python -m uv sync --extra prompts
-pyenv exec python -m uv run pytest -m integration tests/integration/test_megaprompts_vendor.py
+uv sync --extra prompts
+uv run pytest -m integration tests/integration/test_megaprompts_vendor.py
 ```
 
 `TextPolicy` уже получает только `RenderedPrompt`; `decode_action()` принимает строго

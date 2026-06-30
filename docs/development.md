@@ -1,9 +1,9 @@
-# Среда разработки: pyenv + uv
+# Среда разработки: uv-only
 
 Проект использует два независимых уровня воспроизводимости:
 
-- `pyenv` выбирает точный CPython из `.python-version`.
-- `uv` разрешает зависимости в `uv.lock`, создаёт `.venv` и запускает команды в ней.
+- `uv python` устанавливает и выбирает точный CPython из `.python-version`.
+- `uv sync` разрешает зависимости в `uv.lock`, создаёт `.venv` и запускает команды в ней.
 
 Это исключает случайный выбор Homebrew/system Python и глобальных пакетов. `.venv` —
 производный артефакт: его не редактируют вручную и можно безопасно пересоздать.
@@ -11,39 +11,59 @@
 ## Первый запуск
 
 ```bash
-pyenv install --skip-existing 3.12.13
-pyenv local 3.12.13
-pyenv exec python -m pip install --upgrade uv
-pyenv exec python -m uv sync --extra dev --extra docs
-pyenv exec python -m uv run pytest tests/unit
+uv python install 3.12.13
+uv python pin 3.12.13
+uv sync --extra dev --extra docs
+uv run pytest tests/unit
 ```
 
-Используем `pyenv exec python -m uv`, а не bare `uv`: это остаётся корректным, даже если
-`~/.pyenv/shims` ещё не добавлен в `PATH`. После один раз настроенного shell допустима короткая
-форма `uv run …`, но CI и документация используют явную форму.
+Используем bare `uv`: он сам читает `.python-version`, скачивает нужный CPython при
+`uv python install`, создаёт `.venv` и запускает команды через project environment.
 
 ## Повседневный цикл
 
 ```bash
-pyenv exec python -m uv run pytest tests/unit
-pyenv exec python -m uv run make verify
-pyenv exec python -m uv run make perf
+uv run pytest tests/unit
+uv run make verify
+uv run make perf
 ```
 
-`make` по-прежнему вызывает `.venv/bin/python`, так что генератор dashboard, MkDocs и Sphinx
-всегда работают из lockfile-окружения. Для notebooks: `pyenv exec python -m uv sync --extra examples`.
+`make` вызывает `uv run python`, так что генератор dashboard, MkDocs и Sphinx всегда работают
+из lockfile-окружения. Для notebooks: `uv sync --extra examples`.
 Для полной рабочей среды (dev, docs, envs, prompts и Tunix) используйте
-`pyenv exec python -m uv sync --all-extras`. Один `--extra tunix` синхронизирует
+`uv sync --all-extras`. Один `--extra tunix` синхронизирует
 только base + Tunix и временно убирает остальные extras из текущей venv.
+
+Для офлайн-проверок после уже выполненного `uv sync` можно запретить implicit sync:
+
+```bash
+UV_RUN_FLAGS=--no-sync make docs
+UV_RUN_FLAGS=--no-sync make test
+```
+
+Для GPU JAX сначала синхронизируйте проект, потом поставьте platform-specific wheel:
+
+```bash
+uv sync --all-extras
+uv pip install -U "jax[cuda13]"  # или "jax[cuda12]" под драйвер сервера
+uv run python - <<'PY'
+import jax
+print(jax.default_backend())
+print(jax.devices())
+PY
+```
+
+Если позже снова выполнить `uv sync`, повторите `uv pip install -U "jax[cuda13]"`, чтобы lockfile
+не вернул CPU-only `jaxlib` на accelerator машине.
 
 ## Изменение зависимостей
 
 После изменения `pyproject.toml` обновить lockfile, синхронизировать среду и проверить diff:
 
 ```bash
-pyenv exec python -m uv lock
-pyenv exec python -m uv sync --extra dev --extra docs
-pyenv exec python -m uv run make verify
+uv lock
+uv sync --extra dev --extra docs
+uv run make verify
 ```
 
 `uv.lock` коммитится вместе с изменением зависимостей. Не заменять lockfile вручную и не делать

@@ -23,7 +23,7 @@ make coverage
 Команда:
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m pytest tests/unit \
+uv run python -m pytest tests/unit \
   --cov=src/tunix_craftext \
   --cov-report=term-missing:skip-covered \
   --cov-report=xml \

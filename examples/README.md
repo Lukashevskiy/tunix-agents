@@ -3,8 +3,8 @@
 Notebooks are deterministic, small and focused on one public contract.
 
 ```bash
-.venv/bin/python -m pip install -e '.[examples]'
-.venv/bin/python -m jupyter lab examples/notebooks
+uv sync --extra examples --extra prompts --extra envs --extra tunix
+uv run jupyter lab examples/notebooks
 ```
 
 | Notebook | What it proves |

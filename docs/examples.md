@@ -3,8 +3,8 @@
 Runnable notebooks находятся в каталоге репозитория `examples/notebooks/`.
 
 ```bash
-pyenv exec python -m uv sync --extra examples --extra prompts --extra envs --extra tunix
-pyenv exec python -m uv run jupyter lab examples/notebooks
+uv sync --extra examples --extra prompts --extra envs --extra tunix
+uv run jupyter lab examples/notebooks
 ```
 
 Начинайте с контрактов rollout, затем adapter среды, конвертации модели/LoRA и
@@ -76,7 +76,7 @@ validation и checkpoint evidence не потерялись.
 Тот же путь доступен вне Jupyter и сохраняет как raw replay, так и summary metrics:
 
 ```bash
-.venv/bin/python scripts/run_text_episode.py --horizon 1
+uv run python scripts/run_text_episode.py --horizon 1
 ```
 
 Для ручного управления агентом без LLM используйте manual controller. Он показывает текущую
@@ -85,7 +85,7 @@ legal actions, принимает action id/label из stdin и сохраняе
 artifact:
 
 ```bash
-PYTHONPATH=src .venv/bin/python scripts/manual_craftext_agent.py \
+uv run python scripts/manual_craftext_agent.py \
   --config configs/manual/caged_wood_achievements_energy.yaml \
   --horizon 16 \
   --replay-output artifacts/trajectories/manual-craftext-latest.json
@@ -94,14 +94,14 @@ PYTHONPATH=src .venv/bin/python scripts/manual_craftext_agent.py \
 Для сохранённого notebook replay также доступен интерактивный pygame viewer:
 
 ```bash
-PYTHONPATH=src .venv/bin/python scripts/visualize_trajectory.py \
+uv run python scripts/visualize_trajectory.py \
   --trajectory artifacts/trajectories/manual-craftext-latest.json
 ```
 
 А для отчётов, сайта и Comet/локальных artifact sinks можно экспортировать GIF без открытия окна:
 
 ```bash
-PYTHONPATH=src .venv/bin/python scripts/export_trajectory_gif.py \
+uv run python scripts/export_trajectory_gif.py \
   --trajectory artifacts/trajectories/manual-craftext-latest.json \
   --output artifacts/visualizations/manual-craftext-latest.gif \
   --fps 4 \

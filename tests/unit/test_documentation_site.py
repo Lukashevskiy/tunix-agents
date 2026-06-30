@@ -1,11 +1,21 @@
+import os
 import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def build_docs() -> None:
+    """Build the docs with a project-local uv cache for hermetic test runs."""
+
+    env = os.environ.copy()
+    env.setdefault("UV_CACHE_DIR", str(ROOT / ".uv-cache"))
+    env.setdefault("UV_RUN_FLAGS", "--no-sync")
+    subprocess.run(["make", "docs"], cwd=ROOT, env=env, check=True, capture_output=True, text=True)
+
+
 def test_mermaid_fences_render_as_diagram_nodes_in_built_site() -> None:
-    subprocess.run(["make", "docs"], cwd=ROOT, check=True, capture_output=True, text=True)
+    build_docs()
 
     architecture_page = (ROOT / "site" / "architecture" / "index.html").read_text(encoding="utf-8")
     assert '<pre class="mermaid"><code>flowchart LR' in architecture_page
@@ -13,7 +23,7 @@ def test_mermaid_fences_render_as_diagram_nodes_in_built_site() -> None:
 
 
 def test_task_graph_page_includes_interactive_runtime_and_data() -> None:
-    subprocess.run(["make", "docs"], cwd=ROOT, check=True, capture_output=True, text=True)
+    build_docs()
 
     graph_page = (ROOT / "site" / "_generated" / "task-graph" / "index.html").read_text(
         encoding="utf-8"

@@ -143,8 +143,8 @@ host-orchestrated rollout перед PPO update:
 
 - `pytest tests/unit/test_agentic_ppo.py tests/unit/test_rlcluster_workload.py`
 - `pytest tests/unit/test_grpo_profile.py tests/unit/test_run_agentic_grpo.py`
-- `PYTHONPATH=src .venv/bin/python scripts/run_agentic_grpo.py --profile configs/grpo/qwen_agentic_local.yaml --dry-run`
-- `PYTHONPATH=src .venv/bin/python scripts/run_agentic_grpo.py --profile configs/grpo/qwen_agentic_local.yaml --scripted-smoke`
+- `uv run python scripts/run_agentic_grpo.py --profile configs/grpo/qwen_agentic_local.yaml --dry-run`
+- `uv run python scripts/run_agentic_grpo.py --profile configs/grpo/qwen_agentic_local.yaml --scripted-smoke`
 - hardware/local snapshot gate: one Agentic GRPO update changes actor checkpoint;
 - hardware/local snapshot gate: one Agentic PPO update changes actor and critic checkpoints;
 - resume gate: next update after restore matches continuous run on fixed fixture.
