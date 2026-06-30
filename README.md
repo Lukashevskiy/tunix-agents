@@ -251,6 +251,18 @@ uv run python scripts/estimate_vllm_memory.py --config configs/generation/qwen_v
 
 Утилита не импортирует vLLM: она читает generation YAML, текущую `torch.cuda.mem_get_info`,
 суммирует локальные weight files и оценивает KV-cache по `config.json`, если snapshot уже скачан.
+Для one-GPU режима, где JAX/Tunix и vLLM живут на одной карте, выставляйте JAX memory knobs
+до старта Python/Jupyter:
+
+```bash
+export XLA_PYTHON_CLIENT_PREALLOCATE=false
+# или более жёсткий cap для JAX allocator:
+export XLA_PYTHON_CLIENT_MEM_FRACTION=0.25
+```
+
+После изменения этих переменных нужен restart kernel/process: JAX читает их при первом импорте.
+`make accelerator-stack` показывает текущие значения в поле `environment` и предупреждает, если
+GPU JAX backend активен, а preallocation/fraction не настроены.
 
 Если перед этим появляется
 `os.fork() is incompatible with multithreaded code, and JAX is multithreaded`, значит vLLM

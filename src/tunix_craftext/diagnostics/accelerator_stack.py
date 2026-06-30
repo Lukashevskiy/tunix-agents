@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import importlib.metadata as importlib_metadata
+import os
 import platform
 import sys
 import sysconfig
@@ -113,6 +114,7 @@ def build_accelerator_stack_report(
         for requirement in requirement_strings
     )
     import_probes = tuple(import_probe_map.values())
+    environment = _environment_payload()
     runtime = _runtime_payload()
     summary = _summary(requirements, import_probes, unknown_extras, runtime)
     return {
@@ -122,6 +124,7 @@ def build_accelerator_stack_report(
         "extras": tuple(extras),
         "unknown_extras": tuple(unknown_extras),
         "platform": _platform_payload(),
+        "environment": environment,
         "runtime": runtime,
         "requirements": tuple(asdict(probe) for probe in requirements),
         "imports": tuple(asdict(probe) for probe in import_probes),
@@ -129,6 +132,7 @@ def build_accelerator_stack_report(
         "recommendations": _recommendations(
             requirements=requirements,
             imports=import_probes,
+            environment=environment,
             runtime=runtime,
             summary=summary,
         ),
@@ -228,6 +232,19 @@ def _platform_payload() -> dict[str, str]:
     }
 
 
+def _environment_payload() -> dict[str, str | None]:
+    """Return accelerator-relevant environment variables."""
+    names = (
+        "JAX_PLATFORMS",
+        "XLA_PYTHON_CLIENT_PREALLOCATE",
+        "XLA_PYTHON_CLIENT_MEM_FRACTION",
+        "XLA_PYTHON_CLIENT_ALLOCATOR",
+        "VLLM_WORKER_MULTIPROC_METHOD",
+        "CUDA_VISIBLE_DEVICES",
+    )
+    return {name: os.environ.get(name) for name in names}
+
+
 def _runtime_payload() -> dict[str, Any]:
     payload: dict[str, Any] = {}
     try:
@@ -292,6 +309,7 @@ def _recommendations(
     *,
     requirements: Sequence[RequirementProbe],
     imports: Sequence[ImportProbe],
+    environment: Mapping[str, Any],
     runtime: Mapping[str, Any],
     summary: Mapping[str, Any],
 ) -> tuple[dict[str, object], ...]:
@@ -326,6 +344,29 @@ def _recommendations(
                         "`uv pip list | grep -E 'jax|cuda|pjrt'`.",
                         "Reinstall the JAX CUDA wheel/plugin that matches the runner "
                         "driver/CUDA stack; do not assume the PyTorch CUDA wheel fixes JAX.",
+                    ),
+                }
+            )
+    if _jax_gpu_backend(runtime) and _torch_cuda_available(runtime):
+        preallocate = environment.get("XLA_PYTHON_CLIENT_PREALLOCATE")
+        mem_fraction = environment.get("XLA_PYTHON_CLIENT_MEM_FRACTION")
+        if str(preallocate).lower() != "false" and mem_fraction is None:
+            recommendations.append(
+                {
+                    "id": "jax-memory-preallocation-enabled",
+                    "severity": "warn",
+                    "title": "JAX may reserve GPU memory before vLLM starts",
+                    "details": (
+                        "When JAX and vLLM share one GPU, JAX preallocation can make "
+                        "vLLM EngineCore see too little free VRAM."
+                    ),
+                    "actions": (
+                        "Set `XLA_PYTHON_CLIENT_PREALLOCATE=false` before the first "
+                        "Python/Jupyter import of JAX.",
+                        "Optionally set `XLA_PYTHON_CLIENT_MEM_FRACTION=0.25` for a "
+                        "fixed JAX memory cap.",
+                        "Restart the Python process or notebook kernel after changing "
+                        "these variables.",
                     ),
                 }
             )
@@ -365,6 +406,20 @@ def _recommendations(
             }
         )
     return tuple(recommendations)
+
+
+def _jax_gpu_backend(runtime: Mapping[str, Any]) -> bool:
+    payload = runtime.get("jax")
+    if not isinstance(payload, Mapping):
+        return False
+    backend = str(payload.get("backend", "")).lower()
+    devices = " ".join(str(device).lower() for device in payload.get("devices", ()))
+    return backend in {"gpu", "cuda"} or "gpu" in devices or "cuda" in devices
+
+
+def _torch_cuda_available(runtime: Mapping[str, Any]) -> bool:
+    payload = runtime.get("torch")
+    return isinstance(payload, Mapping) and payload.get("cuda_available") is True
 
 
 def _string_sequence(value: object, name: str) -> tuple[str, ...]:

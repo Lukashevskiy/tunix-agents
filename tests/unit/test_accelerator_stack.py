@@ -104,3 +104,59 @@ dependencies = []
     assert report["summary"]["runtime_errors"] == ("jax",)
     assert report["recommendations"][0]["id"] == "jax-cuda-plugin-unusable"
     assert "JAX_PLATFORMS=cpu" in report["recommendations"][0]["actions"][0]
+
+
+def test_accelerator_stack_report_recommends_disabling_jax_preallocation(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        """
+[project]
+dependencies = []
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        accelerator_stack,
+        "_runtime_payload",
+        lambda: {
+            "jax": {"backend": "gpu", "devices": ("cuda:0",)},
+            "torch": {"cuda_available": True, "devices": ("NVIDIA RTX",)},
+        },
+    )
+    monkeypatch.delenv("XLA_PYTHON_CLIENT_PREALLOCATE", raising=False)
+    monkeypatch.delenv("XLA_PYTHON_CLIENT_MEM_FRACTION", raising=False)
+
+    report = accelerator_stack.build_accelerator_stack_report(tmp_path, extras=(), probes=())
+
+    ids = tuple(item["id"] for item in report["recommendations"])
+    assert "jax-memory-preallocation-enabled" in ids
+
+
+def test_accelerator_stack_report_accepts_explicit_jax_memory_fraction(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        """
+[project]
+dependencies = []
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        accelerator_stack,
+        "_runtime_payload",
+        lambda: {
+            "jax": {"backend": "gpu", "devices": ("cuda:0",)},
+            "torch": {"cuda_available": True, "devices": ("NVIDIA RTX",)},
+        },
+    )
+    monkeypatch.setenv("XLA_PYTHON_CLIENT_MEM_FRACTION", "0.25")
+
+    report = accelerator_stack.build_accelerator_stack_report(tmp_path, extras=(), probes=())
+
+    ids = tuple(item["id"] for item in report["recommendations"])
+    assert "jax-memory-preallocation-enabled" not in ids
+    assert report["environment"]["XLA_PYTHON_CLIENT_MEM_FRACTION"] == "0.25"

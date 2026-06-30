@@ -248,6 +248,31 @@ JSON содержит:
 Это preflight estimate, не замена точному vLLM allocator/block planner, но он ловит главный
 класс ошибок до запуска EngineCore: слишком высокий reservation budget при уже занятой VRAM.
 
+### JAX memory preallocation
+
+Да, для shared one-GPU режима обычно нужно отключить JAX preallocation или поставить явный cap.
+Иначе JAX/Tunix может заранее занять VRAM, а vLLM увидит слишком мало `free_gib` и упадёт ещё до
+загрузки модели.
+
+Перед запуском Python/Jupyter:
+
+```bash
+export XLA_PYTHON_CLIENT_PREALLOCATE=false
+```
+
+или, если хочется оставить JAX фиксированный кусок памяти:
+
+```bash
+export XLA_PYTHON_CLIENT_MEM_FRACTION=0.25
+```
+
+Важно: эти переменные должны быть выставлены **до первого `import jax`**. Если notebook уже
+импортировал JAX, нужен restart kernel. `make accelerator-stack` теперь включает поле
+`environment` с `XLA_PYTHON_CLIENT_PREALLOCATE`, `XLA_PYTHON_CLIENT_MEM_FRACTION`,
+`XLA_PYTHON_CLIENT_ALLOCATOR`, `JAX_PLATFORMS` и `VLLM_WORKER_MULTIPROC_METHOD`; если JAX GPU и
+Torch CUDA активны, но JAX memory knobs не заданы, report добавит рекомендацию
+`jax-memory-preallocation-enabled`.
+
 ### JAX + vLLM multiprocessing
 
 Warning вида
