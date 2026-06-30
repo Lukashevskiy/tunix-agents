@@ -112,6 +112,9 @@ def build_accelerator_stack_report(
         _requirement_probe(requirement, import_probe_map=import_probe_map)
         for requirement in requirement_strings
     )
+    import_probes = tuple(import_probe_map.values())
+    runtime = _runtime_payload()
+    summary = _summary(requirements, import_probes, unknown_extras, runtime)
     return {
         "schema": "tunix-craftext.accelerator-stack/v1",
         "project_root": str(project_root),
@@ -119,10 +122,16 @@ def build_accelerator_stack_report(
         "extras": tuple(extras),
         "unknown_extras": tuple(unknown_extras),
         "platform": _platform_payload(),
-        "runtime": _runtime_payload(),
+        "runtime": runtime,
         "requirements": tuple(asdict(probe) for probe in requirements),
-        "imports": tuple(asdict(probe) for probe in import_probe_map.values()),
-        "summary": _summary(requirements, tuple(import_probe_map.values()), unknown_extras),
+        "imports": tuple(asdict(probe) for probe in import_probes),
+        "summary": summary,
+        "recommendations": _recommendations(
+            requirements=requirements,
+            imports=import_probes,
+            runtime=runtime,
+            summary=summary,
+        ),
     }
 
 
@@ -251,6 +260,7 @@ def _summary(
     requirements: Sequence[RequirementProbe],
     imports: Sequence[ImportProbe],
     unknown_extras: Sequence[str],
+    runtime: Mapping[str, Any],
 ) -> dict[str, Any]:
     missing = tuple(probe.name for probe in requirements if probe.installed_version is None)
     unsatisfied = tuple(
@@ -259,13 +269,102 @@ def _summary(
         if probe.installed_version is not None and probe.satisfies is False
     )
     broken_imports = tuple(probe.import_name for probe in imports if not probe.import_ok)
+    runtime_errors = tuple(
+        name
+        for name, payload in runtime.items()
+        if isinstance(payload, Mapping) and "error" in payload
+    )
     return {
-        "ok": not missing and not unsatisfied and not broken_imports and not unknown_extras,
+        "ok": not missing
+        and not unsatisfied
+        and not broken_imports
+        and not unknown_extras
+        and not runtime_errors,
         "missing_requirements": missing,
         "unsatisfied_requirements": unsatisfied,
         "broken_imports": broken_imports,
+        "runtime_errors": runtime_errors,
         "unknown_extras": tuple(unknown_extras),
     }
+
+
+def _recommendations(
+    *,
+    requirements: Sequence[RequirementProbe],
+    imports: Sequence[ImportProbe],
+    runtime: Mapping[str, Any],
+    summary: Mapping[str, Any],
+) -> tuple[dict[str, object], ...]:
+    recommendations: list[dict[str, object]] = []
+    import_by_name = {probe.import_name: probe for probe in imports}
+    runtime_jax = runtime.get("jax")
+    runtime_torch = runtime.get("torch")
+    if isinstance(runtime_jax, Mapping):
+        jax_error = str(runtime_jax.get("error", ""))
+        if (
+            "Unable to initialize backend 'cuda'" in jax_error
+            or "no supported devices" in jax_error
+        ):
+            torch_cuda = (
+                isinstance(runtime_torch, Mapping) and runtime_torch.get("cuda_available") is True
+            )
+            recommendations.append(
+                {
+                    "id": "jax-cuda-plugin-unusable",
+                    "severity": "fail",
+                    "title": "JAX CUDA backend is installed but cannot initialize a CUDA device",
+                    "details": (
+                        "Torch CUDA is visible, but JAX uses its own jaxlib/PJRT CUDA plugin. "
+                        "A working torch CUDA stack does not prove JAX CUDA is compatible."
+                        if torch_cuda
+                        else "JAX could not initialize CUDA devices on this runner."
+                    ),
+                    "actions": (
+                        "For CPU-only unit tests: run `JAX_PLATFORMS=cpu make test` or "
+                        "`JAX_PLATFORMS=cpu uv run python -m pytest tests/unit`.",
+                        "For GPU rollout/training: inspect "
+                        "`uv pip list | grep -E 'jax|cuda|pjrt'`.",
+                        "Reinstall the JAX CUDA wheel/plugin that matches the runner "
+                        "driver/CUDA stack; do not assume the PyTorch CUDA wheel fixes JAX.",
+                    ),
+                }
+            )
+    torchvision = import_by_name.get("torchvision")
+    if torchvision is not None and "torchvision::nms" in str(torchvision.import_error):
+        recommendations.append(
+            {
+                "id": "torchvision-nms-mismatch",
+                "severity": "fail",
+                "title": "torchvision is ABI-incompatible with the installed torch build",
+                "details": (
+                    "vLLM imports Transformers, Transformers detects torchvision, and torchvision "
+                    "fails while registering `torchvision::nms`."
+                ),
+                "actions": (
+                    "For text-only Qwen/vLLM: remove broken torchvision from this environment.",
+                    "If torchvision is required, reinstall a matching torch/torchvision "
+                    "CUDA wheel pair.",
+                    "Verify with `uv run python -c \"import torch, torchvision; "
+                    "print(torch.__version__, torch.version.cuda, torchvision.__version__)\"`.",
+                ),
+            }
+        )
+    missing = tuple(summary.get("missing_requirements", ()))
+    if missing:
+        recommendations.append(
+            {
+                "id": "missing-requirements",
+                "severity": "fail",
+                "title": "Required packages from selected extras are missing",
+                "details": f"Missing: {', '.join(str(item) for item in missing)}",
+                "actions": (
+                    "Run `uv sync --extra tunix --extra envs --extra prompts --extra vllm`.",
+                    "Add `--extra vllm-gpu-kernels` when the target runner should "
+                    "install flashinfer.",
+                ),
+            }
+        )
+    return tuple(recommendations)
 
 
 def _string_sequence(value: object, name: str) -> tuple[str, ...]:

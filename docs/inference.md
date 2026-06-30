@@ -165,7 +165,9 @@ uv run python scripts/inspect_accelerator_stack.py \
 
 Отчёт показывает platform tags, JAX devices, Torch CUDA state, версии requirements из
 `pyproject.toml`, а также import errors для `vllm`, `torchvision`, `flashinfer`, `flash_attn`
-и других runtime modules.
+и других runtime modules. Поле `recommendations` сразу подсказывает типовые действия:
+`JAX_PLATFORMS=cpu` для CPU unit lane при broken JAX CUDA plugin, переустановка JAX CUDA wheel
+для real GPU lane, удаление/переустановка broken `torchvision` для text-only vLLM.
 
 GPU-kernel extras намеренно отделены от базового vLLM extra, чтобы macOS/CPU dev path не
 пытался собирать CUDA-specific wheels. Сейчас extra ставит только wheel-friendly

@@ -47,6 +47,7 @@ vllm = ["vllm", "torchvision"]
 
     assert report["summary"]["ok"] is False
     assert report["summary"]["broken_imports"] == ("torchvision",)
+    assert report["recommendations"][0]["id"] == "torchvision-nms-mismatch"
     [probe] = report["imports"]
     assert probe["import_error_type"] == "RuntimeError"
     assert "torchvision::nms" in probe["import_error"]
@@ -72,3 +73,34 @@ vllm = ["vllm"]
 
     assert report["summary"]["ok"] is False
     assert report["unknown_extras"] == ("missing-extra",)
+
+
+def test_accelerator_stack_report_recommends_cpu_lane_for_broken_jax_cuda(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        """
+[project]
+dependencies = []
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        accelerator_stack,
+        "_runtime_payload",
+        lambda: {
+            "jax": {
+                "error": "Unable to initialize backend 'cuda': no supported devices found",
+                "error_type": "RuntimeError",
+            },
+            "torch": {"cuda_available": True, "devices": ("NVIDIA GeForce RTX 5090",)},
+        },
+    )
+
+    report = accelerator_stack.build_accelerator_stack_report(tmp_path, extras=(), probes=())
+
+    assert report["summary"]["ok"] is False
+    assert report["summary"]["runtime_errors"] == ("jax",)
+    assert report["recommendations"][0]["id"] == "jax-cuda-plugin-unusable"
+    assert "JAX_PLATFORMS=cpu" in report["recommendations"][0]["actions"][0]

@@ -101,7 +101,10 @@ make accelerator-stack
 ```
 
 Если там уже видно broken import вроде `torchvision::nms`, чините binary stack до запуска
-ноутбуков/GRPO.
+ноутбуков/GRPO. Если Torch видит GPU, а JAX пишет
+`Unable to initialize backend 'cuda'`, это отдельный JAX CUDA plugin/PJRT mismatch: для unit
+tests можно временно запускать `JAX_PLATFORMS=cpu make test`, а для реального rollout/training
+нужно переустановить JAX CUDA wheel/plugin под driver/CUDA stack целевого runner.
 
 ```bash
 uv run python scripts/check_server_readiness.py \
