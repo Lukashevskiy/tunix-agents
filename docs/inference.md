@@ -156,13 +156,21 @@ uv sync --extra tunix --extra envs --extra prompts --extra vllm
 ```
 
 GPU-kernel extras намеренно отделены от базового vLLM extra, чтобы macOS/CPU dev path не
-пытался собирать CUDA-specific wheels:
+пытался собирать CUDA-specific wheels. Сейчас extra ставит только wheel-friendly
+`flashinfer-python`:
 
 ```bash
 uv sync --extra envs --extra prompts --extra vllm --extra vllm-gpu-kernels
 ```
 
-Доступные extras: `vllm-flashattn`, `vllm-flashinfer`, `vllm-gpu-kernels`, `sglang`.
+`flash-attn` ставим вручную prebuilt wheel-ом под конкретный runner:
+
+```bash
+uv pip install /path/to/flash_attn-*.whl
+uv run python -c "import flash_attn; print(flash_attn.__version__)"
+```
+
+Доступные extras: `vllm-flashinfer`, `vllm-gpu-kernels`, `sglang`.
 
 ## Следующий gate
 
