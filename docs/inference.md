@@ -212,6 +212,25 @@ make accelerator-stack
 broken `torchvision`, наличие локального model snapshot, `dtype`, `max_model_len`,
 `tensor_parallel_size` и доступную VRAM.
 
+### JAX + vLLM multiprocessing
+
+Warning вида
+`os.fork() is incompatible with multithreaded code, and JAX is multithreaded`
+означает, что vLLM пытается стартовать worker через `fork()` после того, как JAX уже поднял
+многопоточный runtime. Это не harmless warning: возможен deadlock.
+
+Правила для нашего pipeline:
+
+1. В notebook сначала загрузить generation config и создать `VllmInferenceEngine`, затем делать
+   тяжёлые JAX операции.
+2. Если warning уже появился — restart kernel; смена env после `fork()` не исправляет процесс.
+3. В `configs/generation/qwen_vllm_*.yaml` фиксируем
+   `engine.metadata.multiprocessing_method: spawn`.
+4. `VllmInferenceEngine` выставляет `VLLM_WORKER_MULTIPROC_METHOD=spawn` до импорта vLLM, если
+   пользователь не задал `VLLM_WORKER_MULTIPROC_METHOD` явно.
+5. Для production/offload path лучше запускать vLLM server отдельным процессом и обращаться к
+   нему через backend contract: тогда JAX trainer process и vLLM worker lifecycle разделены.
+
 Доступные extras: `vllm-flashinfer`, `vllm-gpu-kernels`, `sglang`.
 
 ## Следующий gate

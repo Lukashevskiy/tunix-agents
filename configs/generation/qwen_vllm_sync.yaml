@@ -11,6 +11,7 @@ engine:
   metadata:
     attention_backend: auto
     kernel_stack: auto
+    multiprocessing_method: spawn
     role: rollout
 tunix:
   engine: vllm

@@ -7,6 +7,7 @@ must be able to load the project without installing a Linux/GPU inference stack.
 from __future__ import annotations
 
 import asyncio
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter
@@ -31,6 +32,7 @@ class VllmInferenceEngine:
         if profile.backend != "vllm-offload":
             raise InferenceBackendError("VllmInferenceEngine requires backend='vllm-offload'")
         _validate_model_snapshot(profile.model)
+        _configure_vllm_process_start_method(profile)
         try:
             from vllm import LLM  # type: ignore[import-not-found]
         except ImportError as error:
@@ -183,3 +185,25 @@ def _validate_model_snapshot(model: str) -> None:
             f"{path}. Download it before creating VllmInferenceEngine, or use a "
             "Hugging Face model id in the generation profile."
         )
+
+
+def _configure_vllm_process_start_method(profile: EngineProfile) -> None:
+    """Prefer a JAX-safe vLLM worker start method before vLLM imports.
+
+    Python's default ``fork`` start method is unsafe after JAX has started its
+    multithreaded runtime.  vLLM reads ``VLLM_WORKER_MULTIPROC_METHOD`` during
+    startup, so the project sets a conservative default for in-process notebook
+    rollouts while still allowing users to override it explicitly in the shell.
+    """
+    raw_method = profile.metadata.get("multiprocessing_method", "spawn")
+    if raw_method is None:
+        return
+    method = str(raw_method).strip()
+    if not method:
+        return
+    if method not in {"spawn", "forkserver", "fork"}:
+        raise InferenceBackendError(
+            "engine.metadata.multiprocessing_method must be one of "
+            "'spawn', 'forkserver' or 'fork'"
+        )
+    os.environ.setdefault("VLLM_WORKER_MULTIPROC_METHOD", method)

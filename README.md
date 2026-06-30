@@ -238,6 +238,14 @@ make accelerator-stack
 snapshot и memory knobs из `configs/generation/*.yaml` (`dtype`, `max_model_len`,
 `tensor_parallel_size`). Настоящая причина обычно напечатана vLLM строками выше в stderr.
 
+Если перед этим появляется
+`os.fork() is incompatible with multithreaded code, and JAX is multithreaded`, значит vLLM
+стартует subprocess через fork уже после инициализации JAX. Для notebook path перезапустите
+kernel и создавайте `VllmInferenceEngine` до тяжёлых JAX вычислений. Наши generation YAML
+задают `engine.metadata.multiprocessing_method: spawn`, а адаптер выставляет
+`VLLM_WORKER_MULTIPROC_METHOD=spawn` до импорта vLLM, если пользователь не задал env вручную.
+Для production/offload предпочтительнее держать vLLM server отдельным процессом.
+
 `VanillaInferenceEngine`, `VllmInferenceEngine` и reserved `SglangInferenceEngine`
 подключаются через единый `build_inference_engine(...)` registry.
 

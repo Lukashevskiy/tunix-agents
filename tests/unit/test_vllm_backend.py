@@ -80,3 +80,54 @@ def test_vllm_engine_explains_engine_core_start_failure(
                 max_model_len=1024,
             )
         )
+
+
+def test_vllm_engine_sets_jax_safe_worker_start_method(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = types.ModuleType("vllm")
+    seen_env: dict[str, str | None] = {}
+
+    class FakeLLM:
+        def __init__(self, **kwargs: object) -> None:
+            import os
+
+            seen_env["method"] = os.environ.get("VLLM_WORKER_MULTIPROC_METHOD")
+
+    module.LLM = FakeLLM  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "vllm", module)
+    monkeypatch.delenv("VLLM_WORKER_MULTIPROC_METHOD", raising=False)
+
+    VllmInferenceEngine.from_profile(
+        EngineProfile("vllm", "vllm-offload", "Qwen/Qwen2.5-0.5B-Instruct")
+    )
+
+    assert seen_env == {"method": "spawn"}
+
+
+def test_vllm_engine_preserves_user_worker_start_method(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = types.ModuleType("vllm")
+    seen_env: dict[str, str | None] = {}
+
+    class FakeLLM:
+        def __init__(self, **kwargs: object) -> None:
+            import os
+
+            seen_env["method"] = os.environ.get("VLLM_WORKER_MULTIPROC_METHOD")
+
+    module.LLM = FakeLLM  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "vllm", module)
+    monkeypatch.setenv("VLLM_WORKER_MULTIPROC_METHOD", "forkserver")
+
+    VllmInferenceEngine.from_profile(
+        EngineProfile(
+            "vllm",
+            "vllm-offload",
+            "Qwen/Qwen2.5-0.5B-Instruct",
+            metadata={"multiprocessing_method": "spawn"},
+        )
+    )
+
+    assert seen_env == {"method": "forkserver"}
