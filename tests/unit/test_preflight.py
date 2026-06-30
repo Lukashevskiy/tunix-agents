@@ -21,10 +21,33 @@ def _spec() -> AgenticGrpoWorkloadSpec:
     return AgenticGrpoWorkloadSpec(1, 1, 2, 2, 2, 128, 8, 256, num_generations=2)
 
 
-def test_agentic_preflight_accepts_pinned_shape_on_local_profile() -> None:
+def test_agentic_preflight_accepts_scripted_checks_on_local_profile() -> None:
     topology = load_tunix_topology(ROOT / "configs/topology/qwen_agentic_grpo_local.yaml")
 
-    validate_agentic_grpo_preflight(topology, _spec(), QwenTensorShape(896, 14, 151936))
+    validate_agentic_grpo_preflight(
+        topology,
+        _spec(),
+        QwenTensorShape(896, 14, 151936),
+        rollout_backend="scripted",
+    )
+
+
+def test_agentic_preflight_rejects_known_broken_qwen_vanilla_fsdp_tp_rollout() -> None:
+    topology = load_tunix_topology(ROOT / "configs/topology/qwen_agentic_grpo_local.yaml")
+
+    with pytest.raises(RLClusterWorkloadError, match="embedding gather"):
+        validate_agentic_grpo_preflight(topology, _spec(), QwenTensorShape(896, 14, 151936))
+
+
+def test_agentic_preflight_keeps_escape_hatch_for_upstream_reproduction() -> None:
+    topology = load_tunix_topology(ROOT / "configs/topology/qwen_agentic_grpo_local.yaml")
+
+    validate_agentic_grpo_preflight(
+        topology,
+        _spec(),
+        QwenTensorShape(896, 14, 151936),
+        allow_known_broken_sharded_qwen_rollout=True,
+    )
 
 
 def test_agentic_preflight_rejects_non_divisible_tensor_parallel_degree() -> None:
@@ -33,4 +56,9 @@ def test_agentic_preflight_rejects_non_divisible_tensor_parallel_degree() -> Non
     )
 
     with pytest.raises(RLClusterWorkloadError, match="num_heads"):
-        validate_agentic_grpo_preflight(topology, _spec(), QwenTensorShape(896, 14, 151936))
+        validate_agentic_grpo_preflight(
+            topology,
+            _spec(),
+            QwenTensorShape(896, 14, 151936),
+            rollout_backend="scripted",
+        )

@@ -119,6 +119,16 @@ Qwen vanilla sampler пока не поддерживает его singleton sha
 Реальный one-update smoke предназначен для accelerator runner; флаг
 `--allow-cpu-smoke` существует только для воспроизведения upstream failure.
 
+После аудита внешних практик `jax-lm` и NVIDIA JAX-Toolbox это ограничение оформлено как
+архитектурная граница, а не как временный notebook-костыль. `jax-lm` разделяет semantic
+sharding modes и не считает symbolic `tp` degree 1 полноценным tensor-parallel режимом.
+NVIDIA JAX-Toolbox отделяет rollout generation от trainer mesh через inference/offload
+boundary. Поэтому `validate_agentic_grpo_preflight()` теперь отклоняет Qwen +
+`vanilla-jax-sharded` + `fsdp,tp` до загрузки весов; evidence/scripted checks остаются
+разрешены, а real train ждёт `single-device-jax`, `vllm-offload` или upstream Tunix
+embedding-gather fix. Решение зафиксировано в
+[ADR 0006](adr/0006-rollout-generation-boundary.md).
+
 Перед real weights path есть два локальных gate. `--dry-run` валидирует GRPO profile,
 topology, static preflight и evidence manifest без model allocation. `--scripted-smoke`
 использует тот же `CrafTextAgenticEnvironment`, `ToolAgent` и Tunix `TrajectoryCollectEngine`,

@@ -161,6 +161,7 @@ def main(arguments: Sequence[str] | None = None) -> None:
     from tunix_craftext.env.config import load_mvp_config
     from tunix_craftext.tunix import (
         AgenticGrpoWorkloadSpec,
+        RLClusterWorkloadError,
         load_tunix_topology,
         pinned_qwen_tensor_shape,
         validate_agentic_grpo_preflight,
@@ -182,7 +183,13 @@ def main(arguments: Sequence[str] | None = None) -> None:
         num_generations=args.num_generations,
         max_concurrency=args.num_generations,
     )
-    validate_agentic_grpo_preflight(topology, spec, pinned_qwen_tensor_shape())
+    real_rollout_preflight_error: str | None = None
+    try:
+        validate_agentic_grpo_preflight(topology, spec, pinned_qwen_tensor_shape())
+    except RLClusterWorkloadError as error:
+        real_rollout_preflight_error = str(error)
+        if not args.dry_run and not args.scripted_smoke:
+            raise
 
     preview_batch = next(
         craftext_task_batches(
@@ -214,6 +221,10 @@ def main(arguments: Sequence[str] | None = None) -> None:
                     "snapshot": str(args.snapshot),
                     "snapshot_exists": args.snapshot.is_dir(),
                     "backend": jax.default_backend(),
+                    "real_rollout_preflight": {
+                        "ok": real_rollout_preflight_error is None,
+                        "error": real_rollout_preflight_error,
+                    },
                     "task_source": args.task_source,
                     "task_sampling": args.task_sampling,
                     "batch_preview": {

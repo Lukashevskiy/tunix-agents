@@ -3,9 +3,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 from .rlcluster_workload import AgenticGrpoWorkloadSpec, RLClusterWorkloadError
 from .topology import TunixTopology
+
+RolloutBackend = Literal[
+    "vanilla-jax-sharded",
+    "single-device-jax",
+    "vllm-offload",
+    "scripted",
+    "evidence",
+]
 
 
 @dataclass(frozen=True)
@@ -31,8 +40,20 @@ def validate_agentic_grpo_preflight(
     topology: TunixTopology,
     spec: AgenticGrpoWorkloadSpec,
     shape: QwenTensorShape,
+    *,
+    rollout_backend: RolloutBackend = "vanilla-jax-sharded",
+    model_family: str = "qwen2",
+    allow_known_broken_sharded_qwen_rollout: bool = False,
 ) -> None:
-    """Reject impossible role meshes and static workload dimensions before model load."""
+    """Reject impossible role/backend/model contracts before model load.
+
+    This preflight is intentionally stricter than plain tensor divisibility.
+    The current Tunix Qwen vanilla sampler can fail during the embedding gather
+    when a Qwen actor/reference is loaded on an ``fsdp,tp`` mesh, even if both
+    symbolic axes have degree one.  Evidence/scripted checks and future
+    generation backends remain allowed; the known-broken sharded Qwen rollout is
+    stopped here with an actionable error before weights enter memory.
+    """
     if shape.embed_dim <= 0 or shape.num_heads <= 0 or shape.vocab_size <= 0:
         raise RLClusterWorkloadError("Qwen tensor dimensions must be positive")
     for role in ("actor", "rollout", "reference"):
@@ -50,3 +71,43 @@ def validate_agentic_grpo_preflight(
         raise RLClusterWorkloadError("rollout micro-batch must divide rollout mesh degree")
     if spec.train_micro_batch_size % len(topology.role_to_device_indices["actor"]):
         raise RLClusterWorkloadError("train micro-batch must divide actor mesh degree")
+    _validate_rollout_backend_contract(
+        topology,
+        rollout_backend=rollout_backend,
+        model_family=model_family,
+        allow_known_broken_sharded_qwen_rollout=allow_known_broken_sharded_qwen_rollout,
+    )
+
+
+def _validate_rollout_backend_contract(
+    topology: TunixTopology,
+    *,
+    rollout_backend: RolloutBackend,
+    model_family: str,
+    allow_known_broken_sharded_qwen_rollout: bool,
+) -> None:
+    if rollout_backend not in {
+        "vanilla-jax-sharded",
+        "single-device-jax",
+        "vllm-offload",
+        "scripted",
+        "evidence",
+    }:
+        raise RLClusterWorkloadError(f"unsupported rollout_backend: {rollout_backend}")
+    if allow_known_broken_sharded_qwen_rollout:
+        return
+    family = model_family.lower().replace("-", "").replace("_", "")
+    if family not in {"qwen", "qwen2", "qwen25", "qwen25instruct"}:
+        return
+    if rollout_backend != "vanilla-jax-sharded":
+        return
+    axes = tuple(part.strip() for part in topology.axis_name.split(","))
+    if "tp" not in axes:
+        return
+    raise RLClusterWorkloadError(
+        "Qwen vanilla-jax-sharded rollout on an fsdp/tp Tunix mesh is disabled: "
+        "the current Tunix Qwen sampler can fail in the embedding gather before "
+        "generation starts. Use rollout_backend='scripted'/'evidence' for checks, "
+        "or implement the planned 'single-device-jax' or 'vllm-offload' rollout boundary "
+        "before running real Agentic GRPO."
+    )

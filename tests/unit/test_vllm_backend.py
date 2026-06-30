@@ -1,0 +1,25 @@
+"""Optional vLLM adapter contract tests without installing vLLM."""
+
+from __future__ import annotations
+
+import pytest
+
+from tunix_craftext.env.prompts import ActionCatalog, RenderedPrompt
+from tunix_craftext.inference import EngineProfile, InferenceBackendError, VllmInferenceEngine
+from tunix_craftext.inference.contracts import GenerationBatch
+from tunix_craftext.models.llm import LlmRequest
+
+
+def test_vllm_engine_requires_vllm_backend_profile() -> None:
+    with pytest.raises(InferenceBackendError, match="backend='vllm-offload'"):
+        VllmInferenceEngine.from_profile(EngineProfile("bad", "scripted", "model"))
+
+
+def test_vllm_engine_fails_cleanly_when_not_initialized() -> None:
+    engine = VllmInferenceEngine(EngineProfile("vllm", "vllm-offload", "model"))
+    batch = GenerationBatch(
+        (LlmRequest(RenderedPrompt("prompt", ActionCatalog(("NOOP",)), "base")),)
+    )
+
+    with pytest.raises(InferenceBackendError, match="not initialized"):
+        engine.generate(batch)

@@ -7,6 +7,7 @@ import pytest
 
 import tunix_craftext.tunix.rlcluster_workload as package_workload
 import tunix_craftext.tunix.rlcluster_workload as workload
+from tunix_craftext.inference import TunixGenerationContract
 from tunix_craftext.tunix.rlcluster_workload import (
     AgenticGrpoWorkloadSpec,
     PpoModelAssets,
@@ -84,6 +85,35 @@ def test_agentic_grpo_config_has_no_critic_and_recomputes_logprobs() -> None:
     assert config.training_config.compute_logps_micro_batch_size == 2
     assert config.training_config.checkpoint_root_directory.endswith("grpo/checkpoints")
     assert config.rollout_config.temperature == 1.0
+
+
+def test_agentic_grpo_config_accepts_strict_vllm_generation_contract() -> None:
+    spec = AgenticGrpoWorkloadSpec(10, 5, 4, 2, 1, 128, 8, 256, num_generations=2)
+    generation = TunixGenerationContract(
+        engine="vllm",
+        max_prompt_length=128,
+        max_tokens_to_generate=8,
+        kv_cache_size=256,
+        temperature=0.7,
+        tensor_parallel_size=1,
+        vllm_server_mode=True,
+        vllm_async_scheduling=True,
+        vllm_hbm_utilization=0.35,
+        vllm_model_version="qwen2.5-0.5b",
+    )
+
+    config = build_agentic_grpo_cluster_config(
+        load_tunix_topology(ROOT / "configs/topology/qwen_agentic_grpo_local.yaml"),
+        spec,
+        generation,
+    )
+
+    assert config.rollout_engine == "vllm"
+    assert config.rollout_config.temperature == 0.7
+    assert config.rollout_config.rollout_vllm_server_mode is True
+    assert config.rollout_config.rollout_vllm_async_scheduling is True
+    assert config.rollout_config.rollout_vllm_hbm_utilization == 0.35
+    assert config.rollout_config.rollout_vllm_model_version == "qwen2.5-0.5b"
 
 
 def test_agentic_grpo_rejects_unsupported_generation_count_or_critic_topology() -> None:

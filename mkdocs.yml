@@ -34,6 +34,7 @@ nav:
   - Совместимость моделей: interop.md
   - Контрольные точки: checkpoints.md
   - Интеграция с Tunix: tunix.md
+  - Inference boundary: inference.md
   - Аудит training stack: training-stack-audit.md
   - Внешний PPO/hybrid аудит: report_audit.md
   - Аудит unit-тестов: unit-test-audit.md
@@ -61,3 +62,4 @@ nav:
       - Extension и observability: adr/0003-extension-and-observability-contracts.md
       - Tunix topology: adr/0004-tunix-cluster-topology.md
       - Sync-first training stack: adr/0005-sync-first-training-stack.md
+      - Rollout generation boundary: adr/0006-rollout-generation-boundary.md

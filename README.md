@@ -151,7 +151,7 @@ compatibility record в [`compatibility/training-stack.yaml`](compatibility/trai
 | --- | --- | --- |
 | [Google Tunix](https://github.com/google/tunix) | `RLCluster`, Agentic GRPO, role meshes, model/learner API | Golden distributed training path; не заменяет typed environment/replay contracts. |
 | [jax-lm](https://github.com/chuyishang/jax-lm) | discipline static shapes, mesh divisibility и preflight до загрузки весов | Вдохновляет `preflight.py`; **не** inference engine и не dependency. |
-| [NVIDIA JAX-Toolbox](https://github.com/NVIDIA/JAX-Toolbox) | NVIDIA JAX containers, GPU CI matrix, Nsight/`nsys-jax` profiling, JAX↔vLLM rollout offloading pattern | Practice source для accelerator images/profiling/async rollout design; не runtime dependency CPU MVP и не замена Tunix/RLCluster. |
+| [NVIDIA JAX-Toolbox](https://github.com/NVIDIA/JAX-Toolbox) | NVIDIA JAX containers, GPU CI matrix, Nsight/`nsys-jax` profiling, JAX↔vLLM rollout offloading pattern | Practice source для accelerator images/profiling/async rollout design; переносим архитектурный pattern в `tunix_craftext.inference`, но не копируем runtime code. |
 | [Qwix](https://github.com/google/qwix) | QLoRA/quantized JAX–Flax experiments | Только после output-parity и trainability fixture выбранной Tunix model. |
 | [Flashbax](https://github.com/instadeepai/flashbax) | JIT-compatible bounded replay staging | Исследовательский sync path; не превращает on-policy batch в неявный off-policy replay. |
 | [CommonLoopUtils](https://github.com/google/CommonLoopUtils) | structured metrics и checkpoint loop practice | Optional reporting/checkpoint layer после стабилизации JSONL evidence. |
@@ -161,6 +161,17 @@ compatibility record в [`compatibility/training-stack.yaml`](compatibility/trai
 Vendored `CrafText`, `CagedCrafText` и `MegaPrompts` сохраняются неизменёнными в `vendor/`;
 наша работа живёт в typed adapters и runtime boundaries, поэтому upstream snapshots можно
 обновлять и проверять отдельно.
+
+Для production rollout generation вводится отдельная inference boundary. Базовый проект и
+unit tests не требуют vLLM, но целевой Linux/GPU runner может поставить optional extra:
+
+```bash
+uv sync --extra tunix --extra envs --extra prompts --extra vllm
+```
+
+`VllmInferenceEngine` пока является adapter boundary: он принимает `EngineProfile`, сохраняет
+ordered batch/cardinality contract и возвращает нормализованные `LlmResponse`. Подключение его
+к Agentic GRPO/PPO collector — следующий gate после preflight/blocker фикса.
 
 ## Локальный запуск сайта
 

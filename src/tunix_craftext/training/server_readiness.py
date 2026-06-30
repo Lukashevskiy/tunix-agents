@@ -29,6 +29,7 @@ from ..artifacts.observability import (
 )
 from ..artifacts.replay import ReplayArtifact, ReplayStep, save_replay
 from ..tunix import (
+    RLClusterWorkloadError,
     load_tunix_topology,
     pinned_qwen_tensor_shape,
     validate_agentic_grpo_preflight,
@@ -140,10 +141,21 @@ def check_server_readiness(
     checks.append(ReadinessCheck("profile", "pass", "GRPO profile loaded and provenance written"))
 
     topology = load_tunix_topology(profile.topology_config)
-    validate_agentic_grpo_preflight(topology, profile.workload, pinned_qwen_tensor_shape())
-    checks.append(
-        ReadinessCheck("tunix_preflight", "pass", "Tunix topology/workload preflight passed")
-    )
+    try:
+        validate_agentic_grpo_preflight(topology, profile.workload, pinned_qwen_tensor_shape())
+    except RLClusterWorkloadError as error:
+        checks.append(
+            ReadinessCheck(
+                "tunix_preflight",
+                "fail",
+                "Real Tunix Qwen vanilla rollout preflight failed",
+                {"error": str(error)},
+            )
+        )
+    else:
+        checks.append(
+            ReadinessCheck("tunix_preflight", "pass", "Tunix topology/workload preflight passed")
+        )
 
     backend = jax.default_backend()
     devices = tuple(str(device) for device in jax.devices())

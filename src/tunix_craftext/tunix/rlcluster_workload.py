@@ -10,6 +10,7 @@ import jax
 import jax.numpy as jnp
 import optax  # type: ignore[import-untyped]
 
+from ..inference import TunixGenerationContract
 from ..models.tunix_adapter import (
     load_gemma_model_on_mesh,
     load_gemma_tokenizer,
@@ -137,7 +138,9 @@ def build_rlcluster_config(topology: TunixTopology, spec: RLClusterWorkloadSpec)
 
 
 def build_agentic_grpo_cluster_config(
-    topology: TunixTopology, spec: AgenticGrpoWorkloadSpec
+    topology: TunixTopology,
+    spec: AgenticGrpoWorkloadSpec,
+    generation_contract: TunixGenerationContract | None = None,
 ) -> object:
     """Build the public Tunix config for the actor/rollout/reference Agentic GRPO path."""
     if "critic" in topology.role_to_device_indices:
@@ -164,16 +167,19 @@ def build_agentic_grpo_cluster_config(
         if spec.checkpoint_root_directory is not None
         else None,
     )
-    rollout = RolloutConfig(
-        max_prompt_length=spec.max_prompt_length,
-        max_tokens_to_generate=spec.max_new_tokens,
-        kv_cache_size=spec.kv_cache_size,
-        return_logprobs=True,
-        temperature=1.0,
-    )
+    if generation_contract is None:
+        generation_contract = TunixGenerationContract(
+            engine="vanilla",
+            max_prompt_length=spec.max_prompt_length,
+            max_tokens_to_generate=spec.max_new_tokens,
+            kv_cache_size=spec.kv_cache_size,
+            return_logprobs=True,
+            temperature=1.0,
+        )
+    rollout = RolloutConfig(**generation_contract.to_tunix_rollout_kwargs())
     return ClusterConfig(
         role_to_mesh=tunix_role_to_meshes(topology),
-        rollout_engine="vanilla",
+        rollout_engine=generation_contract.engine,
         training_config=training,
         rollout_config=rollout,
     )

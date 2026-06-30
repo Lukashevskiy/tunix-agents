@@ -168,6 +168,18 @@ catalogue и deterministic initial environment state.
 - [~] Реализовать model factory, которая создаёт actor/reference совместимых
   Qwen model objects и tokenizer для `RLCluster`; не использовать local sampler
   как train runtime.
+- [x] Добавить backend-aware preflight: Qwen + `vanilla-jax-sharded` + `fsdp,tp`
+  отклоняется до загрузки весов, потому что текущий upstream Tunix Qwen sampler
+  падает на embedding gather; scripted/evidence lanes остаются разрешены.
+- [ ] Реализовать явную rollout generation boundary: сначала `single-device-jax`
+  для one-GPU bring-up, затем `vllm-offload`/production offload по паттерну
+  NVIDIA JAX-Toolbox; не запускать real GRPO/PPO через known-broken vanilla path.
+- [x] Ввести strict sync/async generation contract: `GenerationBatch`/`GenerationResult`
+  едины для локального sync collector и будущего async rollout orchestrator; `group_id`,
+  `policy_version`, ordered cardinality и decoding knobs валидируются до backend call.
+- [x] Добавить compiler в существующие Tunix configs: `TunixGenerationContract` строит
+  `ClusterConfig.rollout_engine` и `RolloutConfig` для `vanilla`/`vllm`/`sglang_jax`,
+  не дублируя уже существующие Tunix `rollout_vllm_*` knobs.
 - [ ] Создать реальный `RLCluster` и проверить placement/sharing на declared mesh.
 - [ ] Добавить output/logprob parity fixture между rollout model и train actor.
 
