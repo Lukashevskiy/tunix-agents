@@ -116,3 +116,11 @@ uv sync --extra tunix --extra envs --extra prompts --extra vllm
 3. Сделать hardware-gated test: один ordered batch prompt → vLLM/Tunix rollout engine →
    action decode → CrafText step → replay artifact.
 4. После этого вводить RLCluster actor weight sync в rollout engine.
+
+## Notebooks
+
+- `17_sync_vllm_craftext_rollout.ipynb` — sync vLLM path через `RequestsLlmBackend` и
+  существующий `collect_batched_text_rollout()`.
+- `18_async_vllm_craftext_rollout.ipynb` — async vLLM path через
+  `collect_generation_results()` с bounded `max_in_flight` и тем же
+  `GenerationBatch/GenerationResult` payload.

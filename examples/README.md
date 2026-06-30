@@ -19,5 +19,7 @@ uv run jupyter lab examples/notebooks
 | `10_replay_to_token_ppo.ipynb` | Convert replay evidence to token batches, masks, returns and PPO loss inputs. |
 | `11_end_to_end_batched_qwen_ppo.ipynb` | Run the full batched Env → MegaPrompts → Qwen → replay → token PPO loss path. |
 | `12_full_cycle_craftext_training.ipynb` | Run CrafText rollout → replay evidence → token batch → masked PPO update as a compact full-cycle training example. |
+| `17_sync_vllm_craftext_rollout.ipynb` | Run CrafText → MegaPrompts → Qwen chat template → sync vLLM generation → batched env step → replay. |
+| `18_async_vllm_craftext_rollout.ipynb` | Run the same vLLM rollout through `GenerationBatch` async collection with bounded in-flight requests. |
 
 Keep examples self-contained: fix seeds, avoid private data and do not import from `tests/`.

@@ -1,5 +1,10 @@
 """Inference engine contracts and optional rollout-generation backends."""
 
+from .async_pipeline import (
+    AsyncGenerationRecord,
+    collect_generation_results,
+    collect_generation_results_from_sync_engine,
+)
 from .contracts import (
     AsyncInferenceEngine,
     EngineProfile,
@@ -19,6 +24,7 @@ __all__ = [
     "GenerationBatch",
     "GenerationResult",
     "AsyncInferenceEngine",
+    "AsyncGenerationRecord",
     "InferenceBackendError",
     "InferenceEngine",
     "RequestsLlmBackend",
@@ -26,4 +32,6 @@ __all__ = [
     "TunixGenerationContract",
     "VllmInferenceEngine",
     "as_async_engine",
+    "collect_generation_results",
+    "collect_generation_results_from_sync_engine",
 ]

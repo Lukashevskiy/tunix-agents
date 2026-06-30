@@ -173,6 +173,11 @@ uv sync --extra tunix --extra envs --extra prompts --extra vllm
 ordered batch/cardinality contract и возвращает нормализованные `LlmResponse`. Подключение его
 к Agentic GRPO/PPO collector — следующий gate после preflight/blocker фикса.
 
+Для ручной проверки этого слоя есть два notebooks:
+
+- `examples/notebooks/17_sync_vllm_craftext_rollout.ipynb`
+- `examples/notebooks/18_async_vllm_craftext_rollout.ipynb`
+
 ## Локальный запуск сайта
 
 Создайте локальное окружение документации один раз, затем используйте команду репозитория вместо
