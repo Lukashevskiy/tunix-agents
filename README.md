@@ -88,6 +88,21 @@ backend, sync/async mode, vLLM/Tunix rollout knobs и async collector limits.
 `metrics.jsonl`, `validation_trajectories.jsonl`, `artifacts.jsonl`, validation artifact и
 checkpoint directory probe.
 
+Сначала полезно снять “рентген” installed stack: какие версии ожидает текущий `pyproject.toml`,
+что реально установлено на runner, какие imports уже падают и какую CUDA/JAX/Torch платформу видит
+процесс.
+
+```bash
+uv run python scripts/inspect_accelerator_stack.py \
+  --extra tunix --extra envs --extra prompts --extra vllm --extra vllm-gpu-kernels \
+  --output artifacts/runs/accelerator-stack.json
+
+make accelerator-stack
+```
+
+Если там уже видно broken import вроде `torchvision::nms`, чините binary stack до запуска
+ноутбуков/GRPO.
+
 ```bash
 uv run python scripts/check_server_readiness.py \
   --profile configs/grpo/qwen_agentic_local.yaml \

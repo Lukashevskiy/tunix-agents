@@ -155,6 +155,18 @@ GRPO profile ссылается на этот YAML через `generation_config
 uv sync --extra tunix --extra envs --extra prompts --extra vllm
 ```
 
+После установки снимите platform report до открытия notebooks:
+
+```bash
+uv run python scripts/inspect_accelerator_stack.py \
+  --extra tunix --extra envs --extra prompts --extra vllm --extra vllm-gpu-kernels \
+  --output artifacts/runs/accelerator-stack.json
+```
+
+Отчёт показывает platform tags, JAX devices, Torch CUDA state, версии requirements из
+`pyproject.toml`, а также import errors для `vllm`, `torchvision`, `flashinfer`, `flash_attn`
+и других runtime modules.
+
 GPU-kernel extras намеренно отделены от базового vLLM extra, чтобы macOS/CPU dev path не
 пытался собирать CUDA-specific wheels. Сейчас extra ставит только wheel-friendly
 `flashinfer-python`:

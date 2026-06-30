@@ -2,7 +2,7 @@ UV_RUN_FLAGS ?=
 PYTHON ?= uv run $(UV_RUN_FLAGS) python
 PERF_ARTIFACT ?= artifacts/benchmarks/rollout-latest.json
 
-.PHONY: audit test coverage integration perf perf-env perf-text docs api-docs serve provenance sync-tasks verify verify-golden
+.PHONY: audit test coverage integration perf perf-env perf-text docs api-docs serve provenance sync-tasks accelerator-stack verify verify-golden
 
 audit:
 	$(PYTHON) .codex/skills/repository-audit/scripts/audit_repo.py
@@ -42,6 +42,9 @@ provenance:
 
 sync-tasks:
 	$(PYTHON) .codex/skills/task-board-sync/scripts/sync_task_views.py
+
+accelerator-stack:
+	PYTHONPATH=src $(PYTHON) scripts/inspect_accelerator_stack.py --strict
 
 verify: audit test integration sync-tasks api-docs
 	@echo "Verified audit, unit/integration tests, task-board sync, MkDocs and Sphinx API documentation."
