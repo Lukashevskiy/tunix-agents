@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import warnings
+
 import jax
 import jax.numpy as jnp
 import pytest
@@ -32,7 +34,15 @@ def test_checkpoint_round_trip_restores_optimizer_and_metadata(tmp_path) -> None
     )
 
     save_checkpoint(tmp_path / "checkpoint", state, metadata)
-    restored, restored_metadata = restore_checkpoint(tmp_path / "checkpoint", state)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        restored, restored_metadata = restore_checkpoint(tmp_path / "checkpoint", state)
+
+    assert not [
+        warning
+        for warning in caught
+        if "Sharding info not provided when restoring" in str(warning.message)
+    ]
 
     assert restored_metadata == metadata
     assert int(restored.step) == int(state.step)

@@ -13,6 +13,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+import jax
 import orbax.checkpoint as ocp  # type: ignore[import-untyped]
 from flax.training.train_state import TrainState
 
@@ -79,8 +80,13 @@ def restore_checkpoint(
         "params": state_template.params,
         "opt_state": state_template.opt_state,
     }
+    restore_args = _restore_args_from_template(trainable_template)
     trainable_state: dict[str, Any] = ocp.PyTreeCheckpointer().restore(
-        directory, item=trainable_template
+        directory,
+        args=ocp.args.PyTreeRestore(
+            item=trainable_template,
+            restore_args=restore_args,
+        ),
     )
     return (
         state_template.replace(
@@ -132,3 +138,28 @@ def _validate_metadata(metadata: CheckpointMetadata) -> None:
         raise ValueError(
             f"unsupported checkpoint schema {metadata.schema!r}; expected {CHECKPOINT_SCHEMA!r}"
         )
+
+
+def _restore_args_from_template(template: dict[str, Any]) -> dict[str, Any]:
+    """Build explicit Orbax restore args from the caller's current topology.
+
+    :param template: Trainable checkpoint template containing step, params and opt_state.
+    :returns: A PyTree matching ``template`` with Orbax restore args per leaf.
+
+    Orbax can infer sharding from checkpoint metadata, but that is slower and unsafe when
+    restoring on a topology different from the one that produced the checkpoint.  The
+    template is the contract for the current process, so every JAX array leaf restores
+    with its explicit sharding, dtype and global shape.
+    """
+
+    def _leaf_restore_args(leaf: Any) -> object:
+        sharding = getattr(leaf, "sharding", None)
+        if sharding is not None:
+            return ocp.ArrayRestoreArgs(
+                sharding=sharding,
+                dtype=getattr(leaf, "dtype", None),
+                global_shape=getattr(leaf, "shape", None),
+            )
+        return ocp.RestoreArgs(restore_type=type(leaf))
+
+    return jax.tree.map(_leaf_restore_args, template)
