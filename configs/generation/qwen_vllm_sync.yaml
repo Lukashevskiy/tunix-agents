@@ -10,7 +10,10 @@ engine:
   policy_version: 0
   metadata:
     attention_backend: auto
+    gpu_memory_utilization: 0.35
     kernel_stack: auto
+    max_num_batched_tokens: 4096
+    max_num_seqs: 32
     multiprocessing_method: spawn
     role: rollout
 tunix:

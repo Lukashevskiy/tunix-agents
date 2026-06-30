@@ -131,3 +131,59 @@ def test_vllm_engine_preserves_user_worker_start_method(
     )
 
     assert seen_env == {"method": "forkserver"}
+
+
+def test_vllm_engine_passes_memory_and_batch_kwargs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = types.ModuleType("vllm")
+    seen_kwargs: dict[str, object] = {}
+
+    class FakeLLM:
+        def __init__(self, **kwargs: object) -> None:
+            seen_kwargs.update(kwargs)
+
+    module.LLM = FakeLLM  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "vllm", module)
+
+    VllmInferenceEngine.from_profile(
+        EngineProfile(
+            "vllm",
+            "vllm-offload",
+            "Qwen/Qwen2.5-0.5B-Instruct",
+            metadata={
+                "gpu_memory_utilization": 0.35,
+                "max_num_batched_tokens": 4096,
+                "max_num_seqs": 32,
+                "disable_log_stats": True,
+            },
+        )
+    )
+
+    assert seen_kwargs["gpu_memory_utilization"] == 0.35
+    assert seen_kwargs["max_num_batched_tokens"] == 4096
+    assert seen_kwargs["max_num_seqs"] == 32
+    assert seen_kwargs["disable_log_stats"] is True
+
+
+def test_vllm_engine_rejects_invalid_memory_utilization(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = types.ModuleType("vllm")
+
+    class FakeLLM:
+        def __init__(self, **kwargs: object) -> None:
+            raise AssertionError("LLM must not be constructed for invalid metadata")
+
+    module.LLM = FakeLLM  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "vllm", module)
+
+    with pytest.raises(InferenceBackendError, match="gpu_memory_utilization"):
+        VllmInferenceEngine.from_profile(
+            EngineProfile(
+                "vllm",
+                "vllm-offload",
+                "Qwen/Qwen2.5-0.5B-Instruct",
+                metadata={"gpu_memory_utilization": 1.5},
+            )
+        )

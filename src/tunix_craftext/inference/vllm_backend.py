@@ -50,6 +50,7 @@ class VllmInferenceEngine:
             kwargs["max_model_len"] = profile.max_model_len
         if profile.dtype is not None:
             kwargs["dtype"] = profile.dtype
+        kwargs.update(_vllm_kwargs_from_profile_metadata(profile))
         try:
             llm = LLM(**kwargs)
         except RuntimeError as error:
@@ -169,7 +170,8 @@ def _raise_vllm_engine_start_error(error: RuntimeError, profile: EngineProfile) 
             "and the profile fits GPU memory. Profile: "
             f"name={profile.name!r}, model={profile.model!r}, "
             f"dtype={profile.dtype!r}, max_model_len={profile.max_model_len!r}, "
-            f"tensor_parallel_size={profile.tensor_parallel_size}."
+            f"tensor_parallel_size={profile.tensor_parallel_size}, "
+            f"metadata={dict(profile.metadata)!r}."
         ) from error
     _raise_vllm_runtime_import_error(error)
 
@@ -207,3 +209,53 @@ def _configure_vllm_process_start_method(profile: EngineProfile) -> None:
             "'spawn', 'forkserver' or 'fork'"
         )
     os.environ.setdefault("VLLM_WORKER_MULTIPROC_METHOD", method)
+
+
+def _vllm_kwargs_from_profile_metadata(profile: EngineProfile) -> dict[str, object]:
+    """Return explicit vLLM constructor kwargs encoded in engine metadata.
+
+    The Tunix rollout config has its own `vllm_hbm_utilization` knobs.  The direct
+    notebook path uses `VllmInferenceEngine`, so production-critical vLLM knobs must be
+    present on the engine profile as well; otherwise vLLM falls back to its aggressive
+    default GPU memory utilization.
+    """
+    metadata = profile.metadata
+    kwargs: dict[str, object] = {}
+    if "gpu_memory_utilization" in metadata:
+        value = _metadata_float(metadata["gpu_memory_utilization"], "gpu_memory_utilization")
+        if not 0.0 < value <= 1.0:
+            raise InferenceBackendError(
+                "engine.metadata.gpu_memory_utilization must be in (0, 1]"
+            )
+        kwargs["gpu_memory_utilization"] = value
+    for key in ("max_num_batched_tokens", "max_num_seqs"):
+        if key in metadata:
+            value = _metadata_int(metadata[key], key)
+            if value <= 0:
+                raise InferenceBackendError(f"engine.metadata.{key} must be positive")
+            kwargs[key] = value
+    for key in ("enforce_eager", "disable_log_stats"):
+        if key in metadata:
+            kwargs[key] = _metadata_bool(metadata[key], key)
+    return kwargs
+
+
+def _metadata_float(value: object, name: str) -> float:
+    """Parse a numeric metadata field without accepting booleans."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise InferenceBackendError(f"engine.metadata.{name} must be numeric")
+    return float(value)
+
+
+def _metadata_int(value: object, name: str) -> int:
+    """Parse an integer metadata field without accepting booleans."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise InferenceBackendError(f"engine.metadata.{name} must be an integer")
+    return value
+
+
+def _metadata_bool(value: object, name: str) -> bool:
+    """Parse a boolean metadata field."""
+    if not isinstance(value, bool):
+        raise InferenceBackendError(f"engine.metadata.{name} must be boolean")
+    return value

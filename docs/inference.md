@@ -212,6 +212,19 @@ make accelerator-stack
 broken `torchvision`, наличие локального model snapshot, `dtype`, `max_model_len`,
 `tensor_parallel_size` и доступную VRAM.
 
+Если root cause выглядит так:
+
+```text
+Free memory on device cuda:0 (...) on startup is less than desired GPU memory utilization
+```
+
+то vLLM стартует с большим reservation budget. У прямого `VllmInferenceEngine` этот budget
+задаётся через `engine.metadata.gpu_memory_utilization`; у Tunix rollout server path — через
+`tunix.vllm_hbm_utilization`. Эти поля намеренно дублируются в generation YAML, потому что sync
+notebook path создаёт `vllm.LLM(...)` напрямую, а Tunix path компилирует свои rollout kwargs.
+Для Qwen 0.5B smoke configs выставлено `0.35`, чтобы не конкурировать с JAX/Tunix в том же GPU
+процессе.
+
 ### JAX + vLLM multiprocessing
 
 Warning вида

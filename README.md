@@ -237,6 +237,10 @@ make accelerator-stack
 и проверьте в нём `jax`, `torch`, `torchvision`, `vllm`, `flashinfer`, путь к локальному model
 snapshot и memory knobs из `configs/generation/*.yaml` (`dtype`, `max_model_len`,
 `tensor_parallel_size`). Настоящая причина обычно напечатана vLLM строками выше в stderr.
+Если root cause говорит `Free memory ... is less than desired GPU memory utilization`, значит
+vLLM пытается зарезервировать слишком большую долю VRAM. Для прямого `VllmInferenceEngine`
+это регулируется в `engine.metadata.gpu_memory_utilization`, а для Tunix rollout server path —
+в `tunix.vllm_hbm_utilization`. В стандартных Qwen configs оба значения держим на `0.35`.
 
 Если перед этим появляется
 `os.fork() is incompatible with multithreaded code, and JAX is multithreaded`, значит vLLM
