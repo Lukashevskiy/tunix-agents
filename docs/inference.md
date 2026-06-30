@@ -18,8 +18,12 @@ tunix_craftext.inference
 ├── InferenceEngine         # sync generate(batch) protocol
 ├── AsyncInferenceEngine    # async generate_async(batch) over the same payload
 ├── TunixGenerationContract # compiler to Tunix rollout_engine/RolloutConfig
+├── VanillaInferenceEngine  # wraps existing BatchLlmBackend instances
+├── VllmInferenceEngine     # optional vLLM adapter
+├── SglangInferenceEngine   # reserved SGLang adapter boundary
+├── build_inference_engine  # profile-driven backend registry
 ├── RequestsLlmBackend      # adapter back to existing BatchLlmBackend
-└── VllmInferenceEngine     # optional vLLM adapter
+└── collectors              # sync/async collection returning GenerationRecord
 ```
 
 Это повторяет архитектурную идею NVIDIA JAX-Toolbox/JAX↔vLLM offloading: trainer и rollout
@@ -94,7 +98,12 @@ cluster_config = build_agentic_grpo_cluster_config(topology, spec, generation)
 | `scripted` / existing `BatchLlmBackend` | готово | CPU tests, notebooks, deterministic evidence |
 | `single-device-jax` | planned | one-GPU bring-up без symbolic `fsdp,tp` generation |
 | `vllm-offload` | strict contract + adapter boundary готов | production rollout generation на Linux/GPU runner |
+| `sglang` / `sglang-jax` | явная граница, runtime ещё не подключён | будущая альтернатива vLLM/Tunix rollout |
 | `vanilla-jax-sharded` | blocked для Qwen `fsdp,tp` | ждёт upstream Tunix sharded embedding-gather fix |
+
+`build_inference_engine(profile, vanilla_backends=...)` является единой factory. Vanilla-like
+backends требуют заранее созданный `BatchLlmBackend`, потому что загрузка их весов
+проектно-специфична; vLLM и будущие server/offload backends создаются из `EngineProfile`.
 
 ## Минимальный vLLM profile
 
@@ -117,6 +126,15 @@ engine = VllmInferenceEngine.from_profile(profile)
 ```bash
 uv sync --extra tunix --extra envs --extra prompts --extra vllm
 ```
+
+GPU-kernel extras намеренно отделены от базового vLLM extra, чтобы macOS/CPU dev path не
+пытался собирать CUDA-specific wheels:
+
+```bash
+uv sync --extra envs --extra prompts --extra vllm --extra vllm-gpu-kernels
+```
+
+Доступные extras: `vllm-flashattn`, `vllm-flashinfer`, `vllm-gpu-kernels`, `sglang`.
 
 ## Следующий gate
 
