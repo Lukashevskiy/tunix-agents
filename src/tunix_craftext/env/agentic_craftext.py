@@ -50,6 +50,21 @@ def _python_scalar(value: object) -> object:
     return item() if callable(item) else value
 
 
+def _folded_key(seed: int, step: int) -> object:
+    """Create a JAX PRNG key, with a host-only fallback for injected unit adapters."""
+    try:
+        return jax.random.fold_in(jax.random.PRNGKey(seed), step)
+    except RuntimeError as error:
+        message = str(error)
+        if "Unable to initialize backend" not in message and "no supported devices" not in message:
+            raise
+        _LOGGER.warning(
+            "jax PRNG backend unavailable; using host fallback key for injected environment",
+            extra={"seed": seed, "step": step, "error": message},
+        )
+        return (seed, step)
+
+
 def agentic_task(*, goal: str, seed: int, horizon: int | None = None) -> dict[str, object]:
     """Create the serializable task payload consumed by ``CrafTextAgenticEnvironment``.
 
@@ -247,7 +262,7 @@ class CrafTextAgenticEnvironment(BaseTaskEnv):
         _LOGGER.log(level, "agentic_craftext %s", context)
 
     def _initial_observation(self) -> dict[str, str]:
-        key = jax.random.fold_in(jax.random.PRNGKey(self._seed), 0)
+        key = _folded_key(self._seed, 0)
         if self._instruction_index is None:
             reset = self._adapter.reset(key)
         else:
@@ -286,7 +301,7 @@ class CrafTextAgenticEnvironment(BaseTaskEnv):
         if not bool(self._action_mask[action_id]):
             return self._invalid_result(call_id, f"action {label!r} is unavailable in this state")
         transition = self._adapter.step(
-            jax.random.fold_in(jax.random.PRNGKey(self._seed), self.step_count),
+            _folded_key(self._seed, self.step_count),
             self._state,
             action_id,
         )

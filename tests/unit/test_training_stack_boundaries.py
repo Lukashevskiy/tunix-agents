@@ -44,6 +44,18 @@ SEMANTIC_PACKAGES = {
         "text_trajectory.py",
         "trajectory_gif.py",
     },
+    "diagnostics": {"accelerator_stack.py"},
+    "inference": {
+        "async_pipeline.py",
+        "config.py",
+        "contracts.py",
+        "registry.py",
+        "sglang_backend.py",
+        "sync_pipeline.py",
+        "tunix_config.py",
+        "vanilla_backend.py",
+        "vllm_backend.py",
+    },
     "tunix": {"preflight.py", "rlcluster_workload.py", "topology.py"},
 }
 ALLOWED_ROOT_FILES = {"__init__.py"}

@@ -8,6 +8,7 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
+import jax
 import numpy as np
 import pytest
 
@@ -132,6 +133,25 @@ def test_module_level_environment_preserves_tunix_group_metadata() -> None:
     environment.reset()
 
     assert environment.extra_kwargs == {"group_id": 11, "pair_index": 1}
+
+
+def test_module_level_environment_uses_host_key_fallback_when_cuda_backend_is_broken(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def broken_prng_key(_seed: int) -> object:
+        raise RuntimeError("Unable to initialize backend 'cuda': no supported devices found")
+
+    monkeypatch.setattr(jax.random, "PRNGKey", broken_prng_key)
+    environment = CrafTextAgenticEnvironment(
+        agentic_task(goal="collect wood", seed=7, horizon=3),
+        adapter=_Adapter(),
+        renderer=_Renderer(),
+        actions=ActionCatalog(("LEFT", "RIGHT")),
+    )
+
+    observation, _ = environment.reset()
+
+    assert observation == {"question": "state=0; goal=collect wood"}
 
 
 def test_module_level_environment_accepts_tunix_numpy_task_scalars() -> None:
