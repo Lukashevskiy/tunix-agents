@@ -197,6 +197,21 @@ uv run python -c "import torchvision; print(torchvision.__version__)"
 чтобы Transformers не пытался импортировать image utilities. Для multimodal или если vLLM wheel
 явно требует torchvision, переустановите matching CUDA wheels `torch`/`torchvision`.
 
+Если `VllmInferenceEngine.from_profile(...)` доходит до
+`Engine core initialization failed. See root cause above. Failed core proc(s): {'EngineCore': 1}`,
+значит import уже прошёл, но vLLM worker subprocess умер на старте. В notebook это часто выглядит
+как “чёрный ящик”, потому что настоящая причина напечатана строками выше в stderr дочернего
+процесса. Наша обёртка переводит это в `InferenceBackendError` с profile summary; дальше порядок
+такой:
+
+```bash
+make accelerator-stack
+```
+
+Проверяем report по пунктам: `torch.cuda_available`, JAX CUDA или `JAX_PLATFORMS=cpu` для тестов,
+broken `torchvision`, наличие локального model snapshot, `dtype`, `max_model_len`,
+`tensor_parallel_size` и доступную VRAM.
+
 Доступные extras: `vllm-flashinfer`, `vllm-gpu-kernels`, `sglang`.
 
 ## Следующий gate

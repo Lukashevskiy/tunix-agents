@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 import types
+from pathlib import Path
 
 import pytest
 
@@ -43,3 +44,39 @@ def test_vllm_engine_explains_torchvision_binary_mismatch(
 
     with pytest.raises(InferenceBackendError, match="torchvision::nms"):
         VllmInferenceEngine.from_profile(EngineProfile("vllm", "vllm-offload", "model"))
+
+
+def test_vllm_engine_rejects_missing_local_snapshot(tmp_path: Path) -> None:
+    missing_snapshot = tmp_path / "missing-qwen"
+
+    with pytest.raises(InferenceBackendError, match="Local vLLM model snapshot is missing"):
+        VllmInferenceEngine.from_profile(
+            EngineProfile("vllm", "vllm-offload", str(missing_snapshot))
+        )
+
+
+def test_vllm_engine_explains_engine_core_start_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = types.ModuleType("vllm")
+
+    class BrokenLLM:
+        def __init__(self, **kwargs: object) -> None:
+            raise RuntimeError(
+                "Engine core initialization failed. See root cause above. "
+                "Failed core proc(s): {'EngineCore': 1}"
+            )
+
+    module.LLM = BrokenLLM  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "vllm", module)
+
+    with pytest.raises(InferenceBackendError, match="make accelerator-stack"):
+        VllmInferenceEngine.from_profile(
+            EngineProfile(
+                "vllm",
+                "vllm-offload",
+                "Qwen/Qwen2.5-0.5B-Instruct",
+                dtype="bfloat16",
+                max_model_len=1024,
+            )
+        )

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
+from pathlib import Path
 from time import perf_counter
 
 from ..models.llm import LlmResponse
@@ -29,6 +30,7 @@ class VllmInferenceEngine:
         """
         if profile.backend != "vllm-offload":
             raise InferenceBackendError("VllmInferenceEngine requires backend='vllm-offload'")
+        _validate_model_snapshot(profile.model)
         try:
             from vllm import LLM  # type: ignore[import-not-found]
         except ImportError as error:
@@ -46,7 +48,11 @@ class VllmInferenceEngine:
             kwargs["max_model_len"] = profile.max_model_len
         if profile.dtype is not None:
             kwargs["dtype"] = profile.dtype
-        return cls(profile=profile, _llm=LLM(**kwargs))
+        try:
+            llm = LLM(**kwargs)
+        except RuntimeError as error:
+            _raise_vllm_engine_start_error(error, profile)
+        return cls(profile=profile, _llm=llm)
 
     def generate(self, batch: GenerationBatch) -> GenerationResult:
         """Generate an ordered batch with vLLM and normalize it to `LlmResponse`."""
@@ -146,3 +152,34 @@ def _raise_vllm_runtime_import_error(error: RuntimeError) -> None:
         "(torch, torchvision, CUDA wheels, flashinfer/flash-attn) before creating "
         "VllmInferenceEngine."
     ) from error
+
+
+def _raise_vllm_engine_start_error(error: RuntimeError, profile: EngineProfile) -> None:
+    """Convert vLLM subprocess startup failures into actionable project errors."""
+    message = str(error)
+    if "Engine core initialization failed" in message:
+        raise InferenceBackendError(
+            "vLLM EngineCore failed while creating the rollout engine. The real root "
+            "cause is usually printed by vLLM just before this traceback in the notebook "
+            "or server stderr. Run `make accelerator-stack` first and verify: torch CUDA "
+            "is available, JAX CUDA is either healthy or forced to CPU for tests, "
+            "torchvision is not broken for this torch build, the model snapshot exists, "
+            "and the profile fits GPU memory. Profile: "
+            f"name={profile.name!r}, model={profile.model!r}, "
+            f"dtype={profile.dtype!r}, max_model_len={profile.max_model_len!r}, "
+            f"tensor_parallel_size={profile.tensor_parallel_size}."
+        ) from error
+    _raise_vllm_runtime_import_error(error)
+
+
+def _validate_model_snapshot(model: str) -> None:
+    """Fail early when a profile points at a missing local model snapshot."""
+    path = Path(model).expanduser()
+    if not (path.is_absolute() or model.startswith((".", "~"))):
+        return
+    if not path.exists():
+        raise InferenceBackendError(
+            "Local vLLM model snapshot is missing: "
+            f"{path}. Download it before creating VllmInferenceEngine, or use a "
+            "Hugging Face model id in the generation profile."
+        )

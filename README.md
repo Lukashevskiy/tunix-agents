@@ -225,6 +225,19 @@ uv run python -c "import torchvision; print(torchvision.__version__)"
 переустановите совместимые CUDA wheels `torch`/`torchvision` для конкретного runner. После
 этого повторите notebook cell с `VllmInferenceEngine.from_profile(...)`.
 
+Если notebook падает на
+`Engine core initialization failed. See root cause above. Failed core proc(s): {'EngineCore': 1}`,
+это уже не ошибка prompt/env слоя: vLLM subprocess не смог поднять engine. Перед повторным запуском
+сначала сохраните accelerator report:
+
+```bash
+make accelerator-stack
+```
+
+и проверьте в нём `jax`, `torch`, `torchvision`, `vllm`, `flashinfer`, путь к локальному model
+snapshot и memory knobs из `configs/generation/*.yaml` (`dtype`, `max_model_len`,
+`tensor_parallel_size`). Настоящая причина обычно напечатана vLLM строками выше в stderr.
+
 `VanillaInferenceEngine`, `VllmInferenceEngine` и reserved `SglangInferenceEngine`
 подключаются через единый `build_inference_engine(...)` registry.
 
