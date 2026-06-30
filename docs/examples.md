@@ -75,9 +75,10 @@ validation и checkpoint evidence не потерялись.
 
 `17_sync_vllm_craftext_rollout.ipynb` — первый реальный vLLM rollout notebook. Он берёт
 тот же CrafText task из `CrafTextTaskSampler`, рендерит MegaPrompts, применяет Qwen chat
-template через локальный tokenizer, вызывает `VllmInferenceEngine` синхронно через
-`RequestsLlmBackend`, затем использует существующий `collect_batched_text_rollout()` и
-сохраняет replay artifacts. Это минимальный runnable sync vLLM путь без GRPO/PPO update.
+template через локальный tokenizer, вызывает `VllmInferenceEngine` через
+`collect_generation_results_sync()` как contract smoke, затем синхронно через
+`RequestsLlmBackend` использует существующий `collect_batched_text_rollout()` и сохраняет
+replay artifacts. Это минимальный runnable sync vLLM путь без GRPO/PPO update.
 
 `18_async_vllm_craftext_rollout.ipynb` использует тот же `GenerationBatch/GenerationResult`
 контракт, но вызывает vLLM через `collect_generation_results(..., max_in_flight=B)`.

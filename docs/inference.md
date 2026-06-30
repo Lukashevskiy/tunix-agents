@@ -14,6 +14,7 @@ tunix_craftext.inference
 ├── EngineProfile           # backend/model/tensor_parallel/max_len provenance
 ├── GenerationBatch         # ordered static batch LlmRequest + group/policy metadata
 ├── GenerationResult        # ordered LlmResponse + profile + policy version
+├── GenerationRecord        # index + batch + result, same for sync and async
 ├── InferenceEngine         # sync generate(batch) protocol
 ├── AsyncInferenceEngine    # async generate_async(batch) over the same payload
 ├── TunixGenerationContract # compiler to Tunix rollout_engine/RolloutConfig
@@ -40,6 +41,15 @@ batch = GenerationBatch(
 
 result = sync_engine.generate(batch)
 async_result = await as_async_engine(sync_engine).generate_async(batch)
+```
+
+Для collectors используется тот же record type:
+
+```python
+from tunix_craftext.inference import collect_generation_results_sync
+
+records = collect_generation_results_sync(sync_engine, (batch,))
+async_records = await collect_generation_results(async_engine, (batch,), max_in_flight=4)
 ```
 
 В обоих случаях сохраняются:
@@ -119,7 +129,8 @@ uv sync --extra tunix --extra envs --extra prompts --extra vllm
 
 ## Notebooks
 
-- `17_sync_vllm_craftext_rollout.ipynb` — sync vLLM path через `RequestsLlmBackend` и
+- `17_sync_vllm_craftext_rollout.ipynb` — sync vLLM path через
+  `collect_generation_results_sync()` для contract smoke, затем `RequestsLlmBackend` и
   существующий `collect_batched_text_rollout()`.
 - `18_async_vllm_craftext_rollout.ipynb` — async vLLM path через
   `collect_generation_results()` с bounded `max_in_flight` и тем же

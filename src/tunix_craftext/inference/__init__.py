@@ -16,12 +16,14 @@ from .contracts import (
     SyncToAsyncInferenceEngine,
     as_async_engine,
 )
+from .sync_pipeline import GenerationRecord, collect_generation_results_sync
 from .tunix_config import TunixGenerationContract
 from .vllm_backend import VllmInferenceEngine
 
 __all__ = [
     "EngineProfile",
     "GenerationBatch",
+    "GenerationRecord",
     "GenerationResult",
     "AsyncInferenceEngine",
     "AsyncGenerationRecord",
@@ -34,4 +36,5 @@ __all__ = [
     "as_async_engine",
     "collect_generation_results",
     "collect_generation_results_from_sync_engine",
+    "collect_generation_results_sync",
 ]

@@ -4,18 +4,11 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Sequence
-from dataclasses import dataclass
 
-from .contracts import AsyncInferenceEngine, GenerationBatch, GenerationResult, as_async_engine
+from .contracts import AsyncInferenceEngine, GenerationBatch, as_async_engine
+from .sync_pipeline import GenerationRecord
 
-
-@dataclass(frozen=True)
-class AsyncGenerationRecord:
-    """One ordered async generation result with queue index provenance."""
-
-    index: int
-    batch: GenerationBatch
-    result: GenerationResult
+AsyncGenerationRecord = GenerationRecord
 
 
 async def collect_generation_results(
@@ -23,7 +16,7 @@ async def collect_generation_results(
     batches: Sequence[GenerationBatch],
     *,
     max_in_flight: int = 1,
-) -> tuple[AsyncGenerationRecord, ...]:
+) -> tuple[GenerationRecord, ...]:
     """Collect generation batches concurrently while preserving submission order.
 
     :param engine: Async inference engine used for all batches.
@@ -35,10 +28,10 @@ async def collect_generation_results(
         raise ValueError("max_in_flight must be positive")
     semaphore = asyncio.Semaphore(max_in_flight)
 
-    async def run_one(index: int, batch: GenerationBatch) -> AsyncGenerationRecord:
+    async def run_one(index: int, batch: GenerationBatch) -> GenerationRecord:
         async with semaphore:
             result = await engine.generate_async(batch)
-        return AsyncGenerationRecord(index, batch, result)
+        return GenerationRecord(index, batch, result)
 
     records = await asyncio.gather(
         *(run_one(index, batch) for index, batch in enumerate(tuple(batches)))
@@ -51,7 +44,7 @@ async def collect_generation_results_from_sync_engine(
     batches: Sequence[GenerationBatch],
     *,
     max_in_flight: int = 1,
-) -> tuple[AsyncGenerationRecord, ...]:
+) -> tuple[GenerationRecord, ...]:
     """Normalize sync/async engines and collect batches with one payload contract."""
     return await collect_generation_results(
         as_async_engine(engine), batches, max_in_flight=max_in_flight

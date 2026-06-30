@@ -172,6 +172,8 @@ uv sync --extra tunix --extra envs --extra prompts --extra vllm
 `VllmInferenceEngine` пока является adapter boundary: он принимает `EngineProfile`, сохраняет
 ordered batch/cardinality contract и возвращает нормализованные `LlmResponse`. Подключение его
 к Agentic GRPO/PPO collector — следующий gate после preflight/blocker фикса.
+Sync и async collectors унифицированы через общий `GenerationRecord`: downstream код видит
+`index`, исходный `GenerationBatch` и `GenerationResult` независимо от режима исполнения.
 
 Для ручной проверки этого слоя есть два notebooks:
 
