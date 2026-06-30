@@ -272,6 +272,7 @@ def build_agentic_grpo_cluster(
     topology: TunixTopology,
     spec: AgenticGrpoWorkloadSpec,
     assets: AgenticGrpoModelAssets,
+    generation_contract: TunixGenerationContract | None = None,
 ) -> object:
     """Create the real public Tunix ``RLCluster`` from already loaded GRPO assets."""
     try:
@@ -284,7 +285,7 @@ def build_agentic_grpo_cluster(
         actor=assets.actor,
         reference=assets.reference,
         tokenizer=assets.tokenizer,
-        cluster_config=build_agentic_grpo_cluster_config(topology, spec),
+        cluster_config=build_agentic_grpo_cluster_config(topology, spec, generation_contract),
     )
 
 

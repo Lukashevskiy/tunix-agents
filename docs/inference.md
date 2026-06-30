@@ -121,6 +121,34 @@ profile = EngineProfile(
 engine = VllmInferenceEngine.from_profile(profile)
 ```
 
+## Declarative generation config
+
+Для реальных запусков `EngineProfile` и Tunix rollout knobs не создаются руками в ноутбуках.
+Они живут в strict YAML:
+
+```python
+from pathlib import Path
+
+from tunix_craftext.inference import load_generation_pipeline_config
+
+generation = load_generation_pipeline_config(
+    Path("configs/generation/qwen_vllm_sync.yaml")
+)
+
+engine_profile = generation.profile
+tunix_kwargs = generation.tunix.to_tunix_rollout_kwargs()
+max_in_flight = generation.async_collection.max_in_flight
+```
+
+Sync и async варианты имеют одинаковый payload contract, но разные execution knobs:
+
+- `configs/generation/qwen_vllm_sync.yaml` — deterministic ordered collector, one batch at a time.
+- `configs/generation/qwen_vllm_async.yaml` — bounded async collector and Tunix vLLM server mode.
+
+GRPO profile ссылается на этот YAML через `generation_config`, а evidence manifest записывает
+его вместе с model/topology/workload provenance. Это делает rollout generation воспроизводимой
+частью эксперимента, а не скрытой настройкой в ноутбуке.
+
 Для установки на целевом Linux/GPU runner:
 
 ```bash

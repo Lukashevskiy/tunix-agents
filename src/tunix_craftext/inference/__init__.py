@@ -5,6 +5,12 @@ from .async_pipeline import (
     collect_generation_results,
     collect_generation_results_from_sync_engine,
 )
+from .config import (
+    AsyncCollectionConfig,
+    GenerationPipelineConfig,
+    generation_config_to_manifest,
+    load_generation_pipeline_config,
+)
 from .contracts import (
     AsyncInferenceEngine,
     EngineProfile,
@@ -29,7 +35,9 @@ __all__ = [
     "GenerationRecord",
     "GenerationResult",
     "AsyncInferenceEngine",
+    "AsyncCollectionConfig",
     "AsyncGenerationRecord",
+    "GenerationPipelineConfig",
     "InferenceBackendError",
     "InferenceEngine",
     "RequestsLlmBackend",
@@ -43,4 +51,6 @@ __all__ = [
     "collect_generation_results",
     "collect_generation_results_from_sync_engine",
     "collect_generation_results_sync",
+    "generation_config_to_manifest",
+    "load_generation_pipeline_config",
 ]

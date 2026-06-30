@@ -5,6 +5,7 @@ run:
   goal: Stay alive, obey the scenario instruction, and use craftext_step for every action.
 environment_config: configs/mvp/qwen_craftext.yaml
 topology_config: configs/topology/qwen_agentic_grpo_local.yaml
+generation_config: configs/generation/qwen_vllm_sync.yaml
 model:
   model_id: Qwen/Qwen2.5-0.5B-Instruct
   snapshot: artifacts/models/qwen25-05b-instruct

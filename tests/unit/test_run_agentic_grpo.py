@@ -33,6 +33,7 @@ def test_runner_arguments_keep_model_and_topology_explicit() -> None:
     assert args.kv_cache_size == 2048
     assert not args.allow_cpu_smoke
     assert args.snapshot == Path("artifacts/models/qwen25-05b-instruct")
+    assert args.generation_config == Path("configs/generation/qwen_vllm_sync.yaml")
     assert args.dry_run
     assert args.task_source == "craftext-instructions"
     assert args.task_sampling == "cycle"

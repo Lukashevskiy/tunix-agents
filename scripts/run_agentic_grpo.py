@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import json
 import logging
 from collections.abc import Iterator, Sequence
@@ -66,6 +68,12 @@ def parse_args(arguments: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--config", type=Path, default=Path("configs/mvp/qwen_craftext.yaml"))
     parser.add_argument(
         "--topology", type=Path, default=Path("configs/topology/qwen_agentic_grpo_local.yaml")
+    )
+    parser.add_argument(
+        "--generation-config",
+        type=Path,
+        default=Path("configs/generation/qwen_vllm_sync.yaml"),
+        help="Declarative rollout generation config for sync/async backend selection.",
     )
     parser.add_argument(
         "--snapshot", type=Path, default=Path("artifacts/models/qwen25-05b-instruct")
@@ -133,6 +141,7 @@ def main(arguments: Sequence[str] | None = None) -> None:
         profile = load_agentic_grpo_profile(args.profile)
         args.config = profile.environment_config
         args.topology = profile.topology_config
+        args.generation_config = profile.generation_config
         args.snapshot = profile.model.snapshot
         args.goal = profile.run.goal
         args.max_steps = profile.workload.max_steps
@@ -159,6 +168,7 @@ def main(arguments: Sequence[str] | None = None) -> None:
     import jax
 
     from tunix_craftext.env.config import load_mvp_config
+    from tunix_craftext.inference import load_generation_pipeline_config
     from tunix_craftext.tunix import (
         AgenticGrpoWorkloadSpec,
         RLClusterWorkloadError,
@@ -168,6 +178,7 @@ def main(arguments: Sequence[str] | None = None) -> None:
     )
 
     config = load_mvp_config(args.config)
+    generation = load_generation_pipeline_config(args.generation_config)
     topology = load_tunix_topology(args.topology)
     spec = AgenticGrpoWorkloadSpec(
         args.max_steps,
@@ -185,31 +196,37 @@ def main(arguments: Sequence[str] | None = None) -> None:
     )
     real_rollout_preflight_error: str | None = None
     try:
-        validate_agentic_grpo_preflight(topology, spec, pinned_qwen_tensor_shape())
+        validate_agentic_grpo_preflight(
+            topology,
+            spec,
+            pinned_qwen_tensor_shape(),
+            rollout_backend=_rollout_backend_for_generation(generation),
+        )
     except RLClusterWorkloadError as error:
         real_rollout_preflight_error = str(error)
         if not args.dry_run and not args.scripted_smoke:
             raise
 
-    preview_batch = next(
-        craftext_task_batches(
-            config_path=args.config,
-            seed=config.run.seed,
-            batch_size=args.batch_size,
-            count=1,
-            horizon=config.environment.horizon,
-            goal_prefix=args.goal,
-            mode=args.task_sampling,
+    with contextlib.redirect_stdout(io.StringIO()):
+        preview_batch = next(
+            craftext_task_batches(
+                config_path=args.config,
+                seed=config.run.seed,
+                batch_size=args.batch_size,
+                count=1,
+                horizon=config.environment.horizon,
+                goal_prefix=args.goal,
+                mode=args.task_sampling,
+            )
+            if args.task_source == "craftext-instructions"
+            else task_batches(
+                goal=args.goal,
+                seed=config.run.seed,
+                batch_size=args.batch_size,
+                count=1,
+                horizon=config.environment.horizon,
+            )
         )
-        if args.task_source == "craftext-instructions"
-        else task_batches(
-            goal=args.goal,
-            seed=config.run.seed,
-            batch_size=args.batch_size,
-            count=1,
-            horizon=config.environment.horizon,
-        )
-    )
     if args.dry_run:
         instruction_indices = preview_batch.get("instruction_index")
         print(
@@ -218,6 +235,7 @@ def main(arguments: Sequence[str] | None = None) -> None:
                     "schema": "tunix-craftext.agentic-grpo-dry-run/v1",
                     "config": str(args.config),
                     "topology": str(args.topology),
+                    "generation_config": str(args.generation_config),
                     "snapshot": str(args.snapshot),
                     "snapshot_exists": args.snapshot.is_dir(),
                     "backend": jax.default_backend(),
@@ -227,6 +245,15 @@ def main(arguments: Sequence[str] | None = None) -> None:
                     },
                     "task_source": args.task_source,
                     "task_sampling": args.task_sampling,
+                    "generation": {
+                        "engine_name": generation.profile.name,
+                        "backend": generation.profile.backend,
+                        "mode": generation.profile.mode,
+                        "max_in_flight": generation.async_collection.max_in_flight,
+                        "tunix_engine": generation.tunix.engine,
+                        "vllm_server_mode": generation.tunix.vllm_server_mode,
+                        "vllm_async_scheduling": generation.tunix.vllm_async_scheduling,
+                    },
                     "batch_preview": {
                         "goal": preview_batch["goal"],
                         "seed": np.asarray(preview_batch["seed"]).tolist(),
@@ -306,7 +333,7 @@ def main(arguments: Sequence[str] | None = None) -> None:
     )
     logging.info("Loading Agentic GRPO Qwen assets from %s", args.snapshot)
     assets = load_agentic_grpo_qwen_assets(args.snapshot, topology)
-    cluster = build_agentic_grpo_cluster(topology, spec, assets)
+    cluster = build_agentic_grpo_cluster(topology, spec, assets, generation.tunix)
     try:
         tokenizer = load_qwen_hf_tokenizer(args.snapshot)
         learner = GRPOLearner(
@@ -352,6 +379,17 @@ def main(arguments: Sequence[str] | None = None) -> None:
         )
     finally:
         cast(Any, cluster).close()
+
+
+def _rollout_backend_for_generation(generation: Any) -> str:
+    """Map strict generation config to the static preflight backend lane."""
+    if generation.profile.backend == "vllm-offload" or generation.tunix.engine == "vllm":
+        return "vllm-offload"
+    if generation.tunix.engine == "sglang_jax":
+        return "single-device-jax"
+    if generation.profile.tensor_parallel_size == 1:
+        return "single-device-jax"
+    return "vanilla-jax-sharded"
 
 
 if __name__ == "__main__":

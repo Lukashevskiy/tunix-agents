@@ -76,6 +76,8 @@ uv run python scripts/run_agentic_grpo.py \
 CrafText agentic tool-call loop с несколькими GRPO generations и group-normalized advantages, но
 без LLM/RLCluster weights. Это рабочий local gate перед реальным `GRPOLearner`; PPO/PPO-Lag/CPO
 потом добавляют value critic и cost critic поверх уже проверенного rollout/tool transport.
+Golden profile также ссылается на `configs/generation/qwen_vllm_sync.yaml`: там зафиксированы
+backend, sync/async mode, vLLM/Tunix rollout knobs и async collector limits.
 По умолчанию GRPO task batches берут `goal` из CrafText scenario instructions: batch содержит
 и текст задачи, и `instruction_index`, поэтому reset среды выбирает тот же scenario row, который
 видит модель. Если нужно старое поведение с одной ручной целью из profile, используйте
@@ -169,9 +171,11 @@ unit tests не требуют vLLM, но целевой Linux/GPU runner мож
 uv sync --extra tunix --extra envs --extra prompts --extra vllm
 ```
 
-`VllmInferenceEngine` пока является adapter boundary: он принимает `EngineProfile`, сохраняет
-ordered batch/cardinality contract и возвращает нормализованные `LlmResponse`. Подключение его
-к Agentic GRPO/PPO collector — следующий gate после preflight/blocker фикса.
+`VllmInferenceEngine` принимает `EngineProfile` из strict generation YAML, сохраняет ordered
+batch/cardinality contract и возвращает нормализованные `LlmResponse`. Sync и async варианты
+живут в `configs/generation/qwen_vllm_sync.yaml` и
+`configs/generation/qwen_vllm_async.yaml`; профиль GRPO подключает выбранный файл через
+`generation_config`.
 Sync и async collectors унифицированы через общий `GenerationRecord`: downstream код видит
 `index`, исходный `GenerationBatch` и `GenerationResult` независимо от режима исполнения.
 
@@ -188,6 +192,8 @@ uv sync --extra envs --extra prompts --extra vllm --extra vllm-gpu-kernels
 
 - `examples/notebooks/17_sync_vllm_craftext_rollout.ipynb`
 - `examples/notebooks/18_async_vllm_craftext_rollout.ipynb`
+
+Оба notebook читают `configs/generation/*.yaml`, а не создают backend profile руками в ячейках.
 
 ## Локальный запуск сайта
 

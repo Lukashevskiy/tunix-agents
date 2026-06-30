@@ -24,6 +24,7 @@ def test_agentic_grpo_profile_loads_static_workload_and_paths() -> None:
     assert profile.run.name == "qwen-agentic-craftext-local-smoke"
     assert profile.environment_config == Path("configs/mvp/qwen_craftext.yaml")
     assert profile.topology_config == Path("configs/topology/qwen_agentic_grpo_local.yaml")
+    assert profile.generation_config == Path("configs/generation/qwen_vllm_sync.yaml")
     assert profile.model.model_id == "Qwen/Qwen2.5-0.5B-Instruct"
     assert profile.workload.num_generations == 2
     assert profile.workload.kv_cache_size == 2048
@@ -53,6 +54,8 @@ def test_grpo_evidence_manifest_records_config_hashes_and_dependency_versions() 
 
     assert manifest["schema_version"] == "tunix-craftext.agentic-grpo-evidence/v1"
     assert manifest["profile"]["sha256"] == profile_sha256(PROFILE)
+    assert manifest["inputs"]["generation_config"] == "configs/generation/qwen_vllm_sync.yaml"
+    assert manifest["generation"]["engine"]["backend"] == "vllm-offload"
     assert manifest["inputs"]["vendor_manifest_sha256"] != "missing"
     assert manifest["packages"]["jax"] != "not-installed"
     assert manifest["packages"]["definitely-not-installed-for-profile-test"] == "not-installed"
@@ -78,6 +81,7 @@ run:
   goal: Use craftext_step.
 environment_config: {ROOT / "configs/mvp/qwen_craftext.yaml"}
 topology_config: {ROOT / "configs/topology/qwen_agentic_grpo_local.yaml"}
+generation_config: {ROOT / "configs/generation/qwen_vllm_sync.yaml"}
 model:
   model_id: Qwen/Qwen2.5-0.5B-Instruct
   snapshot: {tmp_path / "missing-model"}
@@ -137,6 +141,7 @@ run:
   goal: Use craftext_step.
 environment_config: {ROOT / "configs/mvp/qwen_craftext.yaml"}
 topology_config: {ROOT / "configs/topology/qwen_agentic_grpo_local.yaml"}
+generation_config: {ROOT / "configs/generation/qwen_vllm_sync.yaml"}
 model:
   model_id: Qwen/Qwen2.5-0.5B-Instruct
   snapshot: {tmp_path / "missing-model"}

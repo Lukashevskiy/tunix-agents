@@ -20,6 +20,7 @@ import yaml
 
 from ..artifacts.provenance import git_revision
 from ..env.config import ConfigError
+from ..inference import generation_config_to_manifest, load_generation_pipeline_config
 from ..tunix import AgenticGrpoWorkloadSpec
 
 
@@ -65,6 +66,7 @@ class AgenticGrpoProfile:
     run: GrpoRunSpec
     environment_config: Path
     topology_config: Path
+    generation_config: Path
     model: GrpoModelSpec
     workload: AgenticGrpoWorkloadSpec
     evidence: GrpoEvidenceSpec
@@ -90,6 +92,7 @@ def load_agentic_grpo_profile(path: Path) -> AgenticGrpoProfile:
             "run",
             "environment_config",
             "topology_config",
+            "generation_config",
             "model",
             "workload",
             "evidence",
@@ -105,6 +108,7 @@ def load_agentic_grpo_profile(path: Path) -> AgenticGrpoProfile:
         run=_run(_mapping(root["run"], "run")),
         environment_config=_path(root["environment_config"], "environment_config"),
         topology_config=_path(root["topology_config"], "topology_config"),
+        generation_config=_path(root["generation_config"], "generation_config"),
         model=_model(_mapping(root["model"], "model")),
         workload=_workload(_mapping(root["workload"], "workload")),
         evidence=_evidence(_mapping(root["evidence"], "evidence")),
@@ -142,6 +146,7 @@ def build_grpo_evidence_manifest(
         "flashbax",
         "qwix",
     )
+    generation = load_generation_pipeline_config(profile.generation_config)
     return {
         "schema_version": "tunix-craftext.agentic-grpo-evidence/v1",
         "git_revision": git_revision(repo_root),
@@ -161,11 +166,16 @@ def build_grpo_evidence_manifest(
         "inputs": {
             "environment_config": str(profile.environment_config),
             "topology_config": str(profile.topology_config),
+            "generation_config": str(profile.generation_config),
             "vendor_manifest": str(profile.vendor_manifest),
             "vendor_manifest_sha256": _sha256(profile.vendor_manifest)
             if profile.vendor_manifest.exists()
             else "missing",
         },
+        "generation": generation_config_to_manifest(
+            generation,
+            path=profile.generation_config,
+        ),
         "workload": {
             "max_steps": profile.workload.max_steps,
             "eval_every_n_steps": profile.workload.eval_every_n_steps,

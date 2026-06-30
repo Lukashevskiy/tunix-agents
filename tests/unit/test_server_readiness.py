@@ -98,6 +98,7 @@ run:
   goal: Use craftext_step.
 environment_config: {ROOT / "configs/mvp/qwen_craftext.yaml"}
 topology_config: {ROOT / "configs/topology/qwen_agentic_grpo_local.yaml"}
+generation_config: {ROOT / "configs/generation/qwen_vllm_sync.yaml"}
 model:
   model_id: Qwen/Qwen2.5-0.5B-Instruct
   snapshot: {tmp_path / "definitely-missing-model"}

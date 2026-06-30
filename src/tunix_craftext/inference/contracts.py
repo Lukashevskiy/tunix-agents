@@ -17,6 +17,7 @@ from ..models.llm import BatchLlmBackend, LlmRequest, LlmResponse
 
 GenerationMode = Literal["sync", "async"]
 
+
 class InferenceBackendError(RuntimeError):
     """Raised when an optional inference backend is unavailable or misconfigured."""
 

@@ -50,6 +50,7 @@ profile — `configs/grpo/qwen_agentic_local.yaml`. Он связывает:
 | `run` | имя, seed и user goal, передаваемый в Agentic task stream |
 | `environment_config` | validated CrafText/Caged MVP config |
 | `topology_config` | Tunix role mesh для `actor`, `rollout`, `reference` |
+| `generation_config` | strict sync/async inference backend config для rollout generation |
 | `model` | Qwen model id, explicit local snapshot, revision и licence record |
 | `workload` | GRPO steps, micro-batches, generation count, sequence limits, KV cache и learning rate |
 | `evidence` | root, trajectories JSONL, metrics JSONL, checkpoints и provenance JSON |
@@ -63,6 +64,38 @@ uv run python scripts/run_agentic_grpo.py \
 ```
 
 runner сначала пишет `evidence.provenance`: git revision, SHA256 profile, SHA256 vendor
-manifest, model snapshot/revision/licence, workload knobs и package versions. Только после
-этого начинается accelerator/model allocation. Старые CLI-флаги остаются только для
-debug/smoke, но golden path должен использовать profile.
+manifest, generation backend contract, model snapshot/revision/licence, workload knobs и
+package versions. Только после этого начинается accelerator/model allocation. Старые CLI-флаги
+остаются только для debug/smoke, но golden path должен использовать profile.
+
+## Generation pipeline config
+
+Inference/generation вынесен в отдельный versioned YAML, чтобы один и тот же training profile
+можно было запускать через sync collector, async collector, vLLM, vanilla backend или будущий
+SGLang lane без переписывания ноутбуков.
+
+Canonical configs:
+
+| Config | Назначение |
+| --- | --- |
+| `configs/generation/qwen_vllm_sync.yaml` | один ordered batch за раз; базовый воспроизводимый vLLM rollout smoke |
+| `configs/generation/qwen_vllm_async.yaml` | bounded async collection с `max_in_flight` и Tunix vLLM server/async scheduling knobs |
+
+Схема состоит из трёх блоков:
+
+| Раздел | Смысл |
+| --- | --- |
+| `engine` | normalized `EngineProfile`: backend, model snapshot, TP, max len, dtype, sync/async mode |
+| `tunix` | project-owned `TunixGenerationContract`, компилируемый в Tunix `RolloutConfig` |
+| `async` | queue/concurrency knobs для async collector; для sync lane остаётся `max_in_flight: 1` |
+
+Проверить выбранный backend без загрузки модели:
+
+```bash
+uv run python scripts/run_agentic_grpo.py \
+  --profile configs/grpo/qwen_agentic_local.yaml \
+  --dry-run
+```
+
+В dry-run payload появится `generation`: имя engine, backend family, sync/async mode и vLLM
+server/scheduling flags.
