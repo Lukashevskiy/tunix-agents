@@ -120,7 +120,20 @@ async def collect_scripted_grpo_group(
 
 
 def collect_scripted_grpo_group_sync(**kwargs: Any) -> tuple[ScriptedGenerationResult, ...]:
-    """Synchronous wrapper for scripts and tests."""
+    """Synchronous wrapper for scripts and tests.
+
+    Notebook kernels already run an event loop, so notebooks must call
+    ``await collect_scripted_grpo_group(...)`` directly.
+    """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        pass
+    else:
+        raise RuntimeError(
+            "collect_scripted_grpo_group_sync() cannot run inside an active event loop; "
+            "use `await collect_scripted_grpo_group(...)` in notebooks"
+        )
     return asyncio.run(collect_scripted_grpo_group(**kwargs))
 
 

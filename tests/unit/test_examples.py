@@ -1,5 +1,6 @@
 """Keep public tutorial notebooks valid and discoverable without requiring Jupyter at test time."""
 
+import ast
 import json
 from pathlib import Path
 
@@ -38,7 +39,12 @@ def test_example_notebooks_are_valid_nbformat_with_runnable_imports() -> None:
         assert required_symbol in source
         for index, cell in enumerate(notebook["cells"]):
             if cell["cell_type"] == "code":
-                compile("".join(cell["source"]), f"{filename}:cell-{index}", "exec")
+                compile(
+                    "".join(cell["source"]),
+                    f"{filename}:cell-{index}",
+                    "exec",
+                    flags=ast.PyCF_ALLOW_TOP_LEVEL_AWAIT,
+                )
 
 
 def test_batched_qwen_ppo_notebook_handles_fallback_only_evidence() -> None:

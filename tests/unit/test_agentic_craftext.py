@@ -25,7 +25,10 @@ from tunix_craftext.env.agentic_craftext import (
     build_craftext_tool_agent,
 )
 from tunix_craftext.env.prompts import ActionCatalog, PromptContext, RenderedPrompt
-from tunix_craftext.training.agentic_grpo_smoke import grouped_advantages
+from tunix_craftext.training.agentic_grpo_smoke import (
+    collect_scripted_grpo_group_sync,
+    grouped_advantages,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -262,6 +265,21 @@ def test_grouped_advantages_are_normalized_inside_one_grpo_task_group() -> None:
     assert advantages[0] == pytest.approx(-1.0, abs=1e-5)
     assert advantages[1] == pytest.approx(1.0, abs=1e-5)
     assert grouped_advantages((2.0, 2.0)) == (0.0, 0.0)
+
+
+def test_scripted_grpo_sync_wrapper_rejects_running_notebook_loop() -> None:
+    async def call_sync_wrapper_inside_loop() -> None:
+        collect_scripted_grpo_group_sync(
+            config_path=ROOT / "configs/mvp/qwen_craftext.yaml",
+            goal="collect wood",
+            seed=0,
+            group_id=0,
+            action_sequences=(("NOOP",), ("LEFT",)),
+            horizon=1,
+        )
+
+    with pytest.raises(RuntimeError, match="await collect_scripted_grpo_group"):
+        asyncio.run(call_sync_wrapper_inside_loop())
 
 
 def test_tunix_trajectory_engine_collects_a_multi_turn_craftext_episode() -> None:
