@@ -10,6 +10,7 @@ coverage.xml
 .ipynb_checkpoints/
 .benchmarks/
 site/
-artifacts/
+/artifacts/
+/examples/notebooks/artifacts/
 docs/_generated/
 .DS_Store
