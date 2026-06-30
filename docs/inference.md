@@ -64,6 +64,25 @@ async_records = await collect_generation_results(async_engine, (batch,), max_in_
 - `policy_version` для actor/rollout weight sync и stale-policy аудита;
 - normalized `LlmResponse` с raw text, token ids, prompt ids, logprobs и latency.
 
+Для диагностики “GPU быстрый, а pipeline медленный” есть opt-in profiled collectors:
+
+```python
+from tunix_craftext.inference import (
+    collect_generation_results_profiled,
+    collect_generation_results_sync_profiled,
+)
+
+sync_profile = collect_generation_results_sync_profiled(engine, batches)
+async_profile = await collect_generation_results_profiled(async_engine, batches, max_in_flight=4)
+```
+
+Каждый `ProfiledGenerationRecord` содержит `queued_ms`, `backend_ms`, `total_ms` и
+`response_latency_ms`. Если `backend_ms` малый, а end-to-end rollout долгий — bottleneck не в GPU
+generation, а вокруг него: prompt rendering, tokenizer/chat template, Python action decode,
+environment host/device copies, replay serialization или слишком мелкие batch/IPC вызовы.
+Если `queued_ms` растёт в async path — collector перегружен или `max_in_flight` больше реальной
+пропускной способности одного engine.
+
 ## Компиляция в Tunix
 
 Tunix уже имеет адаптированные rollout configs: `ClusterConfig.rollout_engine` принимает

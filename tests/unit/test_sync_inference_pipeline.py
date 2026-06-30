@@ -8,6 +8,7 @@ from tunix_craftext.inference import (
     GenerationBatch,
     GenerationResult,
     collect_generation_results_sync,
+    collect_generation_results_sync_profiled,
 )
 from tunix_craftext.models.llm import LlmRequest, LlmResponse
 
@@ -47,3 +48,14 @@ def test_sync_generation_results_preserve_submission_order_and_policy_version() 
     assert [record.index for record in records] == [0, 1]
     assert [record.result.group_id for record in records] == ["a", "b"]
     assert [record.result.policy_version for record in records] == [2, 2]
+
+
+def test_sync_generation_results_profiled_record_backend_time() -> None:
+    engine = RecordingSyncEngine()
+
+    records = collect_generation_results_sync_profiled(engine, (_batch("a"),))
+
+    assert records[0].record.index == 0
+    assert records[0].timing.queued_ms == 0.0
+    assert records[0].timing.backend_ms >= 0.0
+    assert records[0].timing.total_ms >= records[0].timing.backend_ms

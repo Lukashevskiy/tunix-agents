@@ -4,6 +4,7 @@ from .async_pipeline import (
     AsyncGenerationRecord,
     collect_generation_results,
     collect_generation_results_from_sync_engine,
+    collect_generation_results_profiled,
 )
 from .config import (
     AsyncCollectionConfig,
@@ -24,7 +25,13 @@ from .contracts import (
 )
 from .registry import build_inference_engine
 from .sglang_backend import SglangInferenceEngine
-from .sync_pipeline import GenerationRecord, collect_generation_results_sync
+from .sync_pipeline import (
+    GenerationRecord,
+    GenerationTiming,
+    ProfiledGenerationRecord,
+    collect_generation_results_sync,
+    collect_generation_results_sync_profiled,
+)
 from .tunix_config import TunixGenerationContract
 from .vanilla_backend import VanillaInferenceEngine
 from .vllm_backend import VllmInferenceEngine
@@ -34,12 +41,14 @@ __all__ = [
     "GenerationBatch",
     "GenerationRecord",
     "GenerationResult",
+    "GenerationTiming",
     "AsyncInferenceEngine",
     "AsyncCollectionConfig",
     "AsyncGenerationRecord",
     "GenerationPipelineConfig",
     "InferenceBackendError",
     "InferenceEngine",
+    "ProfiledGenerationRecord",
     "RequestsLlmBackend",
     "SyncToAsyncInferenceEngine",
     "TunixGenerationContract",
@@ -50,7 +59,9 @@ __all__ = [
     "build_inference_engine",
     "collect_generation_results",
     "collect_generation_results_from_sync_engine",
+    "collect_generation_results_profiled",
     "collect_generation_results_sync",
+    "collect_generation_results_sync_profiled",
     "generation_config_to_manifest",
     "load_generation_pipeline_config",
 ]

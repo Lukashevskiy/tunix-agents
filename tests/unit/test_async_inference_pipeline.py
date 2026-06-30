@@ -12,6 +12,7 @@ from tunix_craftext.inference import (
     GenerationBatch,
     GenerationResult,
     collect_generation_results,
+    collect_generation_results_profiled,
 )
 from tunix_craftext.models.llm import LlmRequest, LlmResponse
 
@@ -72,3 +73,20 @@ def test_async_generation_results_reject_invalid_concurrency() -> None:
                 max_in_flight=0,
             )
         )
+
+
+def test_async_generation_results_profiled_records_queue_wait() -> None:
+    engine = DelayedAsyncEngine()
+
+    records = asyncio.run(
+        collect_generation_results_profiled(
+            engine,
+            (_batch("slow"), _batch("fast")),
+            max_in_flight=1,
+        )
+    )
+
+    assert [record.record.batch.group_id for record in records] == ["slow", "fast"]
+    assert records[0].timing.backend_ms >= 0.0
+    assert records[1].timing.queued_ms > 0.0
+    assert records[1].timing.total_ms >= records[1].timing.backend_ms
