@@ -170,6 +170,19 @@ uv pip install /path/to/flash_attn-*.whl
 uv run python -c "import flash_attn; print(flash_attn.__version__)"
 ```
 
+Если импорт vLLM падает внутри `transformers → torchvision` с
+`operator torchvision::nms does not exist`, значит installed `torchvision` не совпадает с
+installed `torch`/CUDA wheel stack. Это нужно чинить до запуска rollout:
+
+```bash
+uv run python -c "import torch; print(torch.__version__, torch.version.cuda)"
+uv run python -c "import torchvision; print(torchvision.__version__)"
+```
+
+Для text-only Qwen допустимый быстрый workaround — убрать broken `torchvision` из vLLM env,
+чтобы Transformers не пытался импортировать image utilities. Для multimodal или если vLLM wheel
+явно требует torchvision, переустановите matching CUDA wheels `torch`/`torchvision`.
+
 Доступные extras: `vllm-flashinfer`, `vllm-gpu-kernels`, `sglang`.
 
 ## Следующий gate

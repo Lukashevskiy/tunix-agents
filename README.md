@@ -194,6 +194,19 @@ uv pip install /path/to/flash_attn-*.whl
 uv run python -c "import flash_attn; print(flash_attn.__version__)"
 ```
 
+Если `VllmInferenceEngine.from_profile(...)` падает на
+`RuntimeError: operator torchvision::nms does not exist`, это несовместимая binary-пара
+`torch`/`torchvision`, а не ошибка CrafText pipeline. Для text-only Qwen сначала проверьте:
+
+```bash
+uv run python -c "import torch; print(torch.__version__, torch.version.cuda)"
+uv run python -c "import torchvision; print(torchvision.__version__)"
+```
+
+Если второй импорт падает, либо удалите `torchvision` из text-only vLLM окружения, либо
+переустановите совместимые CUDA wheels `torch`/`torchvision` для конкретного runner. После
+этого повторите notebook cell с `VllmInferenceEngine.from_profile(...)`.
+
 `VanillaInferenceEngine`, `VllmInferenceEngine` и reserved `SglangInferenceEngine`
 подключаются через единый `build_inference_engine(...)` registry.
 

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import sys
+import types
+
 import pytest
 
 from tunix_craftext.env.prompts import ActionCatalog, RenderedPrompt
@@ -23,3 +26,20 @@ def test_vllm_engine_fails_cleanly_when_not_initialized() -> None:
 
     with pytest.raises(InferenceBackendError, match="not initialized"):
         engine.generate(batch)
+
+
+def test_vllm_engine_explains_torchvision_binary_mismatch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = types.ModuleType("vllm")
+
+    def __getattr__(name: str) -> object:
+        if name == "LLM":
+            raise RuntimeError("operator torchvision::nms does not exist")
+        raise AttributeError(name)
+
+    module.__getattr__ = __getattr__  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "vllm", module)
+
+    with pytest.raises(InferenceBackendError, match="torchvision::nms"):
+        VllmInferenceEngine.from_profile(EngineProfile("vllm", "vllm-offload", "model"))

@@ -36,6 +36,8 @@ class VllmInferenceEngine:
                 "vLLM is not installed. Install the optional inference stack on the "
                 "target Linux/GPU runner before using backend='vllm-offload'."
             ) from error
+        except RuntimeError as error:
+            _raise_vllm_runtime_import_error(error)
         kwargs: dict[str, object] = {
             "model": profile.model,
             "tensor_parallel_size": profile.tensor_parallel_size,
@@ -54,6 +56,8 @@ class VllmInferenceEngine:
             from vllm import SamplingParams  # type: ignore[import-not-found]
         except ImportError as error:
             raise InferenceBackendError("vLLM SamplingParams is unavailable") from error
+        except RuntimeError as error:
+            _raise_vllm_runtime_import_error(error)
         stop = tuple(
             dict.fromkeys(stop for request in batch.requests for stop in request.stop_sequences)
         )
@@ -122,3 +126,23 @@ def _extract_logprobs(raw_logprobs: object) -> tuple[float, ...] | None:
             if logprob is not None:
                 values.append(float(logprob))
     return tuple(values) if values else None
+
+
+def _raise_vllm_runtime_import_error(error: RuntimeError) -> None:
+    """Convert common binary-stack import failures into actionable project errors."""
+    message = str(error)
+    if "torchvision::nms" in message:
+        raise InferenceBackendError(
+            "vLLM import reached transformers/torchvision, but torchvision is not "
+            "ABI-compatible with the installed torch build: missing operator "
+            "`torchvision::nms`. For text-only Qwen rollout either remove torchvision "
+            "from the vLLM environment, or reinstall a matching torch/torchvision CUDA "
+            "wheel pair for the target runner. Then verify with "
+            "`uv run python -c \"import torch, torchvision; print(torch.__version__, "
+            "torchvision.__version__)\"` before opening this notebook."
+        ) from error
+    raise InferenceBackendError(
+        "vLLM is installed but failed during import. Check the Linux/GPU binary stack "
+        "(torch, torchvision, CUDA wheels, flashinfer/flash-attn) before creating "
+        "VllmInferenceEngine."
+    ) from error
