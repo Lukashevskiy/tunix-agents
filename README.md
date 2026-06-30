@@ -241,6 +241,16 @@ snapshot и memory knobs из `configs/generation/*.yaml` (`dtype`, `max_model_l
 vLLM пытается зарезервировать слишком большую долю VRAM. Для прямого `VllmInferenceEngine`
 это регулируется в `engine.metadata.gpu_memory_utilization`, а для Tunix rollout server path —
 в `tunix.vllm_hbm_utilization`. В стандартных Qwen configs оба значения держим на `0.35`.
+Перед запуском notebook можно быстро оценить текущий budget:
+
+```bash
+make vllm-memory
+# или
+uv run python scripts/estimate_vllm_memory.py --config configs/generation/qwen_vllm_sync.yaml --strict
+```
+
+Утилита не импортирует vLLM: она читает generation YAML, текущую `torch.cuda.mem_get_info`,
+суммирует локальные weight files и оценивает KV-cache по `config.json`, если snapshot уже скачан.
 
 Если перед этим появляется
 `os.fork() is incompatible with multithreaded code, and JAX is multithreaded`, значит vLLM
