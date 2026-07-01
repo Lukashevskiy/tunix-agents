@@ -6,7 +6,7 @@ import asyncio
 from collections.abc import Sequence
 from time import perf_counter
 
-from .contracts import AsyncInferenceEngine, GenerationBatch, as_async_engine
+from .contracts import AsyncInferenceEngine, GenerationBatch, InferenceEngine, as_async_engine
 from .sync_pipeline import GenerationRecord, GenerationTiming, ProfiledGenerationRecord
 
 AsyncGenerationRecord = GenerationRecord
@@ -79,7 +79,7 @@ async def collect_generation_results_profiled(
 
 
 async def collect_generation_results_from_sync_engine(
-    engine: object,
+    engine: InferenceEngine | AsyncInferenceEngine,
     batches: Sequence[GenerationBatch],
     *,
     max_in_flight: int = 1,

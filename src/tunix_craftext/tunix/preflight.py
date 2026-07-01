@@ -12,6 +12,7 @@ RolloutBackend = Literal[
     "vanilla-jax-sharded",
     "single-device-jax",
     "vllm-offload",
+    "sglang-jax",
     "scripted",
     "evidence",
 ]
@@ -90,6 +91,7 @@ def _validate_rollout_backend_contract(
         "vanilla-jax-sharded",
         "single-device-jax",
         "vllm-offload",
+        "sglang-jax",
         "scripted",
         "evidence",
     }:

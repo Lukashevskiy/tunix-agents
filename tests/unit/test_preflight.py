@@ -32,6 +32,17 @@ def test_agentic_preflight_accepts_scripted_checks_on_local_profile() -> None:
     )
 
 
+def test_agentic_preflight_accepts_sglang_rollout_boundary() -> None:
+    topology = load_tunix_topology(ROOT / "configs/topology/qwen_agentic_grpo_local.yaml")
+
+    validate_agentic_grpo_preflight(
+        topology,
+        _spec(),
+        QwenTensorShape(896, 14, 151936),
+        rollout_backend="sglang-jax",
+    )
+
+
 def test_agentic_preflight_rejects_known_broken_qwen_vanilla_fsdp_tp_rollout() -> None:
     topology = load_tunix_topology(ROOT / "configs/topology/qwen_agentic_grpo_local.yaml")
 

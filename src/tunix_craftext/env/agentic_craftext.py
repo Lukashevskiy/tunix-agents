@@ -11,7 +11,7 @@ import json
 import logging
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import jax
 
@@ -264,7 +264,7 @@ class CrafTextAgenticEnvironment(BaseTaskEnv):
     def _initial_observation(self) -> dict[str, str]:
         key = _folded_key(self._seed, 0)
         if self._instruction_index is None:
-            reset = self._adapter.reset(key)
+            reset = self._adapter.reset(cast(jax.Array, key))
         else:
             reset_with_instruction = getattr(self._adapter, "reset_with_instruction", None)
             if reset_with_instruction is None:
@@ -301,7 +301,7 @@ class CrafTextAgenticEnvironment(BaseTaskEnv):
         if not bool(self._action_mask[action_id]):
             return self._invalid_result(call_id, f"action {label!r} is unavailable in this state")
         transition = self._adapter.step(
-            _folded_key(self._seed, self.step_count),
+            cast(jax.Array, _folded_key(self._seed, self.step_count)),
             self._state,
             action_id,
         )

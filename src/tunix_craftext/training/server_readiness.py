@@ -35,6 +35,7 @@ from ..tunix import (
     pinned_qwen_tensor_shape,
     validate_agentic_grpo_preflight,
 )
+from ..tunix.preflight import RolloutBackend
 from .grpo_profile import (
     AgenticGrpoProfile,
     build_grpo_evidence_manifest,
@@ -369,7 +370,7 @@ def _write_scripted_validation_probe(
     return path, first.total_reward, max(len(first.rewards), 1)
 
 
-def _rollout_backend_for_generation(generation: GenerationPipelineConfig) -> str:
+def _rollout_backend_for_generation(generation: GenerationPipelineConfig) -> RolloutBackend:
     """Map the strict generation config to the static preflight backend lane."""
     if generation.profile.backend == "vllm-offload" or generation.tunix.engine == "vllm":
         return "vllm-offload"

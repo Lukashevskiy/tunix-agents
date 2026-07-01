@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from time import perf_counter
+from typing import Any, cast
 from uuid import uuid4
 
 from ..models.llm import LlmRequest
@@ -102,7 +103,8 @@ class AsyncVllmInferenceEngine:
         )
         request_id = f"{self.profile.name}:{group_id or 'batch'}:{index}:{uuid4().hex}"
         final_output = None
-        async for output in self._engine.generate(
+        engine = cast(Any, self._engine)
+        async for output in engine.generate(
             request.prompt.text,
             sampling_params,
             request_id,
@@ -113,7 +115,7 @@ class AsyncVllmInferenceEngine:
         return final_output
 
 
-def _import_async_vllm_classes() -> tuple[type[object], type[object]]:
+def _import_async_vllm_classes() -> tuple[Any, Any]:
     """Import vLLM AsyncLLMEngine/AsyncEngineArgs across supported vLLM layouts."""
     try:
         from vllm.engine.arg_utils import AsyncEngineArgs  # type: ignore[import-not-found]

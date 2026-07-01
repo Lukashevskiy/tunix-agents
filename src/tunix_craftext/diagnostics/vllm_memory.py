@@ -152,7 +152,7 @@ def estimate_vllm_memory(
 def torch_cuda_memory_snapshot(device_index: int = 0) -> CudaMemorySnapshot | None:
     """Return current free/total CUDA memory through torch, or ``None`` on CPU-only hosts."""
     try:
-        import torch
+        import torch  # type: ignore[import-not-found]
     except ImportError:
         return None
     if not torch.cuda.is_available():

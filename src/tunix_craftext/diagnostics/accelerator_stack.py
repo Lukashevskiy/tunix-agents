@@ -20,10 +20,10 @@ try:  # packaging is normally present through uv/pip tooling, but keep diagnosti
     from packaging.specifiers import InvalidSpecifier
     from packaging.version import InvalidVersion, Version
 except ImportError:  # pragma: no cover - only for unusually stripped Python environments
-    Requirement = None  # type: ignore[assignment]
-    InvalidSpecifier = Exception  # type: ignore[assignment]
-    InvalidVersion = Exception  # type: ignore[assignment]
-    Version = None  # type: ignore[assignment]
+    Requirement = None  # type: ignore[assignment,misc]
+    InvalidSpecifier = Exception  # type: ignore[assignment,misc]
+    InvalidVersion = Exception  # type: ignore[assignment,misc]
+    Version = None  # type: ignore[assignment,misc]
 
 
 DEFAULT_EXTRAS = ("tunix", "envs", "prompts", "vllm", "vllm-gpu-kernels")
@@ -257,7 +257,7 @@ def _runtime_payload() -> dict[str, Any]:
     except Exception as error:  # noqa: BLE001 - diagnostics only
         payload["jax"] = {"error": str(error), "error_type": type(error).__name__}
     try:
-        import torch
+        import torch  # type: ignore[import-not-found]
 
         payload["torch"] = {
             "version": getattr(torch, "__version__", None),
