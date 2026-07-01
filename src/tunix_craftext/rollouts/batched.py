@@ -265,6 +265,8 @@ def collect_batched_text_decision(
     fallback_action_id: int | None = None,
     device_policy: EnvironmentDevicePolicy | None = None,
     host_batch_policy: HostBatchPolicy | None = None,
+    _batched_step_fn: Callable[[jax.Array, object, jax.Array], EnvironmentStep[object, object]]
+    | None = None,
     _inputs_are_placed: bool = False,
     _timing_sink: Callable[[BatchedDecisionTiming], None] | None = None,
 ) -> BatchedTextDecision:
@@ -353,7 +355,10 @@ def collect_batched_text_decision(
     action_ids = cast(jax.Array, _place_for_environment(action_ids, device, enabled=place_inputs))
     action_decode_ms = (perf_counter() - decode_started_at) * 1000.0 if timing_enabled else 0.0
     step_started_at = perf_counter() if timing_enabled else 0.0
-    transition = _batched_step(adapter, device_policy)(keys, states, action_ids)
+    batched_step = (
+        _batched_step(adapter, device_policy) if _batched_step_fn is None else _batched_step_fn
+    )
+    transition = batched_step(keys, states, action_ids)
     if timing_enabled:
         transition.reward.block_until_ready()
     environment_step_ms = (perf_counter() - step_started_at) * 1000.0 if timing_enabled else 0.0
@@ -412,6 +417,7 @@ def _collect_batched_text_rollout_impl(
     keys = jax.random.split(jax.random.PRNGKey(seed), batch_size + horizon * 2 * batch_size)
     keys = cast(jax.Array, _place_for_environment(keys, device, enabled=place_inputs))
     batched_reset = _batched_reset(adapter, device_policy)
+    batched_step = _batched_step(adapter, device_policy)
     reset = batched_reset(keys[:batch_size])
     state = reset.state
     action_mask = reset.action_mask
@@ -441,6 +447,7 @@ def _collect_batched_text_rollout_impl(
             fallback_action_id=fallback_action_id,
             device_policy=device_policy,
             host_batch_policy=host_batch_policy,
+            _batched_step_fn=batched_step,
             _inputs_are_placed=device is not None and place_inputs,
             _timing_sink=decision_timings.append if profile else None,
         )

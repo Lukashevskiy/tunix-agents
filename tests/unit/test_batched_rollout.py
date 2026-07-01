@@ -9,6 +9,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
+import tunix_craftext.rollouts.batched as batched_module
 from tunix_craftext.adapters import CrafTextAdapter
 from tunix_craftext.env.prompts import ActionCatalog, PromptContext, RenderedPrompt
 from tunix_craftext.models.llm import LlmResponse
@@ -218,6 +219,38 @@ def test_batched_rollout_can_jit_reset_and_step_with_device_policy() -> None:
 
     assert len(rollout.decisions) == 2
     assert rollout.decisions[0].transition.reward.devices() == {jax.devices()[0]}
+
+
+def test_batched_rollout_reuses_compiled_step_function(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Full rollout must not rebuild the vmapped/jitted env step inside every horizon step."""
+    calls = 0
+    original_batched_step = batched_module._batched_step
+
+    def counting_batched_step(adapter, policy):
+        nonlocal calls
+        calls += 1
+        return original_batched_step(adapter, policy)
+
+    monkeypatch.setattr(batched_module, "_batched_step", counting_batched_step)
+
+    adapter = CrafTextAdapter(_Environment(), None, action_count=2)
+    rollout = collect_batched_text_rollout(
+        adapter,
+        _Renderer(),
+        _Backend(),
+        actions=ActionCatalog(("NOOP", "DO")),
+        batch_size=2,
+        horizon=3,
+        seed=0,
+        goal="test",
+        max_new_tokens=4,
+        invalid_action="fallback",
+        fallback_action_id=0,
+        device_policy=EnvironmentDevicePolicy(backend=jax.default_backend(), device_index=0),
+    )
+
+    assert len(rollout.decisions) == 3
+    assert calls == 1
 
 
 def test_profiled_batched_rollout_records_phase_timings() -> None:

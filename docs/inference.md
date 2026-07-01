@@ -406,3 +406,9 @@ env rows остаются сопоставимыми. Начинайте с `pro
 целевой модели оказывается thread-safe и `prompt_render_ms` падает, можно пробовать 8/16. Если
 время не падает, значит bottleneck, скорее всего, не в prompt rendering, а в request lifecycle,
 decode/dialog bookkeeping или слишком мелкой granularity одного sync batch.
+
+Если `environment_step_ms`/`reset_ms` на порядки больше `llm_batch_ms`, это уже не vLLM:
+смотрите per-step timings в notebook 17. Один огромный первый step обычно означает JAX/XLA
+compile warmup; огромный каждый step означает, что env step/reset пересобирается или получает
+динамический shape/static payload. Rollout collector создаёт `vmap/jit(step)` и `vmap/jit(reset)`
+один раз на rollout, чтобы не пересоздавать compiled boundary внутри horizon loop.
