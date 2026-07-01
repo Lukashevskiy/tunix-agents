@@ -98,7 +98,8 @@ warmed median/min `phase_totals_ms()` и сохраняет
 
 `20_env_device_policy_benchmark.ipynb` — проверяет самую дорогую часть rollout после prompt
 diagnostics: JAX env reset/step. Notebook должен начинаться с выбора `JAX_PLATFORMS` до импорта
-JAX, затем сравнивает `vmap_only`, `jit(vmap)` на default backend и explicit
+JAX, сначала делает action terminal sweep, чтобы не спутать обычный rollout с reset storm, затем
+сравнивает `vmap_only`, `jit(vmap)` на default backend и explicit
 `EnvironmentDevicePolicy(backend=jax.default_backend())`. Для CPU env рядом с vLLM GPU запускайте
 kernel с `JAX_PLATFORMS=cpu`; для GPU env перезапустите kernel с CUDA-enabled JAX и сравните
 `artifacts/benchmarks/env-device-policy-latest.json`.
