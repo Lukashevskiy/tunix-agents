@@ -31,6 +31,7 @@ def test_example_notebooks_are_valid_nbformat_with_runnable_imports() -> None:
         "14_generation_benchmark.ipynb": "build_gemma_tunix_actor",
         "15_agentic_grpo_full_trainer.ipynb": "GRPOLearner",
         "16_server_grpo_object_training.ipynb": "JsonlRunLogger",
+        "19_host_prompt_threading_profile.ipynb": "HostBatchPolicy",
     }
     for filename, required_symbol in expected.items():
         notebook = json.loads((NOTEBOOKS / filename).read_text(encoding="utf-8"))

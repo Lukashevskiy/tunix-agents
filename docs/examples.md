@@ -88,6 +88,13 @@ replay artifacts. Это минимальный runnable sync vLLM путь бе
 сохранением порядка, после чего один batched JAX `env.step` обновляет среды и replay
 пишется по env row. Это полный single-node async rollout skeleton без Ray.
 
+`19_host_prompt_threading_profile.ipynb` — диагностическая тетрадка для случая, когда vLLM
+быстро обрабатывает batch, но sync rollout всё равно медленный и GPU простаивает. Она запускает
+scripted backend без реальной модели, сравнивает serial prompt render с
+`HostBatchPolicy(prompt_workers=4)`, печатает `phase_totals_ms()` и сохраняет
+`artifacts/benchmarks/host-prompt-threading-latest.json`. Используйте её перед tuning vLLM,
+чтобы понять, не упираетесь ли вы в MegaPrompts/chat-template/Python host preparation.
+
 Тот же путь доступен вне Jupyter и сохраняет как raw replay, так и summary metrics:
 
 ```bash
