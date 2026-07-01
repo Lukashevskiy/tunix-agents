@@ -21,6 +21,6 @@ uv run jupyter lab examples/notebooks
 | `12_full_cycle_craftext_training.ipynb` | Run CrafText rollout → replay evidence → token batch → masked PPO update as a compact full-cycle training example. |
 | `17_sync_vllm_craftext_rollout.ipynb` | Load `configs/generation/qwen_vllm_sync.yaml`, then run CrafText → MegaPrompts → Qwen chat template → sync vLLM generation → batched env step → replay. |
 | `18_async_vllm_craftext_rollout.ipynb` | Load `configs/generation/qwen_vllm_async.yaml`, then run the same vLLM rollout through `GenerationBatch` async collection with bounded in-flight requests. |
-| `19_host_prompt_threading_profile.ipynb` | Compare serial prompt rendering with `HostBatchPolicy(prompt_workers=4)` and inspect rollout phase timings before tuning vLLM. |
+| `19_host_prompt_threading_profile.ipynb` | Warm up JAX env compile, then compare serial prompt rendering with `HostBatchPolicy(prompt_workers=4)` using repeated rollout phase timings before tuning vLLM. |
 
 Keep examples self-contained: fix seeds, avoid private data and do not import from `tests/`.

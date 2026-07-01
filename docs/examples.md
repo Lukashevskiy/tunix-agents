@@ -90,10 +90,11 @@ replay artifacts. Это минимальный runnable sync vLLM путь бе
 
 `19_host_prompt_threading_profile.ipynb` — диагностическая тетрадка для случая, когда vLLM
 быстро обрабатывает batch, но sync rollout всё равно медленный и GPU простаивает. Она запускает
-scripted backend без реальной модели, сравнивает serial prompt render с
-`HostBatchPolicy(prompt_workers=4)`, печатает `phase_totals_ms()` и сохраняет
+scripted backend без реальной модели, делает explicit warmup для JAX/XLA env compile, затем
+несколько раз чередует serial prompt render и `HostBatchPolicy(prompt_workers=4)`, печатает
+warmed median/min `phase_totals_ms()` и сохраняет
 `artifacts/benchmarks/host-prompt-threading-latest.json`. Используйте её перед tuning vLLM,
-чтобы понять, не упираетесь ли вы в MegaPrompts/chat-template/Python host preparation.
+чтобы отделить MegaPrompts/chat-template/Python host preparation от холодной XLA-компиляции.
 
 Тот же путь доступен вне Jupyter и сохраняет как raw replay, так и summary metrics:
 
