@@ -33,7 +33,7 @@ from .sync_pipeline import (
     collect_generation_results_sync,
     collect_generation_results_sync_profiled,
 )
-from .tunix_config import TunixGenerationContract
+from .tunix_config import TunixGenerationContract, local_vllm_rollout_contract
 from .vanilla_backend import VanillaInferenceEngine
 from .vllm_backend import VllmInferenceEngine
 
@@ -67,4 +67,5 @@ __all__ = [
     "collect_generation_results_sync_profiled",
     "generation_config_to_manifest",
     "load_generation_pipeline_config",
+    "local_vllm_rollout_contract",
 ]

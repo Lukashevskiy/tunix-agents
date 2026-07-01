@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Literal
 
 from .contracts import EngineProfile, InferenceBackendError
@@ -103,3 +104,52 @@ class TunixGenerationContract:
                 "install tunix-craftext[tunix] to build RolloutConfig"
             ) from error
         return RolloutConfig(**self.to_tunix_rollout_kwargs())
+
+
+def local_vllm_rollout_contract(
+    contract: TunixGenerationContract,
+    snapshot: str | Path,
+    *,
+    server_mode: bool = True,
+    async_scheduling: bool | None = None,
+) -> TunixGenerationContract:
+    """Return a Tunix vLLM rollout contract bound to a local model snapshot.
+
+    Tunix model configs use short semantic aliases such as ``qwen2.5-0.5b`` for
+    architecture lookup.  vLLM and Hugging Face treat the same string as a model
+    repository id, so real rollout execution must receive an explicit local
+    snapshot path instead.
+
+    :param contract: Declarative generation contract loaded from project YAML.
+    :param snapshot: Local model snapshot directory passed to the runtime vLLM
+        rollout engine.
+    :param server_mode: Whether Tunix should use the vLLM server/offload path.
+    :param async_scheduling: Optional override for vLLM async scheduling.
+    :returns: A copy of ``contract`` safe to pass into Tunix ``RolloutConfig``.
+    :raises InferenceBackendError: If the snapshot path is empty.
+    """
+    snapshot_path = str(snapshot).strip()
+    if not snapshot_path:
+        raise InferenceBackendError("local vLLM rollout snapshot path must not be empty")
+    return TunixGenerationContract(
+        engine="vllm",
+        max_prompt_length=contract.max_prompt_length,
+        max_tokens_to_generate=contract.max_tokens_to_generate,
+        temperature=contract.temperature,
+        kv_cache_size=contract.kv_cache_size,
+        return_logprobs=contract.return_logprobs,
+        tensor_parallel_size=contract.tensor_parallel_size,
+        data_parallel_size=contract.data_parallel_size,
+        expert_parallel_size=contract.expert_parallel_size,
+        vllm_server_mode=server_mode,
+        vllm_async_scheduling=(
+            contract.vllm_async_scheduling if async_scheduling is None else async_scheduling
+        ),
+        vllm_hbm_utilization=contract.vllm_hbm_utilization,
+        vllm_model_version=snapshot_path,
+        vllm_init_with_random_weights=False,
+        vllm_max_num_batched_tokens=contract.vllm_max_num_batched_tokens,
+        vllm_max_num_seqs=contract.vllm_max_num_seqs,
+        vllm_kwargs=dict(contract.vllm_kwargs),
+        vllm_sampling_kwargs=dict(contract.vllm_sampling_kwargs),
+    )

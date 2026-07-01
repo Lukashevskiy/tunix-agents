@@ -74,6 +74,8 @@ def test_sync_vllm_grpo_notebook_uses_profile_path_and_placement_contracts() -> 
     assert "EnvironmentDevicePolicy" in source
     assert "HostBatchPolicy" in source
     assert "JAX_PLATFORMS=cpu" in source
+    assert "local_vllm_rollout_contract" in source
+    assert "sync_vllm_generation.vllm_model_version == str(snapshot_path)" in source
 
 
 def test_rollout_notebooks_pin_cpu_env_sidecar_policy() -> None:

@@ -170,7 +170,10 @@ def main(arguments: Sequence[str] | None = None) -> None:
     import jax
 
     from tunix_craftext.env.config import load_mvp_config
-    from tunix_craftext.inference import load_generation_pipeline_config
+    from tunix_craftext.inference import (
+        load_generation_pipeline_config,
+        local_vllm_rollout_contract,
+    )
     from tunix_craftext.tunix import (
         AgenticGrpoWorkloadSpec,
         RLClusterWorkloadError,
@@ -181,6 +184,16 @@ def main(arguments: Sequence[str] | None = None) -> None:
 
     config = load_mvp_config(args.config)
     generation = load_generation_pipeline_config(args.generation_config)
+    rollout_generation = (
+        local_vllm_rollout_contract(
+            generation.tunix,
+            args.snapshot,
+            server_mode=True,
+            async_scheduling=generation.tunix.vllm_async_scheduling,
+        )
+        if generation.tunix.engine == "vllm"
+        else generation.tunix
+    )
     topology = load_tunix_topology(args.topology)
     spec = AgenticGrpoWorkloadSpec(
         args.max_steps,
@@ -255,6 +268,8 @@ def main(arguments: Sequence[str] | None = None) -> None:
                         "tunix_engine": generation.tunix.engine,
                         "vllm_server_mode": generation.tunix.vllm_server_mode,
                         "vllm_async_scheduling": generation.tunix.vllm_async_scheduling,
+                        "runtime_rollout_vllm_model_version": rollout_generation.vllm_model_version,
+                        "runtime_rollout_vllm_server_mode": rollout_generation.vllm_server_mode,
                     },
                     "batch_preview": {
                         "goal": preview_batch["goal"],
@@ -335,7 +350,7 @@ def main(arguments: Sequence[str] | None = None) -> None:
     )
     logging.info("Loading Agentic GRPO Qwen assets from %s", args.snapshot)
     assets = load_agentic_grpo_qwen_assets(args.snapshot, topology)
-    cluster = build_agentic_grpo_cluster(topology, spec, assets, generation.tunix)
+    cluster = build_agentic_grpo_cluster(topology, spec, assets, rollout_generation)
     try:
         tokenizer = load_qwen_hf_tokenizer(args.snapshot)
         learner = GRPOLearner(

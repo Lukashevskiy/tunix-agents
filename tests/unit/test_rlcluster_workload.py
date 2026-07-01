@@ -7,7 +7,7 @@ import pytest
 
 import tunix_craftext.tunix.rlcluster_workload as package_workload
 import tunix_craftext.tunix.rlcluster_workload as workload
-from tunix_craftext.inference import TunixGenerationContract
+from tunix_craftext.inference import TunixGenerationContract, local_vllm_rollout_contract
 from tunix_craftext.tunix.rlcluster_workload import (
     AgenticGrpoWorkloadSpec,
     PpoModelAssets,
@@ -114,6 +114,37 @@ def test_agentic_grpo_config_accepts_strict_vllm_generation_contract() -> None:
     assert config.rollout_config.rollout_vllm_async_scheduling is True
     assert config.rollout_config.rollout_vllm_hbm_utilization == 0.35
     assert config.rollout_config.rollout_vllm_model_version == "qwen2.5-0.5b"
+
+
+def test_agentic_grpo_config_uses_local_snapshot_for_runtime_vllm_rollout() -> None:
+    """The real vLLM rollout path must not receive Tunix's semantic model alias."""
+    spec = AgenticGrpoWorkloadSpec(10, 5, 4, 2, 1, 128, 8, 256, num_generations=2)
+    generation = local_vllm_rollout_contract(
+        TunixGenerationContract(
+            engine="vllm",
+            max_prompt_length=128,
+            max_tokens_to_generate=8,
+            kv_cache_size=256,
+            tensor_parallel_size=1,
+            vllm_model_version="qwen2.5-0.5b",
+        ),
+        ROOT / "artifacts/models/qwen25-05b-instruct",
+        server_mode=True,
+        async_scheduling=False,
+    )
+
+    config = build_agentic_grpo_cluster_config(
+        load_tunix_topology(ROOT / "configs/topology/qwen_agentic_grpo_local.yaml"),
+        spec,
+        generation,
+    )
+
+    assert config.rollout_engine == "vllm"
+    assert config.rollout_config.rollout_vllm_server_mode is True
+    assert config.rollout_config.rollout_vllm_async_scheduling is False
+    assert config.rollout_config.rollout_vllm_model_version.endswith(
+        "artifacts/models/qwen25-05b-instruct"
+    )
 
 
 def test_agentic_grpo_rejects_unsupported_generation_count_or_critic_topology() -> None:

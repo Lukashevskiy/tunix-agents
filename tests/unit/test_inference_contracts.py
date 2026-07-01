@@ -15,6 +15,7 @@ from tunix_craftext.inference import (
     RequestsLlmBackend,
     TunixGenerationContract,
     as_async_engine,
+    local_vllm_rollout_contract,
 )
 from tunix_craftext.models.llm import LlmRequest, LlmResponse
 
@@ -112,3 +113,31 @@ def test_tunix_generation_contract_compiles_vllm_rollout_kwargs() -> None:
     assert kwargs["rollout_vllm_max_num_batched_tokens"] == 4096
     assert profile.backend == "vllm-offload"
     assert profile.mode == "async"
+
+
+def test_local_vllm_rollout_contract_replaces_tunix_alias_with_snapshot_path() -> None:
+    """Runtime vLLM rollout must receive a local snapshot, not a Tunix model alias."""
+    contract = TunixGenerationContract(
+        engine="vllm",
+        max_prompt_length=128,
+        max_tokens_to_generate=16,
+        tensor_parallel_size=1,
+        vllm_server_mode=False,
+        vllm_async_scheduling=True,
+        vllm_model_version="qwen2.5-0.5b",
+        vllm_init_with_random_weights=True,
+    )
+
+    runtime_contract = local_vllm_rollout_contract(
+        contract,
+        "/models/qwen25-05b-instruct",
+        server_mode=True,
+        async_scheduling=False,
+    )
+    kwargs = runtime_contract.to_tunix_rollout_kwargs()
+
+    assert runtime_contract.engine == "vllm"
+    assert kwargs["rollout_vllm_model_version"] == "/models/qwen25-05b-instruct"
+    assert kwargs["rollout_vllm_init_with_random_weights"] is False
+    assert kwargs["rollout_vllm_server_mode"] is True
+    assert kwargs["rollout_vllm_async_scheduling"] is False
