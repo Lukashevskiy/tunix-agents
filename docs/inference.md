@@ -341,3 +341,40 @@ Warning вида
 - `18_async_vllm_craftext_rollout.ipynb` — async vLLM path через
   `collect_generation_results()` с bounded `max_in_flight` и тем же
   `GenerationBatch/GenerationResult` payload.
+
+## Диагностика медленного sync rollout
+
+Если vLLM пишет что-то вроде `Processed prompts ... 200 it/s`, но полный сбор траекторий всё
+равно медленный и GPU простаивает, мерить нужно не только generation, а весь host-side контур:
+snapshot JAX state на host, MegaPrompt render, ordered batch call, strict action decode, JAX
+`env.step/reset` и обновление dialog history.
+
+Для этого используйте opt-in collector:
+
+```python
+from tunix_craftext.rollouts.batched import collect_batched_text_rollout_profiled
+
+profiled = collect_batched_text_rollout_profiled(
+    runtime.adapter,
+    renderer,
+    backend,
+    actions=runtime.actions,
+    batch_size=16,
+    horizon=32,
+    seed=config.run.seed,
+    goal=prepared_goal,
+    max_new_tokens=8,
+    invalid_action="fallback",
+    fallback_action_id=runtime.actions.index_of("NOOP"),
+)
+
+print(profiled.phase_totals_ms())
+rollout = profiled.rollout
+```
+
+Интерпретация простая: если `llm_batch_ms` маленький, а `total_ms` большой, bottleneck не в GPU
+generation. Дальше смотрите, куда ушло время: `prompt_snapshot_ms` — копии device→host,
+`prompt_render_ms` — MegaPrompt/string formatting, `action_decode_ms` — parsing/mask checks,
+`environment_step_ms`/`reset_ms` — JAX env, `dialog_update_ms` — Python bookkeeping. Это же
+помогает понять, когда sync path пора менять на async collector или укрупнять batch/request
+granularity.

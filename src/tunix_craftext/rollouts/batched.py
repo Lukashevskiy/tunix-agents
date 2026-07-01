@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from time import perf_counter
 from typing import Literal, cast
 
 import jax
@@ -61,6 +62,68 @@ class BatchedTextRollout:
     initial_reset: EnvironmentReset[object, object]
     decisions: tuple[BatchedTextDecision, ...]
     reset_after_step: tuple[jax.Array, ...]
+
+
+@dataclass(frozen=True)
+class BatchedDecisionTiming:
+    """Host/model/env phase timings for one batched text decision in milliseconds."""
+
+    prompt_snapshot_ms: float
+    prompt_render_ms: float
+    llm_batch_ms: float
+    action_decode_ms: float
+    environment_step_ms: float
+    total_ms: float
+
+
+@dataclass(frozen=True)
+class BatchedRolloutStepTiming:
+    """End-to-end timing for one rollout step, including resets and dialog bookkeeping."""
+
+    decision: BatchedDecisionTiming
+    reset_ms: float
+    replace_finished_ms: float
+    dialog_update_ms: float
+    total_ms: float
+
+
+@dataclass(frozen=True)
+class ProfiledBatchedTextRollout:
+    """Batched text rollout together with per-step phase timings.
+
+    This is intentionally opt-in: the regular collector keeps returning the
+    compact rollout artifact, while this wrapper exposes enough timing evidence
+    to diagnose slow synchronous trajectory collection when vLLM itself looks
+    fast and GPU utilization is low.
+    """
+
+    rollout: BatchedTextRollout
+    timings: tuple[BatchedRolloutStepTiming, ...]
+
+    def phase_totals_ms(self) -> dict[str, float]:
+        """Aggregate rollout timing by phase for a quick bottleneck report."""
+        totals = {
+            "prompt_snapshot_ms": 0.0,
+            "prompt_render_ms": 0.0,
+            "llm_batch_ms": 0.0,
+            "action_decode_ms": 0.0,
+            "environment_step_ms": 0.0,
+            "reset_ms": 0.0,
+            "replace_finished_ms": 0.0,
+            "dialog_update_ms": 0.0,
+            "total_ms": 0.0,
+        }
+        for timing in self.timings:
+            totals["prompt_snapshot_ms"] += timing.decision.prompt_snapshot_ms
+            totals["prompt_render_ms"] += timing.decision.prompt_render_ms
+            totals["llm_batch_ms"] += timing.decision.llm_batch_ms
+            totals["action_decode_ms"] += timing.decision.action_decode_ms
+            totals["environment_step_ms"] += timing.decision.environment_step_ms
+            totals["reset_ms"] += timing.reset_ms
+            totals["replace_finished_ms"] += timing.replace_finished_ms
+            totals["dialog_update_ms"] += timing.dialog_update_ms
+            totals["total_ms"] += timing.total_ms
+        return totals
 
 
 def _item_at(tree: object, index: int) -> object:
@@ -142,6 +205,7 @@ def collect_batched_text_decision(
     fallback_action_id: int | None = None,
     device_policy: EnvironmentDevicePolicy | None = None,
     _inputs_are_placed: bool = False,
+    _timing_sink: Callable[[BatchedDecisionTiming], None] | None = None,
 ) -> BatchedTextDecision:
     """Render, complete, decode and step an ordered environment batch.
 
@@ -161,6 +225,8 @@ def collect_batched_text_decision(
         fallback_action_id is None or not 0 <= fallback_action_id < adapter.action_count
     ):
         raise ValueError("fallback_action_id must be inside the action catalog")
+    timing_enabled = _timing_sink is not None
+    total_started_at = perf_counter() if timing_enabled else 0.0
     device = _resolve_device(device_policy)
     place_inputs = True if device_policy is None else device_policy.place_inputs
     should_place_inputs = place_inputs and not _inputs_are_placed
@@ -169,11 +235,16 @@ def collect_batched_text_decision(
         jax.Array, _place_for_environment(action_masks, device, enabled=should_place_inputs)
     )
     keys = cast(jax.Array, _place_for_environment(keys, device, enabled=should_place_inputs))
+    snapshot_started_at = perf_counter() if timing_enabled else 0.0
     prompt_states = _host_snapshot_for_prompt(states, device_policy)
     prompt_action_masks = np.asarray(jax.device_get(action_masks))
+    prompt_snapshot_ms = (
+        (perf_counter() - snapshot_started_at) * 1000.0 if timing_enabled else 0.0
+    )
     dialogs = tuple(() for _ in range(batch_size)) if dialog is None else tuple(dialog)
     if len(dialogs) != batch_size:
         raise ValueError("dialog must contain one tuple per batch item")
+    render_started_at = perf_counter() if timing_enabled else 0.0
     prompts = tuple(
         renderer.render(
             PromptContext(
@@ -198,11 +269,15 @@ def collect_batched_text_decision(
             adapter.episode_context(state) if adapter.has_instruction_context else None,
         )
     )
+    prompt_render_ms = (perf_counter() - render_started_at) * 1000.0 if timing_enabled else 0.0
+    llm_started_at = perf_counter() if timing_enabled else 0.0
     responses = backend.complete_batch(
         tuple(LlmRequest(prompt, max_new_tokens=max_new_tokens) for prompt in prompts)
     )
+    llm_batch_ms = (perf_counter() - llm_started_at) * 1000.0 if timing_enabled else 0.0
     if len(responses) != batch_size:
         raise ValueError("batch backend response cardinality must equal batch size")
+    decode_started_at = perf_counter() if timing_enabled else 0.0
     decisions: list[DecodedAction] = []
     metrics: list[DecodeMetrics] = []
     fallback: list[bool] = []
@@ -230,7 +305,24 @@ def collect_batched_text_decision(
         metrics.append(outcome)
     action_ids = jnp.asarray([decision.action_id for decision in decisions], dtype=jnp.int32)
     action_ids = cast(jax.Array, _place_for_environment(action_ids, device, enabled=place_inputs))
+    action_decode_ms = (perf_counter() - decode_started_at) * 1000.0 if timing_enabled else 0.0
+    step_started_at = perf_counter() if timing_enabled else 0.0
     transition = _batched_step(adapter, device_policy)(keys, states, action_ids)
+    if timing_enabled:
+        transition.reward.block_until_ready()
+    environment_step_ms = (perf_counter() - step_started_at) * 1000.0 if timing_enabled else 0.0
+    if timing_enabled:
+        assert _timing_sink is not None
+        _timing_sink(
+            BatchedDecisionTiming(
+                prompt_snapshot_ms=prompt_snapshot_ms,
+                prompt_render_ms=prompt_render_ms,
+                llm_batch_ms=llm_batch_ms,
+                action_decode_ms=action_decode_ms,
+                environment_step_ms=environment_step_ms,
+                total_ms=(perf_counter() - total_started_at) * 1000.0,
+            )
+        )
     return BatchedTextDecision(
         prompts=prompts,
         responses=responses,
@@ -244,7 +336,7 @@ def collect_batched_text_decision(
     )
 
 
-def collect_batched_text_rollout(
+def _collect_batched_text_rollout_impl(
     adapter: CraftaxAdapter[object, object, object],
     renderer: PromptRenderer[object],
     backend: BatchLlmBackend,
@@ -258,8 +350,9 @@ def collect_batched_text_rollout(
     invalid_action: Literal["error", "fallback"] = "error",
     fallback_action_id: int | None = None,
     device_policy: EnvironmentDevicePolicy | None = None,
-) -> BatchedTextRollout:
-    """Collect a fixed-horizon multi-env rollout with explicit done-reset semantics.
+    profile: bool = False,
+) -> ProfiledBatchedTextRollout:
+    """Collect a fixed-horizon multi-env rollout and optionally profile every phase.
 
     Resets are evaluated for every row and selected only where terminal/truncated;
     this keeps the state PyTree static and avoids Python branching over JAX data.
@@ -278,11 +371,14 @@ def collect_batched_text_rollout(
     dialogs: tuple[tuple[str, ...], ...] = tuple(() for _ in range(batch_size))
     decisions: list[BatchedTextDecision] = []
     reset_masks: list[jax.Array] = []
+    timings: list[BatchedRolloutStepTiming] = []
     cursor = batch_size
     for _ in range(horizon):
+        step_started_at = perf_counter() if profile else 0.0
         step_keys = keys[cursor : cursor + batch_size]
         reset_keys = keys[cursor + batch_size : cursor + 2 * batch_size]
         cursor += 2 * batch_size
+        decision_timings: list[BatchedDecisionTiming] = []
         decision = collect_batched_text_decision(
             adapter,
             renderer,
@@ -298,21 +394,115 @@ def collect_batched_text_rollout(
             fallback_action_id=fallback_action_id,
             device_policy=device_policy,
             _inputs_are_placed=device is not None and place_inputs,
+            _timing_sink=decision_timings.append if profile else None,
         )
         finished = jnp.logical_or(decision.transition.terminated, decision.transition.truncated)
+        reset_started_at = perf_counter() if profile else 0.0
         fresh = batched_reset(reset_keys)
+        if profile:
+            jax.block_until_ready(fresh.state)
+        reset_ms = (perf_counter() - reset_started_at) * 1000.0 if profile else 0.0
+        replace_started_at = perf_counter() if profile else 0.0
         state = _replace_finished(decision.transition.state, fresh.state, finished)
         action_mask = cast(
             jax.Array,
             _replace_finished(decision.transition.action_mask, fresh.action_mask, finished),
         )
+        if profile:
+            action_mask.block_until_ready()
+        replace_finished_ms = (
+            (perf_counter() - replace_started_at) * 1000.0 if profile else 0.0
+        )
+        dialog_started_at = perf_counter() if profile else 0.0
         dialogs = tuple(
             () if bool(finished[index]) else (*dialogs[index], decision.responses[index].raw_text)
             for index in range(batch_size)
         )
+        dialog_update_ms = (perf_counter() - dialog_started_at) * 1000.0 if profile else 0.0
         decisions.append(decision)
         reset_masks.append(finished)
-    return BatchedTextRollout(reset, tuple(decisions), tuple(reset_masks))
+        if profile:
+            if len(decision_timings) != 1:
+                raise RuntimeError("profiled decision did not report exactly one timing record")
+            timings.append(
+                BatchedRolloutStepTiming(
+                    decision=decision_timings[0],
+                    reset_ms=reset_ms,
+                    replace_finished_ms=replace_finished_ms,
+                    dialog_update_ms=dialog_update_ms,
+                    total_ms=(perf_counter() - step_started_at) * 1000.0,
+                )
+            )
+    return ProfiledBatchedTextRollout(
+        BatchedTextRollout(reset, tuple(decisions), tuple(reset_masks)),
+        tuple(timings),
+    )
+
+
+def collect_batched_text_rollout(
+    adapter: CraftaxAdapter[object, object, object],
+    renderer: PromptRenderer[object],
+    backend: BatchLlmBackend,
+    *,
+    actions: ActionCatalog,
+    batch_size: int,
+    horizon: int,
+    seed: int,
+    goal: str,
+    max_new_tokens: int,
+    invalid_action: Literal["error", "fallback"] = "error",
+    fallback_action_id: int | None = None,
+    device_policy: EnvironmentDevicePolicy | None = None,
+) -> BatchedTextRollout:
+    """Collect a fixed-horizon multi-env rollout with explicit done-reset semantics."""
+    return _collect_batched_text_rollout_impl(
+        adapter,
+        renderer,
+        backend,
+        actions=actions,
+        batch_size=batch_size,
+        horizon=horizon,
+        seed=seed,
+        goal=goal,
+        max_new_tokens=max_new_tokens,
+        invalid_action=invalid_action,
+        fallback_action_id=fallback_action_id,
+        device_policy=device_policy,
+        profile=False,
+    ).rollout
+
+
+def collect_batched_text_rollout_profiled(
+    adapter: CraftaxAdapter[object, object, object],
+    renderer: PromptRenderer[object],
+    backend: BatchLlmBackend,
+    *,
+    actions: ActionCatalog,
+    batch_size: int,
+    horizon: int,
+    seed: int,
+    goal: str,
+    max_new_tokens: int,
+    invalid_action: Literal["error", "fallback"] = "error",
+    fallback_action_id: int | None = None,
+    device_policy: EnvironmentDevicePolicy | None = None,
+) -> ProfiledBatchedTextRollout:
+    """Collect a rollout and return phase timings for sync bottleneck diagnosis."""
+    return _collect_batched_text_rollout_impl(
+        adapter,
+        renderer,
+        backend,
+        actions=actions,
+        batch_size=batch_size,
+        horizon=horizon,
+        seed=seed,
+        goal=goal,
+        max_new_tokens=max_new_tokens,
+        invalid_action=invalid_action,
+        fallback_action_id=fallback_action_id,
+        device_policy=device_policy,
+        profile=True,
+    )
 
 
 def replays_from_batched_rollout(

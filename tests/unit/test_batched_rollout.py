@@ -13,6 +13,7 @@ from tunix_craftext.rollouts.batched import (
     EnvironmentDevicePolicy,
     collect_batched_text_decision,
     collect_batched_text_rollout,
+    collect_batched_text_rollout_profiled,
     replays_from_batched_rollout,
 )
 
@@ -160,6 +161,37 @@ def test_batched_rollout_can_jit_reset_and_step_with_device_policy() -> None:
 
     assert len(rollout.decisions) == 2
     assert rollout.decisions[0].transition.reward.devices() == {jax.devices()[0]}
+
+
+def test_profiled_batched_rollout_records_phase_timings() -> None:
+    """Profiled rollout keeps the normal artifact and exposes per-phase timing totals."""
+    adapter = CrafTextAdapter(_Environment(), None, action_count=2)
+    profiled = collect_batched_text_rollout_profiled(
+        adapter,
+        _Renderer(),
+        _Backend(),
+        actions=ActionCatalog(("NOOP", "DO")),
+        batch_size=2,
+        horizon=2,
+        seed=0,
+        goal="test",
+        max_new_tokens=4,
+        invalid_action="fallback",
+        fallback_action_id=0,
+    )
+
+    assert len(profiled.rollout.decisions) == 2
+    assert len(profiled.timings) == 2
+    totals = profiled.phase_totals_ms()
+    assert totals["prompt_snapshot_ms"] >= 0.0
+    assert totals["prompt_render_ms"] >= 0.0
+    assert totals["llm_batch_ms"] >= 0.0
+    assert totals["action_decode_ms"] >= 0.0
+    assert totals["environment_step_ms"] >= 0.0
+    assert totals["reset_ms"] >= 0.0
+    assert totals["replace_finished_ms"] >= 0.0
+    assert totals["dialog_update_ms"] >= 0.0
+    assert totals["total_ms"] >= totals["llm_batch_ms"]
 
 
 def test_environment_device_policy_rejects_unavailable_backend() -> None:
