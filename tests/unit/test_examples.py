@@ -89,6 +89,8 @@ def test_external_vllm_grpo_notebook_uses_direct_engine_and_evidence_contract() 
     assert "VllmInferenceEngine.from_profile" in source
     assert "RequestsLlmBackend(engine)" in source
     assert "external_grpo_batch_from_replays" in source
+    assert "evaluate_external_llm_actor_grpo" in source
+    assert "token_batch_from_external_grpo" in source
     assert "save_external_grpo_batch" in source
     assert "cpu_environment_device_policy()" in source
     assert "GRPOLearner" not in source

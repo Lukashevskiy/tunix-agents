@@ -117,7 +117,8 @@ Qwen snapshot, CUDA-ready runtime, Tunix и vLLM.
 `22_external_vllm_sync_grpo_rollout.ipynb` — практический стартовый GRPO lane без Tunix
 `RLCluster`: он повторяет direct vLLM path из notebook 17, собирает `B = group_size × group_count`
 CrafText trajectories, сохраняет replay artifacts, затем строит `ExternalGrpoBatch` с
-group-normalized advantages и summary metrics. Этот путь нужен, когда direct vLLM работает, но
+group-normalized advantages, `ExternalGrpoTokenBatch`, baseline `evaluate_external_llm_actor_grpo()`
+loss/metrics и summary metrics. Этот путь нужен, когда direct vLLM работает, но
 Tunix internal JAX→vLLM weight-sync ещё блокируется несовместимостью worker RPC hooks. Он не
 обновляет actor weights сам; его output — строгий evidence contract для следующего updater
 слоя, LoRA/Qwix и будущего PPO critic.

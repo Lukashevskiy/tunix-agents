@@ -20,6 +20,7 @@ from tunix_craftext.training.external_grpo import (
     group_normalized_advantages,
     save_external_grpo_batch,
     summarize_external_grpo_batch,
+    token_batch_from_external_grpo,
 )
 
 
@@ -179,3 +180,29 @@ def test_save_external_grpo_batch_writes_stable_json(tmp_path) -> None:
     payload = json.loads(path.read_text(encoding="utf-8"))
     assert payload["schema"] == "tunix-craftext.external-grpo/v1"
     assert payload["groups"][0]["samples"][0]["replay"]["schema"] == "tunix-craftext.replay/v3"
+
+
+def test_token_batch_from_external_grpo_broadcasts_group_advantages_to_tokens() -> None:
+    """External GRPO evidence becomes token rows consumable by GRPO loss."""
+    batch = external_grpo_batch_from_replays(
+        goal="collect wood",
+        group_prefix="wood",
+        group_size=2,
+        replays=(_replay(1.0), _replay(3.0)),
+    )
+
+    token_batch = token_batch_from_external_grpo(batch)
+
+    assert token_batch.token_ids.shape == (2, 2)
+    assert token_batch.prompt_token_ids.shape == (2, 3)
+    assert token_batch.token_mask.tolist() == [[True, True], [True, True]]
+    assert token_batch.sample_rewards.tolist() == [1.0, 3.0]
+    assert token_batch.group_ids.tolist() == [0, 0]
+    assert token_batch.sample_ids.tolist() == [0, 1]
+    assert bool(
+        jnp.allclose(
+            token_batch.advantages,
+            jnp.asarray([[-0.999999, -0.999999], [0.999999, 0.999999]]),
+            rtol=1e-5,
+        )
+    )

@@ -204,3 +204,73 @@ def masked_token_ppo_loss(
         entropy[token_mask],
         entropy_coefficient,
     )
+
+
+def masked_token_grpo_loss(
+    new_log_prob: TokenBatchFloat,
+    old_log_prob: TokenBatchFloat,
+    advantages: TokenBatchFloat,
+    token_mask: TokenBatchBool,
+    *,
+    clip_epsilon: float = 0.2,
+    entropy: TokenBatchFloat | None = None,
+    entropy_coefficient: float = 0.0,
+) -> tuple[ScalarFloat, dict[str, ScalarFloat]]:
+    """Apply critic-free GRPO policy loss to valid generated tokens.
+
+    The function expects group-normalized trajectory advantages to be already
+    broadcast onto generated tokens. It then performs the same clipped policy
+    ratio update used by PPO, but without a value/critic term.
+
+    :param new_log_prob: Current actor token log-probabilities shaped ``[B, T]``.
+    :param old_log_prob: Behaviour actor token log-probabilities shaped ``[B, T]``.
+    :param advantages: Group-normalized advantages shaped ``[B, T]``.
+    :param token_mask: Boolean mask selecting valid policy tokens shaped ``[B, T]``.
+    :param clip_epsilon: Ratio clipping epsilon.
+    :param entropy: Optional token entropy shaped ``[B, T]``.
+    :param entropy_coefficient: Entropy bonus scale.
+    :returns: Tuple of scalar loss and per-term metrics.
+    :raises ValueError: If shapes are incompatible, no token is selected, or
+        ``clip_epsilon`` is not positive.
+
+    Example:
+        >>> loss, metrics = masked_token_grpo_loss(
+        ...     new_log_prob, old_log_prob, advantages, token_mask
+        ... )
+    """
+    fields = (new_log_prob, old_log_prob, advantages)
+    if token_mask.ndim != 2 or any(field.shape != token_mask.shape for field in fields):
+        raise ValueError("all token GRPO fields and token_mask must have shape [B, T]")
+    if entropy is not None and entropy.shape != token_mask.shape:
+        raise ValueError("entropy must have shape [B, T]")
+    if not bool(jnp.any(token_mask)):
+        raise ValueError("token_mask must select at least one token")
+    if clip_epsilon <= 0:
+        raise ValueError("clip_epsilon must be positive")
+
+    selected_new = new_log_prob[token_mask]
+    selected_old = old_log_prob[token_mask]
+    selected_advantages = advantages[token_mask]
+    ratio = jnp.exp(selected_new - selected_old)
+    clipped_ratio = jnp.clip(ratio, 1.0 - clip_epsilon, 1.0 + clip_epsilon)
+    policy_loss = -jnp.mean(
+        jnp.minimum(
+            ratio * selected_advantages,
+            clipped_ratio * selected_advantages,
+        )
+    )
+    entropy_mean = (
+        jnp.asarray(0.0, dtype=policy_loss.dtype)
+        if entropy is None
+        else jnp.mean(entropy[token_mask])
+    )
+    loss = policy_loss - entropy_coefficient * entropy_mean
+    clipfrac = jnp.mean((jnp.abs(ratio - 1.0) > clip_epsilon).astype(jnp.float32))
+    return loss, {
+        "policy_loss": policy_loss,
+        "entropy": entropy_mean,
+        "approx_kl": jnp.mean(selected_old - selected_new),
+        "clipfrac": clipfrac,
+        "ratio_mean": jnp.mean(ratio),
+        "advantage_mean": jnp.mean(selected_advantages),
+    }

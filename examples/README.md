@@ -24,6 +24,6 @@ uv run jupyter lab examples/notebooks
 | `19_host_prompt_threading_profile.ipynb` | Warm up JAX env compile, then compare serial prompt rendering with `HostBatchPolicy(prompt_workers=4)` using repeated rollout phase timings before tuning vLLM. |
 | `20_env_device_policy_benchmark.ipynb` | Detect reset storms, then compare CrafText env `vmap`, `jit(vmap)` and explicit `EnvironmentDevicePolicy` placement on the selected JAX backend. |
 | `21_sync_vllm_grpo_learning.ipynb` | Run full Agentic GRPO learning with sync vLLM server-mode rollout, logging, validation evidence, actor weight updates and checkpoint artifact records. |
-| `22_external_vllm_sync_grpo_rollout.ipynb` | Use the known-working direct `VllmInferenceEngine` path to collect sync rollout replays, group them into `ExternalGrpoBatch`, compute GRPO advantages and save evidence/metrics before PPO/critic work. |
+| `22_external_vllm_sync_grpo_rollout.ipynb` | Use the known-working direct `VllmInferenceEngine` path to collect sync rollout replays, group them into `ExternalGrpoBatch`, compute token GRPO loss/metrics and save evidence before PPO/critic work. |
 
 Keep examples self-contained: fix seeds, avoid private data and do not import from `tests/`.
