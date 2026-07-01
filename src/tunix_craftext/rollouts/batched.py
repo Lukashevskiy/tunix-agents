@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from time import perf_counter
 from typing import Literal, cast
@@ -41,6 +42,25 @@ class EnvironmentDevicePolicy:
     jit_step: bool = True
     place_inputs: bool = True
     snapshot_prompt_inputs: bool = True
+
+
+@dataclass(frozen=True)
+class HostBatchPolicy:
+    """Host-side batching policy for prompt/request preparation.
+
+    ``prompt_workers=1`` keeps the deterministic sequential path. Values above
+    one render prompts with a short-lived thread pool and preserve batch order
+    with ``executor.map``. This is useful when MegaPrompts/chat templates are
+    heavier than the GPU generation slice and the sync rollout leaves the GPU
+    idle between requests.
+    """
+
+    prompt_workers: int = 1
+
+    def __post_init__(self) -> None:
+        """Validate host batching knobs early."""
+        if self.prompt_workers <= 0:
+            raise ValueError("prompt_workers must be positive")
 
 
 @dataclass(frozen=True)
@@ -189,6 +209,46 @@ def _batched_step(
     return jax.jit(step) if policy is not None and policy.jit_step else step
 
 
+def _render_batched_prompts(
+    adapter: CraftaxAdapter[object, object, object],
+    renderer: PromptRenderer[object],
+    *,
+    prompt_states: object,
+    actions: ActionCatalog,
+    dialogs: Sequence[tuple[str, ...]],
+    goal: str,
+    host_batch_policy: HostBatchPolicy | None,
+) -> tuple[RenderedPrompt, ...]:
+    """Render ordered prompts sequentially or with an opt-in host thread pool."""
+    worker_count = 1 if host_batch_policy is None else host_batch_policy.prompt_workers
+
+    def render_one(index: int) -> RenderedPrompt:
+        state = _item_at(prompt_states, index)
+        context = adapter.episode_context(state) if adapter.has_instruction_context else None
+        return renderer.render(
+            PromptContext(
+                goal
+                if context is None
+                else compose_craftext_goal(
+                    goal,
+                    scenario_instruction=context.instruction,
+                    world_preset=context.world_preset,
+                    text_constraint=context.text_constraint,
+                ),
+                adapter.prompt_state(state),
+                actions,
+                dialogs[index],
+                safety="" if context is None else context.text_constraint,
+                world_preset="" if context is None else context.world_preset,
+            )
+        )
+
+    if worker_count == 1 or len(dialogs) <= 1:
+        return tuple(render_one(index) for index in range(len(dialogs)))
+    with ThreadPoolExecutor(max_workers=worker_count, thread_name_prefix="prompt-render") as pool:
+        return tuple(pool.map(render_one, range(len(dialogs))))
+
+
 def collect_batched_text_decision(
     adapter: CraftaxAdapter[object, object, object],
     renderer: PromptRenderer[object],
@@ -204,6 +264,7 @@ def collect_batched_text_decision(
     invalid_action: Literal["error", "fallback"] = "error",
     fallback_action_id: int | None = None,
     device_policy: EnvironmentDevicePolicy | None = None,
+    host_batch_policy: HostBatchPolicy | None = None,
     _inputs_are_placed: bool = False,
     _timing_sink: Callable[[BatchedDecisionTiming], None] | None = None,
 ) -> BatchedTextDecision:
@@ -245,29 +306,14 @@ def collect_batched_text_decision(
     if len(dialogs) != batch_size:
         raise ValueError("dialog must contain one tuple per batch item")
     render_started_at = perf_counter() if timing_enabled else 0.0
-    prompts = tuple(
-        renderer.render(
-            PromptContext(
-                goal
-                if context is None
-                else compose_craftext_goal(
-                    goal,
-                    scenario_instruction=context.instruction,
-                    world_preset=context.world_preset,
-                    text_constraint=context.text_constraint,
-                ),
-                adapter.prompt_state(state),
-                actions,
-                dialogs[index],
-                safety="" if context is None else context.text_constraint,
-                world_preset="" if context is None else context.world_preset,
-            )
-        )
-        for index in range(batch_size)
-        for state in (_item_at(prompt_states, index),)
-        for context in (
-            adapter.episode_context(state) if adapter.has_instruction_context else None,
-        )
+    prompts = _render_batched_prompts(
+        adapter,
+        renderer,
+        prompt_states=prompt_states,
+        actions=actions,
+        dialogs=dialogs,
+        goal=goal,
+        host_batch_policy=host_batch_policy,
     )
     prompt_render_ms = (perf_counter() - render_started_at) * 1000.0 if timing_enabled else 0.0
     llm_started_at = perf_counter() if timing_enabled else 0.0
@@ -350,6 +396,7 @@ def _collect_batched_text_rollout_impl(
     invalid_action: Literal["error", "fallback"] = "error",
     fallback_action_id: int | None = None,
     device_policy: EnvironmentDevicePolicy | None = None,
+    host_batch_policy: HostBatchPolicy | None = None,
     profile: bool = False,
 ) -> ProfiledBatchedTextRollout:
     """Collect a fixed-horizon multi-env rollout and optionally profile every phase.
@@ -393,6 +440,7 @@ def _collect_batched_text_rollout_impl(
             invalid_action=invalid_action,
             fallback_action_id=fallback_action_id,
             device_policy=device_policy,
+            host_batch_policy=host_batch_policy,
             _inputs_are_placed=device is not None and place_inputs,
             _timing_sink=decision_timings.append if profile else None,
         )
@@ -453,6 +501,7 @@ def collect_batched_text_rollout(
     invalid_action: Literal["error", "fallback"] = "error",
     fallback_action_id: int | None = None,
     device_policy: EnvironmentDevicePolicy | None = None,
+    host_batch_policy: HostBatchPolicy | None = None,
 ) -> BatchedTextRollout:
     """Collect a fixed-horizon multi-env rollout with explicit done-reset semantics."""
     return _collect_batched_text_rollout_impl(
@@ -468,6 +517,7 @@ def collect_batched_text_rollout(
         invalid_action=invalid_action,
         fallback_action_id=fallback_action_id,
         device_policy=device_policy,
+        host_batch_policy=host_batch_policy,
         profile=False,
     ).rollout
 
@@ -486,6 +536,7 @@ def collect_batched_text_rollout_profiled(
     invalid_action: Literal["error", "fallback"] = "error",
     fallback_action_id: int | None = None,
     device_policy: EnvironmentDevicePolicy | None = None,
+    host_batch_policy: HostBatchPolicy | None = None,
 ) -> ProfiledBatchedTextRollout:
     """Collect a rollout and return phase timings for sync bottleneck diagnosis."""
     return _collect_batched_text_rollout_impl(
@@ -501,6 +552,7 @@ def collect_batched_text_rollout_profiled(
         invalid_action=invalid_action,
         fallback_action_id=fallback_action_id,
         device_policy=device_policy,
+        host_batch_policy=host_batch_policy,
         profile=True,
     )
 

@@ -378,3 +378,31 @@ generation. Дальше смотрите, куда ушло время: `prompt
 `environment_step_ms`/`reset_ms` — JAX env, `dialog_update_ms` — Python bookkeeping. Это же
 помогает понять, когда sync path пора менять на async collector или укрупнять batch/request
 granularity.
+
+Если именно `prompt_render_ms` доминирует, можно включить opt-in host threading для построения
+промтов перед отправкой batch в vLLM:
+
+```python
+from tunix_craftext.rollouts.batched import HostBatchPolicy
+
+profiled = collect_batched_text_rollout_profiled(
+    runtime.adapter,
+    renderer,
+    backend,
+    actions=runtime.actions,
+    batch_size=16,
+    horizon=32,
+    seed=config.run.seed,
+    goal=prepared_goal,
+    max_new_tokens=8,
+    invalid_action="fallback",
+    fallback_action_id=runtime.actions.index_of("NOOP"),
+    host_batch_policy=HostBatchPolicy(prompt_workers=4),
+)
+```
+
+`HostBatchPolicy` сохраняет порядок строк batch через ordered `executor.map`, поэтому replay и
+env rows остаются сопоставимыми. Начинайте с `prompt_workers=4`; если renderer/tokenizer на
+целевой модели оказывается thread-safe и `prompt_render_ms` падает, можно пробовать 8/16. Если
+время не падает, значит bottleneck, скорее всего, не в prompt rendering, а в request lifecycle,
+decode/dialog bookkeeping или слишком мелкой granularity одного sync batch.

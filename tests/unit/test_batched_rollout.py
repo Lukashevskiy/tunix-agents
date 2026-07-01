@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import threading
+import time
+
 import jax
 import jax.numpy as jnp
 import pytest
@@ -11,6 +14,7 @@ from tunix_craftext.env.prompts import ActionCatalog, PromptContext, RenderedPro
 from tunix_craftext.models.llm import LlmResponse
 from tunix_craftext.rollouts.batched import (
     EnvironmentDevicePolicy,
+    HostBatchPolicy,
     collect_batched_text_decision,
     collect_batched_text_rollout,
     collect_batched_text_rollout_profiled,
@@ -43,6 +47,16 @@ class _RecordingRenderer:
         return RenderedPrompt(f"state={context.observation}", context.actions, "test")
 
 
+class _SlowThreadRecordingRenderer:
+    def __init__(self) -> None:
+        self.thread_ids: list[int] = []
+
+    def render(self, context: PromptContext[object]) -> RenderedPrompt:
+        time.sleep(0.01)
+        self.thread_ids.append(threading.get_ident())
+        return RenderedPrompt(f"state={context.observation}", context.actions, "test")
+
+
 class _Backend:
     def __init__(self) -> None:
         self.calls = 0
@@ -56,6 +70,14 @@ class _Backend:
             LlmResponse("<action>DO</action>", "test", "test"),
             LlmResponse("invalid", "test", "test"),
         )
+
+
+class _EchoBatchBackend:
+    def complete(self, request):
+        return self.complete_batch((request,))[0]
+
+    def complete_batch(self, requests):
+        return tuple(LlmResponse("<action>DO</action>", "test", "test") for _ in requests)
 
 
 def test_batched_decision_uses_one_llm_batch_and_one_vmap_environment_step() -> None:
@@ -83,6 +105,41 @@ def test_batched_decision_uses_one_llm_batch_and_one_vmap_environment_step() -> 
     assert result.fallback_used.tolist() == [False, True]
     assert result.transition.state.tolist() == [11, 20]
     assert result.transition.reward.tolist() == [1.0, 0.0]
+
+
+def test_batched_decision_can_render_prompts_with_ordered_host_threads() -> None:
+    """Threaded host rendering overlaps prompt construction while preserving row order."""
+    adapter = CrafTextAdapter(_Environment(), None, action_count=2)
+    renderer = _SlowThreadRecordingRenderer()
+    result = collect_batched_text_decision(
+        adapter,
+        renderer,
+        _EchoBatchBackend(),
+        states=jnp.asarray([10, 20, 30, 40]),
+        action_masks=jnp.ones((4, 2), dtype=bool),
+        actions=ActionCatalog(("NOOP", "DO")),
+        keys=jax.random.split(jax.random.PRNGKey(0), 4),
+        goal="test",
+        max_new_tokens=4,
+        invalid_action="fallback",
+        fallback_action_id=0,
+        host_batch_policy=HostBatchPolicy(prompt_workers=4),
+    )
+
+    assert [prompt.text for prompt in result.prompts] == [
+        "state=10",
+        "state=20",
+        "state=30",
+        "state=40",
+    ]
+    assert [decision.action_id for decision in result.actions] == [1, 1, 1, 1]
+    assert len(set(renderer.thread_ids)) > 1
+
+
+def test_host_batch_policy_rejects_non_positive_prompt_workers() -> None:
+    """Thread policy fails early instead of silently falling back to serial render."""
+    with pytest.raises(ValueError, match="prompt_workers must be positive"):
+        HostBatchPolicy(prompt_workers=0)
 
 
 def test_batched_decision_can_place_and_jit_environment_step_on_selected_device() -> None:
