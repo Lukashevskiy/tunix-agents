@@ -104,6 +104,13 @@ JAX, сначала делает action terminal sweep, чтобы не спут
 kernel с `JAX_PLATFORMS=cpu`; для GPU env перезапустите kernel с CUDA-enabled JAX и сравните
 `artifacts/benchmarks/env-device-policy-latest.json`.
 
+`21_sync_vllm_grpo_learning.ipynb` — полный server runbook для Agentic GRPO learning:
+profile/config/logger/provenance, sync vLLM smoke, pre/post validation trajectory evidence,
+Tunix topology preflight, Qwen actor/reference loading, `RLCluster` с vLLM sync server-mode
+rollout contract, `GRPOLearner.train(...)`, checkpoint artifact reference и JSONL метрики.
+В отличие от smoke notebooks, эта тетрадка реально обновляет actor weights и требует локальный
+Qwen snapshot, CUDA-ready runtime, Tunix и vLLM.
+
 Тот же путь доступен вне Jupyter и сохраняет как raw replay, так и summary metrics:
 
 ```bash

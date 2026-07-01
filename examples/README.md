@@ -23,5 +23,6 @@ uv run jupyter lab examples/notebooks
 | `18_async_vllm_craftext_rollout.ipynb` | Load `configs/generation/qwen_vllm_async.yaml`, then run the same vLLM rollout through `GenerationBatch` async collection with bounded in-flight requests. |
 | `19_host_prompt_threading_profile.ipynb` | Warm up JAX env compile, then compare serial prompt rendering with `HostBatchPolicy(prompt_workers=4)` using repeated rollout phase timings before tuning vLLM. |
 | `20_env_device_policy_benchmark.ipynb` | Detect reset storms, then compare CrafText env `vmap`, `jit(vmap)` and explicit `EnvironmentDevicePolicy` placement on the selected JAX backend. |
+| `21_sync_vllm_grpo_learning.ipynb` | Run full Agentic GRPO learning with sync vLLM server-mode rollout, logging, validation evidence, actor weight updates and checkpoint artifact records. |
 
 Keep examples self-contained: fix seeds, avoid private data and do not import from `tests/`.
