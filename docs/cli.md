@@ -103,9 +103,9 @@ tcx = "tunix_craftext.cli.app:main"
 Работа с versioned YAML без запуска тяжёлых операций.
 
 ```bash
-tunix-craftext profile validate configs/grpo/qwen_agentic_local.yaml
-tunix-craftext profile inspect configs/grpo/qwen_agentic_local.yaml --json
-tunix-craftext profile evidence configs/grpo/qwen_agentic_local.yaml --output artifacts/runs/.../provenance.json
+tunix-craftext profile validate configs/training/grpo/qwen_agentic_local.yaml
+tunix-craftext profile inspect configs/training/grpo/qwen_agentic_local.yaml --json
+tunix-craftext profile evidence configs/training/grpo/qwen_agentic_local.yaml --output artifacts/runs/.../provenance.json
 ```
 
 Ответственность:
@@ -121,9 +121,9 @@ tunix-craftext profile evidence configs/grpo/qwen_agentic_local.yaml --output ar
 Минимальные команды для среды и адаптеров.
 
 ```bash
-tunix-craftext env smoke configs/mvp/tiny_craftext.yaml --steps 8
-tunix-craftext env step configs/mvp/qwen_craftext.yaml --action LEFT --seed 7
-tunix-craftext env inspect configs/mvp/qwen_craftext.yaml --json
+tunix-craftext env smoke configs/env/smoke/tiny_craftext.yaml --steps 8
+tunix-craftext env step configs/env/text/qwen_craftext.yaml --action LEFT --seed 7
+tunix-craftext env inspect configs/env/text/qwen_craftext.yaml --json
 ```
 
 Ответственность:
@@ -137,8 +137,8 @@ tunix-craftext env inspect configs/mvp/qwen_craftext.yaml --json
 Граница MegaPrompts/text policy.
 
 ```bash
-tunix-craftext prompt render configs/mvp/qwen_craftext.yaml --goal "collect wood"
-tunix-craftext prompt decode configs/mvp/qwen_craftext.yaml --completion "<action>LEFT</action>"
+tunix-craftext prompt render configs/env/text/qwen_craftext.yaml --goal "collect wood"
+tunix-craftext prompt decode configs/env/text/qwen_craftext.yaml --completion "<action>LEFT</action>"
 tunix-craftext prompt replay artifacts/trajectories/qwen-craftext-latest.json
 ```
 
@@ -153,9 +153,9 @@ tunix-craftext prompt replay artifacts/trajectories/qwen-craftext-latest.json
 Сбор траекторий без update.
 
 ```bash
-tunix-craftext rollout random configs/mvp/qwen_craftext.yaml --horizon 32 --batch-size 8
-tunix-craftext rollout text configs/mvp/qwen_craftext.yaml --snapshot artifacts/models/qwen25-05b-instruct
-tunix-craftext rollout agentic configs/grpo/qwen_agentic_local.yaml --dry-run
+tunix-craftext rollout random configs/env/text/qwen_craftext.yaml --horizon 32 --batch-size 8
+tunix-craftext rollout text configs/env/text/qwen_craftext.yaml --snapshot artifacts/models/qwen25-05b-instruct
+tunix-craftext rollout agentic configs/training/grpo/qwen_agentic_local.yaml --dry-run
 ```
 
 Ответственность:
@@ -170,9 +170,9 @@ tunix-craftext rollout agentic configs/grpo/qwen_agentic_local.yaml --dry-run
 Главный production path.
 
 ```bash
-tunix-craftext train grpo configs/grpo/qwen_agentic_local.yaml
-tunix-craftext train grpo configs/grpo/qwen_agentic_local.yaml --dry-run
-tunix-craftext train grpo configs/grpo/qwen_agentic_local.yaml --allow-cpu-smoke
+tunix-craftext train grpo configs/training/grpo/qwen_agentic_local.yaml
+tunix-craftext train grpo configs/training/grpo/qwen_agentic_local.yaml --dry-run
+tunix-craftext train grpo configs/training/grpo/qwen_agentic_local.yaml --allow-cpu-smoke
 ```
 
 Ответственность:
@@ -198,7 +198,7 @@ tunix-craftext train ppo configs/ppo/...
 
 ```bash
 tunix-craftext eval checkpoint artifacts/runs/.../checkpoints/latest --tasks configs/eval/fixed_tasks.yaml
-tunix-craftext eval reference configs/grpo/qwen_agentic_local.yaml --tasks configs/eval/fixed_tasks.yaml
+tunix-craftext eval reference configs/training/grpo/qwen_agentic_local.yaml --tasks configs/eval/fixed_tasks.yaml
 ```
 
 Ответственность:
@@ -213,9 +213,9 @@ tunix-craftext eval reference configs/grpo/qwen_agentic_local.yaml --tasks confi
 Performance lanes с явным scope.
 
 ```bash
-tunix-craftext benchmark env --matrix configs/benchmarks/*.yaml
-tunix-craftext benchmark text configs/mvp/qwen_craftext.yaml --horizon 8 --repeats 20
-tunix-craftext benchmark agentic configs/grpo/qwen_agentic_local.yaml --accelerator-required
+tunix-craftext benchmark env --matrix configs/env/benchmarks/*.yaml
+tunix-craftext benchmark text configs/env/text/qwen_craftext.yaml --horizon 8 --repeats 20
+tunix-craftext benchmark agentic configs/training/grpo/qwen_agentic_local.yaml --accelerator-required
 ```
 
 Ответственность:

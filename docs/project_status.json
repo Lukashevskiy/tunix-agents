@@ -128,7 +128,7 @@
     {
       "name": "Reproducible Agentic GRPO profile",
       "status": "ready",
-      "description": "configs/grpo/qwen_agentic_local.yaml фиксирует run/model/topology/workload/evidence; run_agentic_grpo.py --profile пишет pre-allocation provenance с profile/vendor SHA256, git revision, model licence/revision и package versions."
+      "description": "configs/training/grpo/qwen_agentic_local.yaml фиксирует run/model/topology/workload/evidence; run_agentic_grpo.py --profile пишет pre-allocation provenance с profile/vendor SHA256, git revision, model licence/revision и package versions."
     },
     {
       "name": "Full CLI orchestration design",

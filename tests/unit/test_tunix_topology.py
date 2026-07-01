@@ -44,7 +44,7 @@ def test_tunix_adapter_uses_official_role_enum_for_declared_meshes() -> None:
 
 
 def test_agentic_grpo_topology_omits_the_unneeded_critic_role() -> None:
-    topology = load_tunix_topology(ROOT / "configs/topology/qwen_agentic_grpo_local.yaml")
+    topology = load_tunix_topology(ROOT / "configs/tunix/topology/qwen_agentic_grpo_local.yaml")
     mapping = tunix_role_to_meshes(topology)
 
     assert tuple(topology.role_to_device_indices) == ("actor", "rollout", "reference")

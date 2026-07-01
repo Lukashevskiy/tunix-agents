@@ -1,0 +1,41 @@
+schema_version: 1
+canonical_layout:
+  env:
+    smoke:
+      tiny_craftext: configs/env/smoke/tiny_craftext.yaml
+    text:
+      qwen_craftext: configs/env/text/qwen_craftext.yaml
+    manual:
+      caged_wood_achievements_energy: configs/env/manual/caged_wood_achievements_energy.yaml
+    benchmarks:
+      craftext_tiny: configs/env/benchmarks/craftext_tiny.yaml
+      craftext_full: configs/env/benchmarks/craftext_full.yaml
+      caged_craftext_full: configs/env/benchmarks/caged_craftext_full.yaml
+  inference:
+    vllm:
+      qwen25_05b_sync: configs/inference/vllm/qwen25_05b_sync.yaml
+      qwen25_05b_async: configs/inference/vllm/qwen25_05b_async.yaml
+  models:
+    gemma3_270m_instruction: configs/models/gemma3_270m_instruction.yaml
+    qwen25_05b_instruction: configs/models/qwen25_05b_instruction.yaml
+  tunix:
+    topology:
+      qwen_agentic_grpo_local: configs/tunix/topology/qwen_agentic_grpo_local.yaml
+      qwen_four_device_colocated: configs/tunix/topology/qwen_four_device_colocated.yaml
+      qwen_local_smoke: configs/tunix/topology/qwen_local_smoke.yaml
+  training:
+    grpo:
+      qwen_agentic_local: configs/training/grpo/qwen_agentic_local.yaml
+compatibility_aliases:
+  configs/mvp/tiny_craftext.yaml: configs/env/smoke/tiny_craftext.yaml
+  configs/mvp/qwen_craftext.yaml: configs/env/text/qwen_craftext.yaml
+  configs/manual/caged_wood_achievements_energy.yaml: configs/env/manual/caged_wood_achievements_energy.yaml
+  configs/benchmarks/craftext_tiny.yaml: configs/env/benchmarks/craftext_tiny.yaml
+  configs/benchmarks/craftext_full.yaml: configs/env/benchmarks/craftext_full.yaml
+  configs/benchmarks/caged_craftext_full.yaml: configs/env/benchmarks/caged_craftext_full.yaml
+  configs/generation/qwen_vllm_sync.yaml: configs/inference/vllm/qwen25_05b_sync.yaml
+  configs/generation/qwen_vllm_async.yaml: configs/inference/vllm/qwen25_05b_async.yaml
+  configs/topology/qwen_agentic_grpo_local.yaml: configs/tunix/topology/qwen_agentic_grpo_local.yaml
+  configs/topology/qwen_four_device_colocated.yaml: configs/tunix/topology/qwen_four_device_colocated.yaml
+  configs/topology/qwen_local_smoke.yaml: configs/tunix/topology/qwen_local_smoke.yaml
+  configs/grpo/qwen_agentic_local.yaml: configs/training/grpo/qwen_agentic_local.yaml

@@ -14,8 +14,8 @@ from tunix_craftext.inference import (
 )
 
 ROOT = Path(__file__).resolve().parents[2]
-SYNC_CONFIG = ROOT / "configs/generation/qwen_vllm_sync.yaml"
-ASYNC_CONFIG = ROOT / "configs/generation/qwen_vllm_async.yaml"
+SYNC_CONFIG = ROOT / "configs/inference/vllm/qwen25_05b_sync.yaml"
+ASYNC_CONFIG = ROOT / "configs/inference/vllm/qwen25_05b_async.yaml"
 
 
 def test_sync_generation_config_loads_engine_and_tunix_contract() -> None:
@@ -29,7 +29,7 @@ def test_sync_generation_config_loads_engine_and_tunix_contract() -> None:
     assert config.async_collection.max_in_flight == 1
 
     manifest = generation_config_to_manifest(config, path=SYNC_CONFIG)
-    assert manifest["path"].endswith("configs/generation/qwen_vllm_sync.yaml")
+    assert manifest["path"].endswith("configs/inference/vllm/qwen25_05b_sync.yaml")
     assert manifest["engine"]["tensor_parallel_size"] == 1
     assert manifest["tunix"]["rollout_vllm_model_version"] == "qwen2.5-0.5b"
 

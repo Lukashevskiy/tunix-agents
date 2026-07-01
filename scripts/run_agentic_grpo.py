@@ -65,14 +65,14 @@ def parse_args(arguments: Sequence[str] | None = None) -> argparse.Namespace:
         type=Path,
         help="Canonical Agentic GRPO profile; preferred over individual workload flags.",
     )
-    parser.add_argument("--config", type=Path, default=Path("configs/mvp/qwen_craftext.yaml"))
+    parser.add_argument("--config", type=Path, default=Path("configs/env/text/qwen_craftext.yaml"))
     parser.add_argument(
-        "--topology", type=Path, default=Path("configs/topology/qwen_agentic_grpo_local.yaml")
+        "--topology", type=Path, default=Path("configs/tunix/topology/qwen_agentic_grpo_local.yaml")
     )
     parser.add_argument(
         "--generation-config",
         type=Path,
-        default=Path("configs/generation/qwen_vllm_sync.yaml"),
+        default=Path("configs/inference/vllm/qwen25_05b_sync.yaml"),
         help="Declarative rollout generation config for sync/async backend selection.",
     )
     parser.add_argument(

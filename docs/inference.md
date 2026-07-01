@@ -162,7 +162,7 @@ from pathlib import Path
 from tunix_craftext.inference import load_generation_pipeline_config
 
 generation = load_generation_pipeline_config(
-    Path("configs/generation/qwen_vllm_sync.yaml")
+    Path("configs/inference/vllm/qwen25_05b_sync.yaml")
 )
 
 engine_profile = generation.profile
@@ -172,8 +172,8 @@ max_in_flight = generation.async_collection.max_in_flight
 
 Sync и async варианты имеют одинаковый payload contract, но разные execution knobs:
 
-- `configs/generation/qwen_vllm_sync.yaml` — deterministic ordered collector, one batch at a time.
-- `configs/generation/qwen_vllm_async.yaml` — bounded async collector and Tunix vLLM server mode.
+- `configs/inference/vllm/qwen25_05b_sync.yaml` — deterministic ordered collector, one batch at a time.
+- `configs/inference/vllm/qwen25_05b_async.yaml` — bounded async collector and Tunix vLLM server mode.
 
 GRPO profile ссылается на этот YAML через `generation_config`, а evidence manifest записывает
 его вместе с model/topology/workload provenance. Это делает rollout generation воспроизводимой
@@ -261,7 +261,7 @@ notebook path создаёт `vllm.LLM(...)` напрямую, а Tunix path к�
 make vllm-memory
 # или strict-вариант для CI / server readiness
 uv run python scripts/estimate_vllm_memory.py \
-  --config configs/generation/qwen_vllm_sync.yaml \
+  --config configs/inference/vllm/qwen25_05b_sync.yaml \
   --safety-margin-gib 1.0 \
   --strict
 ```
@@ -315,7 +315,7 @@ Warning вида
 1. В notebook сначала загрузить generation config и создать `VllmInferenceEngine`, затем делать
    тяжёлые JAX операции.
 2. Если warning уже появился — restart kernel; смена env после `fork()` не исправляет процесс.
-3. В `configs/generation/qwen_vllm_*.yaml` фиксируем
+3. В `configs/inference/vllm/qwen25_05b_*.yaml` фиксируем
    `engine.metadata.multiprocessing_method: spawn`.
 4. `VllmInferenceEngine` выставляет `VLLM_WORKER_MULTIPROC_METHOD=spawn` до импорта vLLM, если
    пользователь не задал `VLLM_WORKER_MULTIPROC_METHOD` явно.

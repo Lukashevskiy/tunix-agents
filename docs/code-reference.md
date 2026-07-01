@@ -34,7 +34,7 @@ from tunix_craftext.env.config import load_mvp_config
 from tunix_craftext.env.runtime import build_craftext_runtime
 
 root = Path.cwd()
-config = load_mvp_config(root / "configs/mvp/tiny_craftext.yaml")
+config = load_mvp_config(root / "configs/env/smoke/tiny_craftext.yaml")
 runtime = build_craftext_runtime(config)
 reset = runtime.adapter.reset(jax.random.PRNGKey(config.run.seed))
 
@@ -77,7 +77,7 @@ rollout = collect_batched_text_rollout(
 )
 replays = replays_from_batched_rollout(
     rollout,
-    config_path="configs/mvp/qwen_craftext.yaml",
+    config_path="configs/env/text/qwen_craftext.yaml",
     commit="notebook-or-script",
     backend="tunix-single-device:Qwen",
 )
@@ -244,7 +244,7 @@ from tunix_craftext.tunix import (
     load_ppo_gemma_assets,
 )
 
-topology = load_tunix_topology(Path("configs/topology/qwen_local_smoke.yaml"))
+topology = load_tunix_topology(Path("configs/tunix/topology/qwen_local_smoke.yaml"))
 spec = RLClusterWorkloadSpec(
     max_steps=10,
     eval_every_n_steps=5,

@@ -279,7 +279,7 @@ def profile_path_root(profile_path: Path, *, repo_root: Path | None = None) -> P
     """Return the base directory used for resolving relative profile paths.
 
     Agentic GRPO profiles intentionally keep paths in their original
-    provenance spelling, e.g. ``configs/generation/qwen_vllm_sync.yaml``.  All
+    provenance spelling, e.g. ``configs/inference/vllm/qwen25_05b_sync.yaml``.  All
     runtime consumers must resolve those paths against a stable repository root
     instead of the process cwd because notebooks, scripts and readiness checks
     are often launched from different directories.

@@ -18,7 +18,7 @@ def parse_args(arguments: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--profile",
         type=Path,
-        default=Path("configs/grpo/qwen_agentic_local.yaml"),
+        default=Path("configs/training/grpo/qwen_agentic_local.yaml"),
         help="Canonical Agentic GRPO profile to validate.",
     )
     parser.add_argument(

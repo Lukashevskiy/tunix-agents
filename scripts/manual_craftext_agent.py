@@ -15,7 +15,7 @@ import jax
 import jax.numpy as jnp
 
 SCHEMA = "tunix-craftext.manual-craftext-metrics/v1"
-DEFAULT_CONFIG = Path("configs/manual/caged_wood_achievements_energy.yaml")
+DEFAULT_CONFIG = Path("configs/env/manual/caged_wood_achievements_energy.yaml")
 BLOCK_SYMBOLS = {
     0: "?",
     1: "#",

@@ -1,0 +1,22 @@
+schema_version: 1
+run:
+  name: qwen-craftext-text-episode
+  seed: 47
+environment:
+  implementation: craftext
+  base_environment: Craftax-Classic-Pixels-v1
+  world_preset: tiny_box_oob_no_mobs
+  scenario_config: achievements/easy/one
+  instruction_index: 0
+  batch_size: 4
+  horizon: 50
+prompt:
+  renderer: megaprompts
+  template: base
+policy:
+  implementation: tunix
+  invalid_action: fallback
+artifacts:
+  save_trajectory: true
+  save_rendered_prompt: true
+  save_metrics: true

@@ -47,7 +47,7 @@ def test_rlcluster_config_binds_all_roles_and_static_batch_knobs() -> None:
         checkpoint_root_directory=ROOT / "artifacts/runs/test/checkpoints",
     )
     config = build_rlcluster_config(
-        load_tunix_topology(ROOT / "configs/topology/qwen_local_smoke.yaml"), spec
+        load_tunix_topology(ROOT / "configs/tunix/topology/qwen_local_smoke.yaml"), spec
     )
 
     assert {role.value for role in config.role_to_mesh} == {
@@ -77,7 +77,7 @@ def test_agentic_grpo_config_has_no_critic_and_recomputes_logprobs() -> None:
         num_generations=2,
     )
     config = build_agentic_grpo_cluster_config(
-        load_tunix_topology(ROOT / "configs/topology/qwen_agentic_grpo_local.yaml"), spec
+        load_tunix_topology(ROOT / "configs/tunix/topology/qwen_agentic_grpo_local.yaml"), spec
     )
 
     assert {role.value for role in config.role_to_mesh} == {"actor", "rollout", "reference"}
@@ -103,7 +103,7 @@ def test_agentic_grpo_config_accepts_strict_vllm_generation_contract() -> None:
     )
 
     config = build_agentic_grpo_cluster_config(
-        load_tunix_topology(ROOT / "configs/topology/qwen_agentic_grpo_local.yaml"),
+        load_tunix_topology(ROOT / "configs/tunix/topology/qwen_agentic_grpo_local.yaml"),
         spec,
         generation,
     )
@@ -134,7 +134,7 @@ def test_agentic_grpo_config_uses_local_snapshot_for_runtime_vllm_rollout() -> N
     )
 
     config = build_agentic_grpo_cluster_config(
-        load_tunix_topology(ROOT / "configs/topology/qwen_agentic_grpo_local.yaml"),
+        load_tunix_topology(ROOT / "configs/tunix/topology/qwen_agentic_grpo_local.yaml"),
         spec,
         generation,
     )
@@ -152,7 +152,7 @@ def test_agentic_grpo_rejects_unsupported_generation_count_or_critic_topology() 
         AgenticGrpoWorkloadSpec(10, 5, 4, 2, 1, 128, 8, 256, num_generations=1)
     with pytest.raises(RLClusterWorkloadError, match="must not declare a critic"):
         build_agentic_grpo_cluster_config(
-            load_tunix_topology(ROOT / "configs/topology/qwen_local_smoke.yaml"),
+            load_tunix_topology(ROOT / "configs/tunix/topology/qwen_local_smoke.yaml"),
             AgenticGrpoWorkloadSpec(10, 5, 4, 2, 1, 128, 8, 256),
         )
 
@@ -168,7 +168,7 @@ def test_agentic_grpo_assets_use_distinct_role_meshes_and_storage_dtypes(monkeyp
     monkeypatch.setattr(
         package_workload, "load_qwen_tokenizer", lambda snapshot: {"snapshot": snapshot}
     )
-    topology = load_tunix_topology(ROOT / "configs/topology/qwen_agentic_grpo_local.yaml")
+    topology = load_tunix_topology(ROOT / "configs/tunix/topology/qwen_agentic_grpo_local.yaml")
 
     assets = load_agentic_grpo_qwen_assets(ROOT / "artifacts/models/qwen25-05b-instruct", topology)
 
@@ -194,7 +194,7 @@ def test_ppo_qwen_assets_bind_actor_critic_reference_and_tokenizer(monkeypatch) 
         "create_value_critic_from_actor",
         lambda actor, *, seed=0: {"critic_from": actor, "seed": seed},
     )
-    topology = load_tunix_topology(ROOT / "configs/topology/qwen_local_smoke.yaml")
+    topology = load_tunix_topology(ROOT / "configs/tunix/topology/qwen_local_smoke.yaml")
 
     assets = load_ppo_qwen_assets(
         ROOT / "artifacts/models/qwen25-05b-instruct", topology, critic_seed=9
@@ -225,7 +225,7 @@ def test_ppo_gemma_assets_use_gemma_loader_and_native_critic(monkeypatch) -> Non
         "create_value_critic_from_actor",
         lambda actor, *, seed=0: {"critic_from": actor, "seed": seed},
     )
-    topology = load_tunix_topology(ROOT / "configs/topology/qwen_local_smoke.yaml")
+    topology = load_tunix_topology(ROOT / "configs/tunix/topology/qwen_local_smoke.yaml")
 
     assets = load_ppo_gemma_assets(ROOT / "artifacts/models/gemma3-270m-it", topology)
 
@@ -254,7 +254,7 @@ def test_ppo_cluster_uses_public_actor_critic_reference_constructor(monkeypatch)
             constructed.update(kwargs)
 
     monkeypatch.setattr("tunix.rl.rl_cluster.RLCluster", FakeCluster)
-    topology = load_tunix_topology(ROOT / "configs/topology/qwen_local_smoke.yaml")
+    topology = load_tunix_topology(ROOT / "configs/tunix/topology/qwen_local_smoke.yaml")
     assets = PpoModelAssets("actor", "critic", "reference", "tokenizer")
 
     cluster = build_ppo_cluster(
@@ -282,7 +282,7 @@ def test_agentic_grpo_cluster_uses_the_public_three_role_constructor(monkeypatch
             constructed.update(kwargs)
 
     monkeypatch.setattr("tunix.rl.rl_cluster.RLCluster", FakeCluster)
-    topology = load_tunix_topology(ROOT / "configs/topology/qwen_agentic_grpo_local.yaml")
+    topology = load_tunix_topology(ROOT / "configs/tunix/topology/qwen_agentic_grpo_local.yaml")
     assets = workload.AgenticGrpoModelAssets("actor", "reference", "tokenizer")
 
     cluster = build_agentic_grpo_cluster(

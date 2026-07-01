@@ -4,7 +4,7 @@
 `load_mvp_config()` строго валидирует canonical schema: ключи каждого раздела должны совпасть
 точно, а неизвестные/missing keys и неподходящие значения завершаются `ConfigError`.
 
-Первый контракт — `configs/mvp/tiny_craftext.yaml`:
+Первый контракт — `configs/env/smoke/tiny_craftext.yaml`:
 
 | Раздел | Смысл |
 | --- | --- |
@@ -14,11 +14,11 @@
 | `policy` | implementation и реакция на invalid action |
 | `artifacts` | trajectory, rendered prompt, metrics для replay/provenance |
 
-`configs/mvp/qwen_craftext.yaml` — соответствующий профиль запуска локального Qwen Host-side.
+`configs/env/text/qwen_craftext.yaml` — соответствующий профиль запуска локального Qwen Host-side.
 Он использует реальный шаблон `MegaPrompts base`, явную политику `tunix` и observable `NOOP`
 fallback. Он запускается через `scripts/run_text_episode.py`; веса передаются как явный локальный input.
 
-`configs/manual/caged_wood_achievements_energy.yaml` — ручной operator профиль для полного
+`configs/env/manual/caged_wood_achievements_energy.yaml` — ручной operator профиль для полного
 Caged CrafText сценария. Он соединяет scenario
 `budget/achievements/easy/wood_achievements` с world preset `caged_craftext_play`: сам scenario
 задаёт wood-achievement instruction, а preset добавляет boxed world, `player_energy` и
@@ -43,7 +43,7 @@ uv sync --extra envs --extra prompts
 ## Agentic GRPO profile
 
 Production-facing training больше не должен стартовать из россыпи флагов. Первый canonical
-profile — `configs/grpo/qwen_agentic_local.yaml`. Он связывает:
+profile — `configs/training/grpo/qwen_agentic_local.yaml`. Он связывает:
 
 | Раздел | Смысл |
 | --- | --- |
@@ -60,7 +60,7 @@ profile — `configs/grpo/qwen_agentic_local.yaml`. Он связывает:
 
 ```bash
 uv run python scripts/run_agentic_grpo.py \
-  --profile configs/grpo/qwen_agentic_local.yaml
+  --profile configs/training/grpo/qwen_agentic_local.yaml
 ```
 
 runner сначала пишет `evidence.provenance`: git revision, SHA256 profile, SHA256 vendor
@@ -72,7 +72,7 @@ package versions. Только после этого начинается accele
 `artifacts/...`), но runtime обязан резолвить их через `resolve_profile_path()` от корня
 репозитория/profile. Это защищает notebooks, `server_readiness` и `run_agentic_grpo.py`
 от ошибок текущей директории: ячейка может запускаться из `/workspace`, а
-`generation_config: configs/generation/qwen_vllm_sync.yaml` всё равно должен читаться из
+`generation_config: configs/inference/vllm/qwen25_05b_sync.yaml` всё равно должен читаться из
 репозитория.
 
 ## Generation pipeline config
@@ -85,8 +85,8 @@ Canonical configs:
 
 | Config | Назначение |
 | --- | --- |
-| `configs/generation/qwen_vllm_sync.yaml` | один ordered batch за раз; базовый воспроизводимый vLLM rollout smoke |
-| `configs/generation/qwen_vllm_async.yaml` | bounded async collection с `max_in_flight` и Tunix vLLM server/async scheduling knobs |
+| `configs/inference/vllm/qwen25_05b_sync.yaml` | один ordered batch за раз; базовый воспроизводимый vLLM rollout smoke |
+| `configs/inference/vllm/qwen25_05b_async.yaml` | bounded async collection с `max_in_flight` и Tunix vLLM server/async scheduling knobs |
 
 Схема состоит из трёх блоков:
 
@@ -100,7 +100,7 @@ Canonical configs:
 
 ```bash
 uv run python scripts/run_agentic_grpo.py \
-  --profile configs/grpo/qwen_agentic_local.yaml \
+  --profile configs/training/grpo/qwen_agentic_local.yaml \
   --dry-run
 ```
 

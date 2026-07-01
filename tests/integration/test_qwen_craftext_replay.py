@@ -30,7 +30,7 @@ def test_local_qwen_completion_records_real_craftext_fallback_replay() -> None:
         actions=runtime.actions,
         horizon=1,
         seed=config.run.seed,
-        config_path="configs/mvp/tiny_craftext.yaml",
+        config_path="configs/env/smoke/tiny_craftext.yaml",
         commit="test",
         max_new_tokens=8,
         invalid_action="fallback",

@@ -1,8 +1,1 @@
-schema_version: 1
-name: qwen-local-single-device
-axis_name: data
-roles:
-  actor: [0]
-  rollout: [0]
-  critic: [0]
-  reference: [0]
+../tunix/topology/qwen_local_smoke.yaml

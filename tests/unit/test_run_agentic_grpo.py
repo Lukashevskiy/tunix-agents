@@ -33,7 +33,7 @@ def test_runner_arguments_keep_model_and_topology_explicit() -> None:
     assert args.kv_cache_size == 2048
     assert not args.allow_cpu_smoke
     assert args.snapshot == Path("artifacts/models/qwen25-05b-instruct")
-    assert args.generation_config == Path("configs/generation/qwen_vllm_sync.yaml")
+    assert args.generation_config == Path("configs/inference/vllm/qwen25_05b_sync.yaml")
     assert args.dry_run
     assert args.task_source == "craftext-instructions"
     assert args.task_sampling == "cycle"
@@ -49,7 +49,7 @@ def test_runner_exposes_scripted_grpo_smoke_without_model_assets() -> None:
 def test_craftext_task_batches_include_instruction_indices_from_runtime() -> None:
     batches = list(
         runner.craftext_task_batches(
-            config_path=ROOT / "configs/mvp/qwen_craftext.yaml",
+            config_path=ROOT / "configs/env/text/qwen_craftext.yaml",
             seed=7,
             batch_size=2,
             count=1,

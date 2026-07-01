@@ -1,0 +1,22 @@
+schema_version: 1
+run:
+  name: manual-caged-wood-achievements-energy
+  seed: 7
+environment:
+  implementation: caged-craftext
+  base_environment: Craftax-Classic-Pixels-v1
+  world_preset: caged_craftext_play
+  scenario_config: budget/achievements/easy/wood_achievements
+  instruction_index: 0
+  batch_size: 1
+  horizon: 450
+prompt:
+  renderer: megaprompts
+  template: base
+policy:
+  implementation: scripted
+  invalid_action: error
+artifacts:
+  save_trajectory: true
+  save_rendered_prompt: true
+  save_metrics: true

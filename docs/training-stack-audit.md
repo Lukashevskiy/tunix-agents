@@ -22,7 +22,7 @@ RLCluster обучения.
 | --- | --- | --- | --- |
 | Agentic environment transport | `env/agentic_craftext.py`, `env/prompts.py`, `env/text_policy.py`, `env/runtime.py`, `adapters/craftext.py` | production boundary | Оставить как общий транспорт для GRPO/PPO/PPO-Lag/CPO. |
 | Tunix topology/workload | `tunix/topology.py`, `tunix/rlcluster_workload.py`, `tunix/preflight.py`, `grpo_profile.py` | production boundary | Уже вынесено в semantic package `tunix_craftext.tunix`; старые root modules остались thin compatibility shims. |
-| Agentic GRPO | `training/agentic_grpo_smoke.py`, `scripts/run_agentic_grpo.py`, `configs/grpo/qwen_agentic_local.yaml` | текущий golden path до heavy update | Довести до real one-update на accelerator/local snapshot. |
+| Agentic GRPO | `training/agentic_grpo_smoke.py`, `scripts/run_agentic_grpo.py`, `configs/training/grpo/qwen_agentic_local.yaml` | текущий golden path до heavy update | Довести до real one-update на accelerator/local snapshot. |
 | Agentic PPO | `training/agentic_ppo.py`, `tests/unit/test_agentic_ppo.py` | current extension lane | Добавить hardware-gated one-update actor+critic, затем cost critic для PPO-Lag/CPO. |
 | Tunix LLM backend | `models/tunix_adapter.py`, `models/tunix_actor.py`, `models/llm_actor.py`, `models/profile.py` | production/research bridge | Следующий split внутри `models`: loaders, sampler backend, scoring и profiles. |
 | Local PPO mechanics | `research/algorithms.py`, `research/algorithm_registry.py`, `research/learner.py`, `research/llm_ppo.py`, `checkpoints.py` | research/smoke | Уже вынесено из production namespace; старые top-level пути оставлены как thin compatibility shims. |
@@ -34,7 +34,7 @@ RLCluster обучения.
 
 GRPO реализуется не через локальный PPO loss, а через upstream Tunix Agentic RL контур:
 
-1. Profile `configs/grpo/qwen_agentic_local.yaml` задаёт модель, topology, workload и evidence paths.
+1. Profile `configs/training/grpo/qwen_agentic_local.yaml` задаёт модель, topology, workload и evidence paths.
 2. `grpo_profile.py` валидирует profile, пишет hash/provenance/package evidence.
 3. `tunix/topology.py` объявляет роли `actor`, `rollout`, `reference`; critic намеренно отсутствует.
 4. `tunix/rlcluster_workload.py::build_agentic_grpo_cluster_config()` строит Tunix `ClusterConfig` с
@@ -143,8 +143,8 @@ host-orchestrated rollout перед PPO update:
 
 - `pytest tests/unit/test_agentic_ppo.py tests/unit/test_rlcluster_workload.py`
 - `pytest tests/unit/test_grpo_profile.py tests/unit/test_run_agentic_grpo.py`
-- `uv run python scripts/run_agentic_grpo.py --profile configs/grpo/qwen_agentic_local.yaml --dry-run`
-- `uv run python scripts/run_agentic_grpo.py --profile configs/grpo/qwen_agentic_local.yaml --scripted-smoke`
+- `uv run python scripts/run_agentic_grpo.py --profile configs/training/grpo/qwen_agentic_local.yaml --dry-run`
+- `uv run python scripts/run_agentic_grpo.py --profile configs/training/grpo/qwen_agentic_local.yaml --scripted-smoke`
 - hardware/local snapshot gate: one Agentic GRPO update changes actor checkpoint;
 - hardware/local snapshot gate: one Agentic PPO update changes actor and critic checkpoints;
 - resume gate: next update after restore matches continuous run on fixed fixture.

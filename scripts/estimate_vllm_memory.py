@@ -18,7 +18,7 @@ def parse_args(arguments: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--config",
         type=Path,
-        default=Path("configs/generation/qwen_vllm_sync.yaml"),
+        default=Path("configs/inference/vllm/qwen25_05b_sync.yaml"),
         help="Strict generation YAML config.",
     )
     parser.add_argument(

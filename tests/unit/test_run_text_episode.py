@@ -18,7 +18,7 @@ SPEC.loader.exec_module(runner)
 
 def test_episode_metrics_retains_invalid_action_and_token_evidence() -> None:
     artifact = ReplayArtifact(
-        "configs/mvp/qwen_craftext.yaml",
+        "configs/env/text/qwen_craftext.yaml",
         "abc",
         "tunix-single-device:Qwen",
         (
@@ -54,4 +54,4 @@ def test_parse_args_exposes_explicit_artifact_paths() -> None:
 
     assert args.horizon == 2
     assert args.cache_size == 4096
-    assert args.config == Path("configs/mvp/qwen_craftext.yaml")
+    assert args.config == Path("configs/env/text/qwen_craftext.yaml")

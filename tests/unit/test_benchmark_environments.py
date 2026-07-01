@@ -76,7 +76,7 @@ def test_isolated_point_records_native_child_failure(monkeypatch, tmp_path: Path
     )
 
     point = benchmark.isolated_point(
-        Path("configs/benchmarks/craftext_full.yaml"),
+        Path("configs/env/benchmarks/craftext_full.yaml"),
         batch_size=32,
         horizon=512,
         repeats=20,

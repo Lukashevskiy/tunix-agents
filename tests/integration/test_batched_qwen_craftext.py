@@ -70,7 +70,7 @@ def test_real_qwen_collects_two_env_two_step_rollout_and_exports_replays() -> No
 
     replays = replays_from_batched_rollout(
         rollout,
-        config_path="configs/mvp/qwen_craftext.yaml",
+        config_path="configs/env/text/qwen_craftext.yaml",
         commit="integration",
         backend="tunix-single-device:Qwen",
     )

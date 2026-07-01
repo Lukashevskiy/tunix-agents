@@ -68,7 +68,7 @@ def write_json(path: Path, payload: dict[str, object]) -> None:
 def parse_args(arguments: Sequence[str] | None = None) -> argparse.Namespace:
     """Parse one explicit episode run; no model download is implicit."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--config", type=Path, default=Path("configs/mvp/qwen_craftext.yaml"))
+    parser.add_argument("--config", type=Path, default=Path("configs/env/text/qwen_craftext.yaml"))
     parser.add_argument(
         "--snapshot", type=Path, default=Path("artifacts/models/qwen25-05b-instruct")
     )

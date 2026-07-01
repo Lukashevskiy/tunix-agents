@@ -115,8 +115,8 @@ def test_agentic_task_and_environment_kwargs_are_serializable() -> None:
     task = agentic_task(goal="collect wood", seed=7, horizon=3)
 
     assert task == {"goal": "collect wood", "seed": 7, "horizon": 3}
-    assert agentic_environment_kwargs("configs/mvp/qwen_craftext.yaml") == {
-        "config_path": "configs/mvp/qwen_craftext.yaml"
+    assert agentic_environment_kwargs("configs/env/text/qwen_craftext.yaml") == {
+        "config_path": "configs/env/text/qwen_craftext.yaml"
     }
 
 
@@ -290,7 +290,7 @@ def test_grouped_advantages_are_normalized_inside_one_grpo_task_group() -> None:
 def test_scripted_grpo_sync_wrapper_rejects_running_notebook_loop() -> None:
     async def call_sync_wrapper_inside_loop() -> None:
         collect_scripted_grpo_group_sync(
-            config_path=ROOT / "configs/mvp/qwen_craftext.yaml",
+            config_path=ROOT / "configs/env/text/qwen_craftext.yaml",
             goal="collect wood",
             seed=0,
             group_id=0,

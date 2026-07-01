@@ -104,7 +104,7 @@ catalogue и deterministic initial environment state.
 - [ ] Перенести `run_agentic_grpo.py` в use-case слой и оставить script wrapper.
 - [ ] Затем мигрировать env/prompt/rollout/benchmark/docs/audit команды.
 
-**Gate:** `tunix-craftext profile validate configs/grpo/qwen_agentic_local.yaml` и
+**Gate:** `tunix-craftext profile validate configs/training/grpo/qwen_agentic_local.yaml` и
 `tunix-craftext verify golden` проходят на CPU без downloads и accelerator allocation.
 
 ## 0.7. External PPO Audit And Hybrid Rollout Boundary

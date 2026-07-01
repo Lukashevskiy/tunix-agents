@@ -94,7 +94,7 @@ lanes: эти доказательства принадлежат отдельн
 roadmap.
 
 Agentic GRPO profile относится к CPU quality gate: unit tests обязаны доказывать, что
-`configs/grpo/qwen_agentic_local.yaml` валиден, unknown keys отклоняются, profile/vendor SHA256
+`configs/training/grpo/qwen_agentic_local.yaml` валиден, unknown keys отклоняются, profile/vendor SHA256
 и package versions попадают в run manifest, а `run_agentic_grpo.py --profile ...` пишет
 provenance до любой попытки загрузить Qwen weights. Это минимальная защита от “непонятного”
 accelerator run.

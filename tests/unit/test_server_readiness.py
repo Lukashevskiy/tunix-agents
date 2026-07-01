@@ -12,7 +12,7 @@ from tunix_craftext.artifacts.observability import read_jsonl
 from tunix_craftext.training.server_readiness import check_server_readiness
 
 ROOT = Path(__file__).resolve().parents[2]
-PROFILE = ROOT / "configs/grpo/qwen_agentic_local.yaml"
+PROFILE = ROOT / "configs/training/grpo/qwen_agentic_local.yaml"
 
 
 def test_server_readiness_writes_observability_evidence(tmp_path: Path) -> None:
@@ -62,7 +62,7 @@ def test_server_readiness_resolves_profile_paths_outside_repo_cwd(
 
     assert Path(report.evidence["provenance"]).is_file()
     manifest = json.loads(Path(report.evidence["provenance"]).read_text(encoding="utf-8"))
-    assert manifest["inputs"]["generation_config"] == "configs/generation/qwen_vllm_sync.yaml"
+    assert manifest["inputs"]["generation_config"] == "configs/inference/vllm/qwen25_05b_sync.yaml"
     assert manifest["generation"]["engine"]["backend"] == "vllm-offload"
     assert manifest["inputs"]["vendor_manifest_sha256"] != "missing"
 
@@ -116,9 +116,9 @@ run:
   name: readiness-missing-snapshot
   seed: 7
   goal: Use craftext_step.
-environment_config: {ROOT / "configs/mvp/qwen_craftext.yaml"}
-topology_config: {ROOT / "configs/topology/qwen_agentic_grpo_local.yaml"}
-generation_config: {ROOT / "configs/generation/qwen_vllm_sync.yaml"}
+environment_config: {ROOT / "configs/env/text/qwen_craftext.yaml"}
+topology_config: {ROOT / "configs/tunix/topology/qwen_agentic_grpo_local.yaml"}
+generation_config: {ROOT / "configs/inference/vllm/qwen25_05b_sync.yaml"}
 model:
   model_id: Qwen/Qwen2.5-0.5B-Instruct
   snapshot: {tmp_path / "definitely-missing-model"}

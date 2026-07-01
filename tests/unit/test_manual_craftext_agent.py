@@ -102,7 +102,7 @@ def test_manual_state_text_renders_concrete_ascii_map_and_player_state() -> None
 
 def test_manual_episode_metrics_summarizes_replay() -> None:
     artifact = ReplayArtifact(
-        "configs/mvp/qwen_craftext.yaml",
+        "configs/env/text/qwen_craftext.yaml",
         "abc",
         "manual-human",
         (
@@ -123,7 +123,7 @@ def test_manual_episode_metrics_summarizes_replay() -> None:
 def test_parse_args_exposes_manual_artifact_paths() -> None:
     args = runner.parse_args(["--horizon", "3", "--seed", "9", "--show-full-prompt"])
 
-    assert args.config == Path("configs/manual/caged_wood_achievements_energy.yaml")
+    assert args.config == Path("configs/env/manual/caged_wood_achievements_energy.yaml")
     assert args.horizon == 3
     assert args.seed == 9
     assert args.show_full_prompt is True

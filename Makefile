@@ -21,7 +21,7 @@ perf:
 	PYTHONPATH=src $(PYTHON) -m pytest -m performance --benchmark-only --benchmark-json=$(PERF_ARTIFACT)
 
 perf-env:
-	PYTHONPATH=src $(PYTHON) scripts/benchmark_environments.py --configs configs/benchmarks/craftext_full.yaml configs/benchmarks/craftext_tiny.yaml configs/benchmarks/caged_craftext_full.yaml --output artifacts/benchmarks/environment-matrix.json
+	PYTHONPATH=src $(PYTHON) scripts/benchmark_environments.py --configs configs/env/benchmarks/craftext_full.yaml configs/env/benchmarks/craftext_tiny.yaml configs/env/benchmarks/caged_craftext_full.yaml --output artifacts/benchmarks/environment-matrix.json
 
 perf-text:
 	PYTHONPATH=src $(PYTHON) scripts/benchmark_text_pipeline.py --isolate-runs --output artifacts/benchmarks/text-pipeline-latest.json
@@ -47,7 +47,7 @@ accelerator-stack:
 	PYTHONPATH=src $(PYTHON) scripts/inspect_accelerator_stack.py --strict
 
 vllm-memory:
-	PYTHONPATH=src $(PYTHON) scripts/estimate_vllm_memory.py --config configs/generation/qwen_vllm_sync.yaml
+	PYTHONPATH=src $(PYTHON) scripts/estimate_vllm_memory.py --config configs/inference/vllm/qwen25_05b_sync.yaml
 
 verify: audit test integration sync-tasks api-docs
 	@echo "Verified audit, unit/integration tests, task-board sync, MkDocs and Sphinx API documentation."
