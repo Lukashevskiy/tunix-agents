@@ -100,8 +100,11 @@ warmed median/min `phase_totals_ms()` и сохраняет
 diagnostics: JAX env reset/step. Notebook должен начинаться с выбора `JAX_PLATFORMS` до импорта
 JAX, сначала делает action terminal sweep, чтобы не спутать обычный rollout с reset storm, затем
 сравнивает `vmap_only`, `jit(vmap)` на default backend и explicit
-`EnvironmentDevicePolicy(backend=jax.default_backend())`. Для CPU env рядом с vLLM GPU запускайте
-kernel с `JAX_PLATFORMS=cpu`; для GPU env перезапустите kernel с CUDA-enabled JAX и сравните
+`EnvironmentDevicePolicy(backend=jax.default_backend())`, а также recommended CPU sidecar policy
+через `cpu_environment_device_policy()`. Этот helper разворачивается в
+`EnvironmentDevicePolicy(backend="cpu", jit_reset=True, jit_step=True, place_inputs=True,
+snapshot_prompt_inputs=True)`. Для CPU env рядом с vLLM GPU запускайте
+kernel с `JAX_PLATFORMS=cpu` до импорта JAX; для GPU env перезапустите kernel с CUDA-enabled JAX и сравните
 `artifacts/benchmarks/env-device-policy-latest.json`.
 
 `21_sync_vllm_grpo_learning.ipynb` — полный server runbook для Agentic GRPO learning:
@@ -110,6 +113,13 @@ Tunix topology preflight, Qwen actor/reference loading, `RLCluster` с vLLM sync
 rollout contract, `GRPOLearner.train(...)`, checkpoint artifact reference и JSONL метрики.
 В отличие от smoke notebooks, эта тетрадка реально обновляет actor weights и требует локальный
 Qwen snapshot, CUDA-ready runtime, Tunix и vLLM.
+
+Placement rule из rollout profiling остаётся важным: для standalone batched rollout рядом с
+vLLM держите environment lane на CPU через `cpu_environment_device_policy()`, а
+MegaPrompts/request preparation ускоряйте `HostBatchPolicy(prompt_workers=...)`. В Agentic
+GRPO notebook не выставляйте `JAX_PLATFORMS=cpu` внутри kernel, потому что Tunix actor/reference
+и role meshes должны видеть accelerator; CPU env/device-policy эксперименты запускаются
+отдельным процессом/kernel до импорта JAX.
 
 Тот же путь доступен вне Jupyter и сохраняет как raw replay, так и summary metrics:
 

@@ -60,3 +60,33 @@ def test_batched_qwen_ppo_notebook_handles_fallback_only_evidence() -> None:
     assert "actor_loss_tokens = int(jnp.sum(hybrid_step.actor_loss_token_mask))" in source
     assert "if actor_loss_tokens:" in source
     assert "fallback-only evidence; actor loss skipped" in source
+
+
+def test_sync_vllm_grpo_notebook_uses_profile_path_and_placement_contracts() -> None:
+    """Notebook 21 should stay aligned with profile path and rollout placement policy."""
+    notebook = json.loads(
+        (NOTEBOOKS / "21_sync_vllm_grpo_learning.ipynb").read_text(encoding="utf-8")
+    )
+    source = "".join("".join(cell["source"]) for cell in notebook["cells"])
+
+    assert "resolve_profile_path" in source
+    assert "ROOT / profile." not in source
+    assert "EnvironmentDevicePolicy" in source
+    assert "HostBatchPolicy" in source
+    assert "JAX_PLATFORMS=cpu" in source
+
+
+def test_rollout_notebooks_pin_cpu_env_sidecar_policy() -> None:
+    """Rollout profiling examples should remember the explicit CPU env policy."""
+    sync_notebook = json.loads(
+        (NOTEBOOKS / "17_sync_vllm_craftext_rollout.ipynb").read_text(encoding="utf-8")
+    )
+    device_notebook = json.loads(
+        (NOTEBOOKS / "20_env_device_policy_benchmark.ipynb").read_text(encoding="utf-8")
+    )
+    sync_source = "".join("".join(cell["source"]) for cell in sync_notebook["cells"])
+    device_source = "".join("".join(cell["source"]) for cell in device_notebook["cells"])
+
+    assert "cpu_environment_device_policy()" in sync_source
+    assert "explicit_cpu_sidecar" in device_source
+    assert "cpu_environment_device_policy()" in device_source

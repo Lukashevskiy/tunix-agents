@@ -29,6 +29,9 @@ def test_server_readiness_writes_observability_evidence(tmp_path: Path) -> None:
         "checkpoint_evidence",
         "observability",
     }
+    preflight = next(check for check in report.checks if check.name == "tunix_preflight")
+    assert preflight.status == "pass"
+    assert preflight.details == {"rollout_backend": "vllm-offload"}
     assert Path(report.evidence["provenance"]).is_file()
     assert Path(report.evidence["validation_artifact"]).is_file()
     assert Path(report.evidence["checkpoint_probe"]).is_dir()

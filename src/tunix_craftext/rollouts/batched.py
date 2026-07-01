@@ -5,9 +5,9 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from functools import lru_cache
 from time import perf_counter
 from typing import Literal, cast
-from functools import lru_cache
 
 import jax
 import jax.numpy as jnp
@@ -62,6 +62,29 @@ class HostBatchPolicy:
         """Validate host batching knobs early."""
         if self.prompt_workers <= 0:
             raise ValueError("prompt_workers must be positive")
+
+
+def cpu_environment_device_policy(*, device_index: int = 0) -> EnvironmentDevicePolicy:
+    """Return the recommended explicit CPU policy for env rollout beside vLLM.
+
+    The common one-GPU setup should reserve HBM for vLLM/model weights and run
+    the comparatively light Craftax/CrafText env lane on CPU.  Keeping these
+    knobs explicit avoids accidental regressions where reset/step stop being
+    compiled, inputs are left on an implicit device, or prompt rendering keeps
+    reading device arrays without a host snapshot.
+
+    :param device_index: CPU device index visible to JAX.
+    :returns: Environment placement policy with jitted reset/step and host
+        prompt snapshots enabled.
+    """
+    return EnvironmentDevicePolicy(
+        backend="cpu",
+        device_index=device_index,
+        jit_reset=True,
+        jit_step=True,
+        place_inputs=True,
+        snapshot_prompt_inputs=True,
+    )
 
 
 @dataclass(frozen=True)

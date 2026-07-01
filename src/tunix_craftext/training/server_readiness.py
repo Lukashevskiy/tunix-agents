@@ -28,6 +28,7 @@ from ..artifacts.observability import (
     validation_trajectory_artifact,
 )
 from ..artifacts.replay import ReplayArtifact, ReplayStep, save_replay
+from ..inference import GenerationPipelineConfig, load_generation_pipeline_config
 from ..tunix import (
     RLClusterWorkloadError,
     load_tunix_topology,
@@ -132,6 +133,7 @@ def check_server_readiness(
     output_dir = run_dir or resolve_profile_path(profile_path, profile.evidence.root)
     environment_config = resolve_profile_path(profile_path, profile.environment_config)
     topology_config = resolve_profile_path(profile_path, profile.topology_config)
+    generation_config = resolve_profile_path(profile_path, profile.generation_config)
     model_snapshot = resolve_profile_path(profile_path, profile.model.snapshot)
     logger = JsonlRunLogger(output_dir)
     checks: list[ReadinessCheck] = []
@@ -145,20 +147,32 @@ def check_server_readiness(
     checks.append(ReadinessCheck("profile", "pass", "GRPO profile loaded and provenance written"))
 
     topology = load_tunix_topology(topology_config)
+    generation = load_generation_pipeline_config(generation_config)
+    rollout_backend = _rollout_backend_for_generation(generation)
     try:
-        validate_agentic_grpo_preflight(topology, profile.workload, pinned_qwen_tensor_shape())
+        validate_agentic_grpo_preflight(
+            topology,
+            profile.workload,
+            pinned_qwen_tensor_shape(),
+            rollout_backend=rollout_backend,
+        )
     except RLClusterWorkloadError as error:
         checks.append(
             ReadinessCheck(
                 "tunix_preflight",
                 "fail",
-                "Real Tunix Qwen vanilla rollout preflight failed",
-                {"error": str(error)},
+                f"Real Tunix Qwen {rollout_backend} rollout preflight failed",
+                {"error": str(error), "rollout_backend": rollout_backend},
             )
         )
     else:
         checks.append(
-            ReadinessCheck("tunix_preflight", "pass", "Tunix topology/workload preflight passed")
+            ReadinessCheck(
+                "tunix_preflight",
+                "pass",
+                f"Tunix topology/workload preflight passed for {rollout_backend}",
+                {"rollout_backend": rollout_backend},
+            )
         )
 
     backend = jax.default_backend()
@@ -353,3 +367,12 @@ def _write_scripted_validation_probe(
     save_scripted_grpo_smoke(path, results)
     first = results[0]
     return path, first.total_reward, max(len(first.rewards), 1)
+
+
+def _rollout_backend_for_generation(generation: GenerationPipelineConfig) -> str:
+    """Map the strict generation config to the static preflight backend lane."""
+    if generation.profile.backend == "vllm-offload" or generation.tunix.engine == "vllm":
+        return "vllm-offload"
+    if generation.tunix.engine == "sglang_jax":
+        return "sglang-jax"
+    return "vanilla-jax-sharded"

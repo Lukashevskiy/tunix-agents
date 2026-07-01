@@ -19,6 +19,7 @@ from tunix_craftext.rollouts.batched import (
     collect_batched_text_decision,
     collect_batched_text_rollout,
     collect_batched_text_rollout_profiled,
+    cpu_environment_device_policy,
     replays_from_batched_rollout,
 )
 
@@ -141,6 +142,18 @@ def test_host_batch_policy_rejects_non_positive_prompt_workers() -> None:
     """Thread policy fails early instead of silently falling back to serial render."""
     with pytest.raises(ValueError, match="prompt_workers must be positive"):
         HostBatchPolicy(prompt_workers=0)
+
+
+def test_cpu_environment_device_policy_pins_recommended_vllm_sidecar_knobs() -> None:
+    """CPU env lane should keep reset/step compiled and prompt snapshots host-visible."""
+    policy = cpu_environment_device_policy()
+
+    assert policy.backend == "cpu"
+    assert policy.device_index == 0
+    assert policy.jit_reset is True
+    assert policy.jit_step is True
+    assert policy.place_inputs is True
+    assert policy.snapshot_prompt_inputs is True
 
 
 def test_batched_decision_can_place_and_jit_environment_step_on_selected_device() -> None:

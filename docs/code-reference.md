@@ -89,10 +89,11 @@ replays = replays_from_batched_rollout(
 `masked_action=1` и `fallback_used=True` при включённом fallback.
 
 Для colocated single-GPU smoke/benchmark можно явно закрепить JAX-среду на том же accelerator,
-что и локальную Tunix-модель:
+что и локальную Tunix-модель, но для vLLM sidecar чаще полезнее оставить GPU под inference и
+держать env lane на CPU:
 
 ```python
-from tunix_craftext.rollouts.batched import EnvironmentDevicePolicy
+from tunix_craftext.rollouts.batched import EnvironmentDevicePolicy, cpu_environment_device_policy
 
 rollout = collect_batched_text_rollout(
     runtime.adapter,
@@ -106,7 +107,7 @@ rollout = collect_batched_text_rollout(
     max_new_tokens=8,
     invalid_action="fallback",
     fallback_action_id=fallback_action_id,
-    device_policy=EnvironmentDevicePolicy(backend="cuda", device_index=0),
+    device_policy=cpu_environment_device_policy(),
 )
 ```
 

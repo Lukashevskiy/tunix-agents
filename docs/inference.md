@@ -381,10 +381,11 @@ generation. Дальше смотрите, куда ушло время: `prompt
 granularity.
 
 Если именно `prompt_render_ms` доминирует, можно включить opt-in host threading для построения
-промтов перед отправкой batch в vLLM:
+промтов перед отправкой batch в vLLM. Если rollout живёт рядом с vLLM на одной GPU, env lane
+обычно выгоднее держать на CPU через `cpu_environment_device_policy()`:
 
 ```python
-from tunix_craftext.rollouts.batched import HostBatchPolicy
+from tunix_craftext.rollouts.batched import HostBatchPolicy, cpu_environment_device_policy
 
 profiled = collect_batched_text_rollout_profiled(
     runtime.adapter,
@@ -399,6 +400,7 @@ profiled = collect_batched_text_rollout_profiled(
     invalid_action="fallback",
     fallback_action_id=runtime.actions.index_of("NOOP"),
     host_batch_policy=HostBatchPolicy(prompt_workers=4),
+    device_policy=cpu_environment_device_policy(),
 )
 ```
 
@@ -408,11 +410,16 @@ env rows остаются сопоставимыми. Начинайте с `pro
 время не падает, значит bottleneck, скорее всего, не в prompt rendering, а в request lifecycle,
 decode/dialog bookkeeping или слишком мелкой granularity одного sync batch.
 
+`cpu_environment_device_policy()` раскрывается в
+`EnvironmentDevicePolicy(backend="cpu", jit_reset=True, jit_step=True, place_inputs=True,
+snapshot_prompt_inputs=True)`: reset/step остаются `jit(vmap(...))`, inputs явно попадают на CPU
+env device, а prompt renderer получает host snapshot вместо ленивого чтения device arrays.
+
 Если `environment_step_ms`/`reset_ms` на порядки больше `llm_batch_ms`, это уже не vLLM:
 смотрите per-step timings в notebook 17. Один огромный первый step обычно означает JAX/XLA
 compile warmup; огромный каждый step означает, что env step/reset пересобирается или получает
 динамический shape/static payload. Rollout collector создаёт `vmap/jit(step)` и `vmap/jit(reset)`
-один раз на rollout, чтобы не пересоздавать compiled boundary внутри horizon loop. После
+один раз на rollout, чтобы не пересоздавать compiled boundary внутри horizon loop.
 первичного step collector также пропускает full-batch reset, если в batch нет
 `terminated/truncated`; это убирает ненужный `reset_ms` из steady-state rollout. Если
 `reset_ms` всё равно высокий, проверьте `profiled.event_totals()` и per-step
