@@ -452,25 +452,34 @@ def _collect_batched_text_rollout_impl(
             _timing_sink=decision_timings.append if profile else None,
         )
         finished = jnp.logical_or(decision.transition.terminated, decision.transition.truncated)
-        reset_started_at = perf_counter() if profile else 0.0
-        fresh = batched_reset(reset_keys)
-        if profile:
-            jax.block_until_ready(fresh.state)
-        reset_ms = (perf_counter() - reset_started_at) * 1000.0 if profile else 0.0
-        replace_started_at = perf_counter() if profile else 0.0
-        state = _replace_finished(decision.transition.state, fresh.state, finished)
-        action_mask = cast(
-            jax.Array,
-            _replace_finished(decision.transition.action_mask, fresh.action_mask, finished),
-        )
-        if profile:
-            action_mask.block_until_ready()
-        replace_finished_ms = (
-            (perf_counter() - replace_started_at) * 1000.0 if profile else 0.0
-        )
+        finished_host = np.asarray(jax.device_get(finished), dtype=bool)
+        if bool(np.any(finished_host)):
+            reset_started_at = perf_counter() if profile else 0.0
+            fresh = batched_reset(reset_keys)
+            if profile:
+                jax.block_until_ready(fresh.state)
+            reset_ms = (perf_counter() - reset_started_at) * 1000.0 if profile else 0.0
+            replace_started_at = perf_counter() if profile else 0.0
+            state = _replace_finished(decision.transition.state, fresh.state, finished)
+            action_mask = cast(
+                jax.Array,
+                _replace_finished(decision.transition.action_mask, fresh.action_mask, finished),
+            )
+            if profile:
+                action_mask.block_until_ready()
+            replace_finished_ms = (
+                (perf_counter() - replace_started_at) * 1000.0 if profile else 0.0
+            )
+        else:
+            state = decision.transition.state
+            action_mask = decision.transition.action_mask
+            reset_ms = 0.0
+            replace_finished_ms = 0.0
         dialog_started_at = perf_counter() if profile else 0.0
         dialogs = tuple(
-            () if bool(finished[index]) else (*dialogs[index], decision.responses[index].raw_text)
+            ()
+            if bool(finished_host[index])
+            else (*dialogs[index], decision.responses[index].raw_text)
             for index in range(batch_size)
         )
         dialog_update_ms = (perf_counter() - dialog_started_at) * 1000.0 if profile else 0.0

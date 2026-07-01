@@ -253,6 +253,46 @@ def test_batched_rollout_reuses_compiled_step_function(monkeypatch: pytest.Monke
     assert calls == 1
 
 
+def test_batched_rollout_skips_reset_when_no_environment_finished(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Non-terminal steps should not pay a full batched reset every horizon step."""
+    calls = 0
+    original_batched_reset = batched_module._batched_reset
+
+    def counting_batched_reset(adapter, policy):
+        reset_fn = original_batched_reset(adapter, policy)
+
+        def wrapped_reset(keys):
+            nonlocal calls
+            calls += 1
+            return reset_fn(keys)
+
+        return wrapped_reset
+
+    monkeypatch.setattr(batched_module, "_batched_reset", counting_batched_reset)
+
+    adapter = CrafTextAdapter(_Environment(), None, action_count=2)
+    profiled = collect_batched_text_rollout_profiled(
+        adapter,
+        _Renderer(),
+        _Backend(),
+        actions=ActionCatalog(("NOOP", "DO")),
+        batch_size=2,
+        horizon=3,
+        seed=0,
+        goal="test",
+        max_new_tokens=4,
+        invalid_action="fallback",
+        fallback_action_id=0,
+    )
+
+    assert len(profiled.rollout.decisions) == 3
+    assert calls == 1
+    assert profiled.phase_totals_ms()["reset_ms"] == 0.0
+    assert profiled.phase_totals_ms()["replace_finished_ms"] == 0.0
+
+
 def test_profiled_batched_rollout_records_phase_timings() -> None:
     """Profiled rollout keeps the normal artifact and exposes per-phase timing totals."""
     adapter = CrafTextAdapter(_Environment(), None, action_count=2)
