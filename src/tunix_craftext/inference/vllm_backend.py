@@ -6,7 +6,6 @@ must be able to load the project without installing a Linux/GPU inference stack.
 
 from __future__ import annotations
 
-import asyncio
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -32,7 +31,7 @@ class VllmInferenceEngine:
         if profile.backend != "vllm-offload":
             raise InferenceBackendError("VllmInferenceEngine requires backend='vllm-offload'")
         _validate_model_snapshot(profile.model)
-        _configure_vllm_process_start_method(profile)
+        _configure_vllm_environment(profile)
         try:
             from vllm import LLM  # type: ignore[import-not-found]
         except ImportError as error:
@@ -94,8 +93,11 @@ class VllmInferenceEngine:
         )
 
     async def generate_async(self, batch: GenerationBatch) -> GenerationResult:
-        """Generate through the same payload contract from an async orchestrator."""
-        return await asyncio.to_thread(self.generate, batch)
+        """Reject fake async execution for the synchronous vLLM engine."""
+        raise InferenceBackendError(
+            "VllmInferenceEngine is synchronous. Use AsyncVllmInferenceEngine for "
+            "native vLLM async generation instead of wrapping vLLM.LLM in a worker thread."
+        )
 
 
 def _response_from_vllm_output(
@@ -189,6 +191,12 @@ def _validate_model_snapshot(model: str) -> None:
         )
 
 
+def _configure_vllm_environment(profile: EngineProfile) -> None:
+    """Configure vLLM/JAX-safe process environment before vLLM imports."""
+    _configure_vllm_process_start_method(profile)
+    _configure_vllm_use_v1(profile)
+
+
 def _configure_vllm_process_start_method(profile: EngineProfile) -> None:
     """Prefer a JAX-safe vLLM worker start method before vLLM imports.
 
@@ -209,6 +217,16 @@ def _configure_vllm_process_start_method(profile: EngineProfile) -> None:
             "'spawn', 'forkserver' or 'fork'"
         )
     os.environ.setdefault("VLLM_WORKER_MULTIPROC_METHOD", method)
+
+
+def _configure_vllm_use_v1(profile: EngineProfile) -> None:
+    """Optionally force vLLM V0/V1 engine selection from profile metadata."""
+    if "vllm_use_v1" not in profile.metadata:
+        return
+    raw = profile.metadata["vllm_use_v1"]
+    if not isinstance(raw, bool):
+        raise InferenceBackendError("engine.metadata.vllm_use_v1 must be boolean")
+    os.environ.setdefault("VLLM_USE_V1", "1" if raw else "0")
 
 
 def _vllm_kwargs_from_profile_metadata(profile: EngineProfile) -> dict[str, object]:

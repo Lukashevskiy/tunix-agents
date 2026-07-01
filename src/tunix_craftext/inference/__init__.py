@@ -6,6 +6,7 @@ from .async_pipeline import (
     collect_generation_results_from_sync_engine,
     collect_generation_results_profiled,
 )
+from .async_vllm_backend import AsyncVllmInferenceEngine
 from .config import (
     AsyncCollectionConfig,
     GenerationPipelineConfig,
@@ -23,7 +24,7 @@ from .contracts import (
     SyncToAsyncInferenceEngine,
     as_async_engine,
 )
-from .registry import build_inference_engine
+from .registry import build_async_inference_engine, build_inference_engine
 from .sglang_backend import SglangInferenceEngine
 from .sync_pipeline import (
     GenerationRecord,
@@ -45,6 +46,7 @@ __all__ = [
     "AsyncInferenceEngine",
     "AsyncCollectionConfig",
     "AsyncGenerationRecord",
+    "AsyncVllmInferenceEngine",
     "GenerationPipelineConfig",
     "InferenceBackendError",
     "InferenceEngine",
@@ -56,6 +58,7 @@ __all__ = [
     "VanillaInferenceEngine",
     "VllmInferenceEngine",
     "as_async_engine",
+    "build_async_inference_engine",
     "build_inference_engine",
     "collect_generation_results",
     "collect_generation_results_from_sync_engine",

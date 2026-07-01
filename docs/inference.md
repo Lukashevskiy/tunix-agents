@@ -20,6 +20,7 @@ tunix_craftext.inference
 ├── TunixGenerationContract # compiler to Tunix rollout_engine/RolloutConfig
 ├── VanillaInferenceEngine  # wraps existing BatchLlmBackend instances
 ├── VllmInferenceEngine     # optional vLLM adapter
+├── AsyncVllmInferenceEngine # native AsyncLLMEngine adapter
 ├── SglangInferenceEngine   # reserved SGLang adapter boundary
 ├── build_inference_engine  # profile-driven backend registry
 ├── RequestsLlmBackend      # adapter back to existing BatchLlmBackend
@@ -31,6 +32,11 @@ engine разделены, а между ними есть явная data/contr
 из внешнего репозитория; мы переносим форму разделения ответственности.
 
 ## Sync и async — один payload
+
+Синхронный RL path — основной: на каждом environment step мы собираем все `BATCH_SIZE`
+запросов в один `GenerationBatch` и делаем один `engine.generate(mega_batch)`. В
+`collect_batched_text_decision()` это покрыто unit test-ом: backend `complete_batch()` вызывается
+ровно один раз на batch decision, а JAX environment step выполняется через `vmap`.
 
 Синхронный и асинхронный rollout отличаются только способом исполнения:
 
@@ -82,6 +88,11 @@ generation, а вокруг него: prompt rendering, tokenizer/chat template,
 environment host/device copies, replay serialization или слишком мелкие batch/IPC вызовы.
 Если `queued_ms` растёт в async path — collector перегружен или `max_in_flight` больше реальной
 пропускной способности одного engine.
+
+Async path не должен оборачивать `vllm.LLM.generate()` через `asyncio.to_thread()`: это fake async
+и может ломать internal scheduler/IPC. Для native async vLLM используется отдельный
+`AsyncVllmInferenceEngine`, который создаёт `AsyncLLMEngine`, вызывает его async generator и
+лимитирует per-request fan-out через `engine.metadata.async_request_concurrency`.
 
 ## Компиляция в Tunix
 

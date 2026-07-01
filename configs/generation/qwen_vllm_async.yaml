@@ -10,6 +10,7 @@ engine:
   policy_version: 0
   metadata:
     attention_backend: auto
+    async_request_concurrency: 16
     gpu_memory_utilization: 0.35
     kernel_stack: auto
     max_num_batched_tokens: 4096

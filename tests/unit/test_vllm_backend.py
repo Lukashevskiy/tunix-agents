@@ -133,6 +133,34 @@ def test_vllm_engine_preserves_user_worker_start_method(
     assert seen_env == {"method": "forkserver"}
 
 
+def test_vllm_engine_can_configure_vllm_v1_flag(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = types.ModuleType("vllm")
+    seen_env: dict[str, str | None] = {}
+
+    class FakeLLM:
+        def __init__(self, **kwargs: object) -> None:
+            import os
+
+            seen_env["v1"] = os.environ.get("VLLM_USE_V1")
+
+    module.LLM = FakeLLM  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "vllm", module)
+    monkeypatch.delenv("VLLM_USE_V1", raising=False)
+
+    VllmInferenceEngine.from_profile(
+        EngineProfile(
+            "vllm",
+            "vllm-offload",
+            "Qwen/Qwen2.5-0.5B-Instruct",
+            metadata={"vllm_use_v1": False},
+        )
+    )
+
+    assert seen_env == {"v1": "0"}
+
+
 def test_vllm_engine_passes_memory_and_batch_kwargs(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
