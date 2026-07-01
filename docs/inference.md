@@ -369,6 +369,7 @@ profiled = collect_batched_text_rollout_profiled(
 )
 
 print(profiled.phase_totals_ms())
+print(profiled.event_totals())
 rollout = profiled.rollout
 ```
 
@@ -413,4 +414,7 @@ compile warmup; огромный каждый step означает, что env 
 динамический shape/static payload. Rollout collector создаёт `vmap/jit(step)` и `vmap/jit(reset)`
 один раз на rollout, чтобы не пересоздавать compiled boundary внутри horizon loop. После
 первичного step collector также пропускает full-batch reset, если в batch нет
-`terminated/truncated`; это убирает ненужный `reset_ms` из steady-state rollout.
+`terminated/truncated`; это убирает ненужный `reset_ms` из steady-state rollout. Если
+`reset_ms` всё равно высокий, проверьте `profiled.event_totals()` и per-step
+`timing.finished_count`: либо notebook/kernel ещё использует старый импорт, либо среда реально
+завершает хотя бы одну строку batch на каждом шаге.

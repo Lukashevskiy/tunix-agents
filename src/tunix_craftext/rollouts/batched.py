@@ -105,6 +105,8 @@ class BatchedRolloutStepTiming:
     replace_finished_ms: float
     dialog_update_ms: float
     total_ms: float
+    finished_count: int = 0
+    reset_invoked: bool = False
 
 
 @dataclass(frozen=True)
@@ -144,6 +146,13 @@ class ProfiledBatchedTextRollout:
             totals["dialog_update_ms"] += timing.dialog_update_ms
             totals["total_ms"] += timing.total_ms
         return totals
+
+    def event_totals(self) -> dict[str, int]:
+        """Aggregate non-time rollout events that explain why expensive phases ran."""
+        return {
+            "finished_count": sum(timing.finished_count for timing in self.timings),
+            "reset_invocations": sum(1 for timing in self.timings if timing.reset_invoked),
+        }
 
 
 def _item_at(tree: object, index: int) -> object:
@@ -453,7 +462,9 @@ def _collect_batched_text_rollout_impl(
         )
         finished = jnp.logical_or(decision.transition.terminated, decision.transition.truncated)
         finished_host = np.asarray(jax.device_get(finished), dtype=bool)
-        if bool(np.any(finished_host)):
+        finished_count = int(np.sum(finished_host))
+        reset_invoked = finished_count > 0
+        if reset_invoked:
             reset_started_at = perf_counter() if profile else 0.0
             fresh = batched_reset(reset_keys)
             if profile:
@@ -495,6 +506,8 @@ def _collect_batched_text_rollout_impl(
                     replace_finished_ms=replace_finished_ms,
                     dialog_update_ms=dialog_update_ms,
                     total_ms=(perf_counter() - step_started_at) * 1000.0,
+                    finished_count=finished_count,
+                    reset_invoked=reset_invoked,
                 )
             )
     return ProfiledBatchedTextRollout(

@@ -291,6 +291,7 @@ def test_batched_rollout_skips_reset_when_no_environment_finished(
     assert calls == 1
     assert profiled.phase_totals_ms()["reset_ms"] == 0.0
     assert profiled.phase_totals_ms()["replace_finished_ms"] == 0.0
+    assert profiled.event_totals() == {"finished_count": 0, "reset_invocations": 0}
 
 
 def test_profiled_batched_rollout_records_phase_timings() -> None:
@@ -313,6 +314,7 @@ def test_profiled_batched_rollout_records_phase_timings() -> None:
     assert len(profiled.rollout.decisions) == 2
     assert len(profiled.timings) == 2
     totals = profiled.phase_totals_ms()
+    events = profiled.event_totals()
     assert totals["prompt_snapshot_ms"] >= 0.0
     assert totals["prompt_render_ms"] >= 0.0
     assert totals["llm_batch_ms"] >= 0.0
@@ -322,6 +324,8 @@ def test_profiled_batched_rollout_records_phase_timings() -> None:
     assert totals["replace_finished_ms"] >= 0.0
     assert totals["dialog_update_ms"] >= 0.0
     assert totals["total_ms"] >= totals["llm_batch_ms"]
+    assert events["finished_count"] >= 0
+    assert events["reset_invocations"] >= 0
 
 
 def test_environment_device_policy_rejects_unavailable_backend() -> None:
