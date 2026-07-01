@@ -68,6 +68,13 @@ manifest, generation backend contract, model snapshot/revision/licence, workload
 package versions. Только после этого начинается accelerator/model allocation. Старые CLI-флаги
 остаются только для debug/smoke, но golden path должен использовать profile.
 
+Пути внутри profile остаются в исходном виде для provenance (`configs/...`,
+`artifacts/...`), но runtime обязан резолвить их через `resolve_profile_path()` от корня
+репозитория/profile. Это защищает notebooks, `server_readiness` и `run_agentic_grpo.py`
+от ошибок текущей директории: ячейка может запускаться из `/workspace`, а
+`generation_config: configs/generation/qwen_vllm_sync.yaml` всё равно должен читаться из
+репозитория.
+
 ## Generation pipeline config
 
 Inference/generation вынесен в отдельный versioned YAML, чтобы один и тот же training profile

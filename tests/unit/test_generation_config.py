@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+import yaml
 
 from tunix_craftext.inference import (
     InferenceBackendError,
@@ -59,10 +60,9 @@ def test_generation_config_rejects_engine_model_len_smaller_than_tunix_contract(
     tmp_path: Path,
 ) -> None:
     invalid = tmp_path / "generation.yaml"
-    invalid.write_text(
-        SYNC_CONFIG.read_text(encoding="utf-8").replace("max_model_len: 2048", "max_model_len: 64"),
-        encoding="utf-8",
-    )
+    payload = yaml.safe_load(SYNC_CONFIG.read_text(encoding="utf-8"))
+    payload["engine"]["max_model_len"] = 64
+    invalid.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
 
     with pytest.raises(InferenceBackendError, match="engine.max_model_len"):
         load_generation_pipeline_config(invalid)

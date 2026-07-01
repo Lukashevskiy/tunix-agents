@@ -38,6 +38,7 @@ from .grpo_profile import (
     AgenticGrpoProfile,
     build_grpo_evidence_manifest,
     load_agentic_grpo_profile,
+    resolve_profile_path,
 )
 
 ReadinessMode = Literal["evidence", "scripted"]
@@ -128,7 +129,10 @@ def check_server_readiness(
         raise ValueError("scripted_horizon must be positive")
 
     profile = load_agentic_grpo_profile(profile_path)
-    output_dir = run_dir or profile.evidence.root
+    output_dir = run_dir or resolve_profile_path(profile_path, profile.evidence.root)
+    environment_config = resolve_profile_path(profile_path, profile.environment_config)
+    topology_config = resolve_profile_path(profile_path, profile.topology_config)
+    model_snapshot = resolve_profile_path(profile_path, profile.model.snapshot)
     logger = JsonlRunLogger(output_dir)
     checks: list[ReadinessCheck] = []
 
@@ -140,7 +144,7 @@ def check_server_readiness(
     )
     checks.append(ReadinessCheck("profile", "pass", "GRPO profile loaded and provenance written"))
 
-    topology = load_tunix_topology(profile.topology_config)
+    topology = load_tunix_topology(topology_config)
     try:
         validate_agentic_grpo_preflight(topology, profile.workload, pinned_qwen_tensor_shape())
     except RLClusterWorkloadError as error:
@@ -176,22 +180,23 @@ def check_server_readiness(
     )
 
     snapshot_status: CheckStatus = "pass"
-    snapshot_message = f"model snapshot exists: {profile.model.snapshot}"
-    if not profile.model.snapshot.is_dir():
+    snapshot_message = f"model snapshot exists: {model_snapshot}"
+    if not model_snapshot.is_dir():
         snapshot_status = "fail" if require_snapshot else "warn"
-        snapshot_message = f"model snapshot is missing: {profile.model.snapshot}"
+        snapshot_message = f"model snapshot is missing: {model_snapshot}"
     checks.append(
         ReadinessCheck(
             "model_snapshot",
             snapshot_status,
             snapshot_message,
-            {"snapshot": str(profile.model.snapshot), "exists": profile.model.snapshot.is_dir()},
+            {"snapshot": str(model_snapshot), "exists": model_snapshot.is_dir()},
         )
     )
 
     validation_path, return_sum, episode_length = _write_validation_probe(
         profile,
         output_dir=output_dir,
+        environment_config=environment_config,
         mode=mode,
         scripted_horizon=scripted_horizon,
     )
@@ -252,7 +257,7 @@ def check_server_readiness(
             metrics={
                 "ok": all(check.ok for check in checks),
                 "device_count": len(devices),
-                "snapshot_exists": profile.model.snapshot.is_dir(),
+                "snapshot_exists": model_snapshot.is_dir(),
                 "python": platform.python_version(),
             },
             policy_version=0,
@@ -293,16 +298,20 @@ def _write_validation_probe(
     profile: AgenticGrpoProfile,
     *,
     output_dir: Path,
+    environment_config: Path,
     mode: ReadinessMode,
     scripted_horizon: int,
 ) -> tuple[Path, float, int]:
     if mode == "scripted":
         return _write_scripted_validation_probe(
-            profile, output_dir=output_dir, scripted_horizon=scripted_horizon
+            profile,
+            output_dir=output_dir,
+            environment_config=environment_config,
+            scripted_horizon=scripted_horizon,
         )
     path = output_dir / "validation" / "server-readiness-evidence-replay.json"
     artifact = ReplayArtifact(
-        config_path=str(profile.environment_config),
+        config_path=str(environment_config),
         commit="server-readiness",
         backend="evidence-probe",
         steps=(
@@ -326,13 +335,14 @@ def _write_scripted_validation_probe(
     profile: AgenticGrpoProfile,
     *,
     output_dir: Path,
+    environment_config: Path,
     scripted_horizon: int,
 ) -> tuple[Path, float, int]:
     from .agentic_grpo_smoke import collect_scripted_grpo_group_sync, save_scripted_grpo_smoke
 
     action_sequences = (("NOOP",) * scripted_horizon, ("LEFT",) * scripted_horizon)
     results = collect_scripted_grpo_group_sync(
-        config_path=profile.environment_config,
+        config_path=environment_config,
         goal=profile.run.goal,
         seed=profile.run.seed,
         group_id=0,

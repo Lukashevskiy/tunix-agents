@@ -135,14 +135,15 @@ def main(arguments: Sequence[str] | None = None) -> None:
     from tunix_craftext.training.grpo_profile import (
         build_grpo_evidence_manifest,
         load_agentic_grpo_profile,
+        resolve_profile_path,
     )
 
     if args.profile is not None:
         profile = load_agentic_grpo_profile(args.profile)
-        args.config = profile.environment_config
-        args.topology = profile.topology_config
-        args.generation_config = profile.generation_config
-        args.snapshot = profile.model.snapshot
+        args.config = resolve_profile_path(args.profile, profile.environment_config)
+        args.topology = resolve_profile_path(args.profile, profile.topology_config)
+        args.generation_config = resolve_profile_path(args.profile, profile.generation_config)
+        args.snapshot = resolve_profile_path(args.profile, profile.model.snapshot)
         args.goal = profile.run.goal
         args.max_steps = profile.workload.max_steps
         args.batch_size = profile.workload.mini_batch_size
@@ -151,9 +152,10 @@ def main(arguments: Sequence[str] | None = None) -> None:
         args.max_prompt_length = profile.workload.max_prompt_length
         args.kv_cache_size = profile.workload.kv_cache_size
         args.learning_rate = profile.workload.learning_rate
-        args.checkpoint_root = profile.evidence.checkpoints
-        profile.evidence.provenance.parent.mkdir(parents=True, exist_ok=True)
-        profile.evidence.provenance.write_text(
+        args.checkpoint_root = resolve_profile_path(args.profile, profile.evidence.checkpoints)
+        provenance_path = resolve_profile_path(args.profile, profile.evidence.provenance)
+        provenance_path.parent.mkdir(parents=True, exist_ok=True)
+        provenance_path.write_text(
             json.dumps(
                 build_grpo_evidence_manifest(profile, profile_path=args.profile),
                 indent=2,

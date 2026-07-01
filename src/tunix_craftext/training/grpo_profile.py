@@ -146,7 +146,11 @@ def build_grpo_evidence_manifest(
         "flashbax",
         "qwix",
     )
-    generation = load_generation_pipeline_config(profile.generation_config)
+    path_root = profile_path_root(profile_path, repo_root=repo_root)
+    generation_config = _resolve_profile_path(profile.generation_config, path_root)
+    vendor_manifest = _resolve_profile_path(profile.vendor_manifest, path_root)
+    model_snapshot = _resolve_profile_path(profile.model.snapshot, path_root)
+    generation = load_generation_pipeline_config(generation_config)
     return {
         "schema_version": "tunix-craftext.agentic-grpo-evidence/v1",
         "git_revision": git_revision(repo_root),
@@ -159,7 +163,7 @@ def build_grpo_evidence_manifest(
         "model": {
             "model_id": profile.model.model_id,
             "snapshot": str(profile.model.snapshot),
-            "snapshot_exists": profile.model.snapshot.exists(),
+            "snapshot_exists": model_snapshot.exists(),
             "revision": profile.model.revision,
             "license": profile.model.license,
         },
@@ -168,8 +172,8 @@ def build_grpo_evidence_manifest(
             "topology_config": str(profile.topology_config),
             "generation_config": str(profile.generation_config),
             "vendor_manifest": str(profile.vendor_manifest),
-            "vendor_manifest_sha256": _sha256(profile.vendor_manifest)
-            if profile.vendor_manifest.exists()
+            "vendor_manifest_sha256": _sha256(vendor_manifest)
+            if vendor_manifest.exists()
             else "missing",
         },
         "generation": generation_config_to_manifest(
@@ -269,6 +273,48 @@ def _evidence(value: Mapping[str, object]) -> GrpoEvidenceSpec:
         checkpoints=_path(value["checkpoints"], "evidence.checkpoints"),
         provenance=_path(value["provenance"], "evidence.provenance"),
     )
+
+
+def profile_path_root(profile_path: Path, *, repo_root: Path | None = None) -> Path:
+    """Return the base directory used for resolving relative profile paths.
+
+    Agentic GRPO profiles intentionally keep paths in their original
+    provenance spelling, e.g. ``configs/generation/qwen_vllm_sync.yaml``.  All
+    runtime consumers must resolve those paths against a stable repository root
+    instead of the process cwd because notebooks, scripts and readiness checks
+    are often launched from different directories.
+
+    :param profile_path: Path to the profile file used for this run.
+    :param repo_root: Optional explicit repository root.
+    :returns: Repository root when detectable, otherwise current directory.
+    """
+    if repo_root is not None:
+        return repo_root
+    for candidate in (profile_path.parent, *profile_path.parents):
+        if (candidate / "pyproject.toml").is_file():
+            return candidate
+    return Path.cwd()
+
+
+def resolve_profile_path(
+    profile_path: Path,
+    path: Path,
+    *,
+    repo_root: Path | None = None,
+) -> Path:
+    """Resolve one profile-owned path for runtime use.
+
+    :param profile_path: Path to the profile file used for this run.
+    :param path: Raw path stored inside the profile.
+    :param repo_root: Optional explicit repository root.
+    :returns: Absolute or repository-root-relative runtime path.
+    """
+    return _resolve_profile_path(path, profile_path_root(profile_path, repo_root=repo_root))
+
+
+def _resolve_profile_path(path: Path, root: Path) -> Path:
+    """Resolve a path from a profile without changing its provenance spelling."""
+    return path if path.is_absolute() else root / path
 
 
 def _mapping(value: object, name: str) -> Mapping[str, object]:

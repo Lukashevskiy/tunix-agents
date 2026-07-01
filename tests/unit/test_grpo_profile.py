@@ -12,6 +12,7 @@ from tunix_craftext.training.grpo_profile import (
     build_grpo_evidence_manifest,
     load_agentic_grpo_profile,
     profile_sha256,
+    resolve_profile_path,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -59,6 +60,36 @@ def test_grpo_evidence_manifest_records_config_hashes_and_dependency_versions() 
     assert manifest["inputs"]["vendor_manifest_sha256"] != "missing"
     assert manifest["packages"]["jax"] != "not-installed"
     assert manifest["packages"]["definitely-not-installed-for-profile-test"] == "not-installed"
+
+
+def test_grpo_evidence_manifest_resolves_relative_paths_from_repo_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Notebook/server cwd must not affect relative config paths stored in a profile."""
+    profile = load_agentic_grpo_profile(PROFILE)
+    monkeypatch.chdir(tmp_path)
+
+    manifest = build_grpo_evidence_manifest(
+        profile,
+        profile_path=PROFILE,
+        repo_root=ROOT,
+        packages=("jax",),
+    )
+
+    assert manifest["inputs"]["generation_config"] == "configs/generation/qwen_vllm_sync.yaml"
+    assert manifest["generation"]["engine"]["backend"] == "vllm-offload"
+    assert manifest["inputs"]["vendor_manifest_sha256"] != "missing"
+
+
+def test_profile_path_resolver_uses_repo_root_when_cwd_differs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Scripts should pass resolved runtime paths while preserving raw profile paths."""
+    monkeypatch.chdir(tmp_path)
+
+    assert resolve_profile_path(
+        PROFILE, Path("configs/generation/qwen_vllm_sync.yaml")
+    ) == (ROOT / "configs/generation/qwen_vllm_sync.yaml")
 
 
 def test_runner_profile_writes_provenance_before_model_allocation(tmp_path: Path) -> None:

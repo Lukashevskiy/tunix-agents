@@ -6,6 +6,8 @@ import importlib.util
 import json
 from pathlib import Path
 
+import pytest
+
 from tunix_craftext.artifacts.observability import read_jsonl
 from tunix_craftext.training.server_readiness import check_server_readiness
 
@@ -45,6 +47,21 @@ def test_server_readiness_writes_observability_evidence(tmp_path: Path) -> None:
         "config",
         "profile",
     }
+
+
+def test_server_readiness_resolves_profile_paths_outside_repo_cwd(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Notebook cwd must not break topology/generation/vendor paths from profiles."""
+    monkeypatch.chdir(tmp_path)
+
+    report = check_server_readiness(PROFILE, run_dir=tmp_path / "run")
+
+    assert Path(report.evidence["provenance"]).is_file()
+    manifest = json.loads(Path(report.evidence["provenance"]).read_text(encoding="utf-8"))
+    assert manifest["inputs"]["generation_config"] == "configs/generation/qwen_vllm_sync.yaml"
+    assert manifest["generation"]["engine"]["backend"] == "vllm-offload"
+    assert manifest["inputs"]["vendor_manifest_sha256"] != "missing"
 
 
 def test_server_readiness_can_require_model_snapshot(tmp_path: Path) -> None:
