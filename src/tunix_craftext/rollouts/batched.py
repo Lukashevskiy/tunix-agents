@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from time import perf_counter
 from typing import Literal, cast
+from functools import lru_cache
 
 import jax
 import jax.numpy as jnp
@@ -202,6 +203,7 @@ def _host_snapshot_for_prompt(value: object, policy: EnvironmentDevicePolicy | N
     return jax.device_get(value)
 
 
+@lru_cache(maxsize=32)
 def _batched_reset(
     adapter: CraftaxAdapter[object, object, object], policy: EnvironmentDevicePolicy | None
 ):
@@ -209,7 +211,7 @@ def _batched_reset(
     reset = jax.vmap(adapter.reset)
     return jax.jit(reset) if policy is not None and policy.jit_reset else reset
 
-
+@lru_cache(maxsize=32)
 def _batched_step(
     adapter: CraftaxAdapter[object, object, object], policy: EnvironmentDevicePolicy | None
 ):
@@ -369,7 +371,7 @@ def collect_batched_text_decision(
     )
     transition = batched_step(keys, states, action_ids)
     if timing_enabled:
-        transition.reward.block_until_ready()
+        jax.block_until_ready(transition)
     environment_step_ms = (perf_counter() - step_started_at) * 1000.0 if timing_enabled else 0.0
     if timing_enabled:
         assert _timing_sink is not None
