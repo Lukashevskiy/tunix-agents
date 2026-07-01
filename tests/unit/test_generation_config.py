@@ -15,6 +15,7 @@ from tunix_craftext.inference import (
 
 ROOT = Path(__file__).resolve().parents[2]
 SYNC_CONFIG = ROOT / "configs/inference/vllm/qwen25_05b_sync.yaml"
+GRPO_SYNC_CONFIG = ROOT / "configs/inference/vllm/qwen25_05b_grpo_sync.yaml"
 ASYNC_CONFIG = ROOT / "configs/inference/vllm/qwen25_05b_async.yaml"
 
 
@@ -43,6 +44,19 @@ def test_async_generation_config_loads_bounded_collector_settings() -> None:
     assert config.tunix.vllm_async_scheduling is True
     assert config.async_collection.max_in_flight == 2
     assert config.async_collection.queue_maxsize == 16
+
+
+def test_grpo_sync_generation_config_uses_conservative_vllm_memory_budget() -> None:
+    config = load_generation_pipeline_config(GRPO_SYNC_CONFIG)
+
+    assert config.profile.name == "qwen25-05b-vllm-grpo-sync"
+    assert config.profile.mode == "sync"
+    assert config.profile.max_model_len == 2048
+    assert config.profile.metadata["gpu_memory_utilization"] == 0.15
+    assert config.tunix.vllm_server_mode is True
+    assert config.tunix.vllm_async_scheduling is False
+    assert config.tunix.vllm_hbm_utilization == 0.15
+    assert config.tunix.kv_cache_size == 2048
 
 
 def test_generation_config_rejects_unknown_root_keys(tmp_path: Path) -> None:

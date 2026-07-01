@@ -6,6 +6,7 @@ must be able to load the project without installing a Linux/GPU inference stack.
 
 from __future__ import annotations
 
+import gc
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -99,6 +100,39 @@ class VllmInferenceEngine:
             "native vLLM async generation instead of wrapping vLLM.LLM in a worker thread."
         )
 
+    def close(self) -> None:
+        """Release the in-process vLLM engine and opportunistically clear CUDA caches.
+
+        Notebook GRPO flows often run a small standalone vLLM smoke before constructing
+        Tunix ``RLCluster``.  Without an explicit close, the smoke engine may keep its
+        CUDA allocation alive in the Jupyter kernel while RLCluster tries to initialize
+        actor/reference/rollout memory.
+        """
+        llm = self._llm
+        self._llm = None
+        if llm is None:
+            return
+        for method_name in ("shutdown", "close"):
+            method = getattr(llm, method_name, None)
+            if callable(method):
+                method()
+                break
+        engine = getattr(llm, "llm_engine", None)
+        engine_shutdown = getattr(engine, "shutdown", None)
+        if callable(engine_shutdown):
+            engine_shutdown()
+        del llm
+        gc.collect()
+        _empty_torch_cuda_cache()
+
+    def __enter__(self) -> VllmInferenceEngine:
+        """Return this initialized engine for context-manager use."""
+        return self
+
+    def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
+        """Close the engine when leaving a context-manager block."""
+        self.close()
+
 
 def _response_from_vllm_output(
     output: object, profile: EngineProfile, *, latency_ms: float
@@ -176,6 +210,20 @@ def _raise_vllm_engine_start_error(error: RuntimeError, profile: EngineProfile) 
             f"metadata={dict(profile.metadata)!r}."
         ) from error
     _raise_vllm_runtime_import_error(error)
+
+
+def _empty_torch_cuda_cache() -> None:
+    """Best-effort CUDA cache cleanup after disposing a vLLM engine."""
+    try:
+        import torch  # type: ignore[import-not-found]
+    except Exception:  # pragma: no cover - optional dependency
+        return
+    try:
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
+    except Exception:  # pragma: no cover - defensive third-party cleanup
+        return
 
 
 def _validate_model_snapshot(model: str) -> None:

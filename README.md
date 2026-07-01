@@ -76,8 +76,10 @@ uv run python scripts/run_agentic_grpo.py \
 CrafText agentic tool-call loop с несколькими GRPO generations и group-normalized advantages, но
 без LLM/RLCluster weights. Это рабочий local gate перед реальным `GRPOLearner`; PPO/PPO-Lag/CPO
 потом добавляют value critic и cost critic поверх уже проверенного rollout/tool transport.
-Golden profile также ссылается на `configs/inference/vllm/qwen25_05b_sync.yaml`: там зафиксированы
-backend, sync/async mode, vLLM/Tunix rollout knobs и async collector limits.
+Golden profile ссылается на `configs/inference/vllm/qwen25_05b_grpo_sync.yaml`: это
+GRPO/RLCluster-safe vLLM profile с меньшим KV/HBM budget, потому что на той же GPU
+уже живут actor/reference JAX weights. Direct rollout notebooks (`17`, `18`) используют
+обычные `qwen25_05b_sync.yaml` / `qwen25_05b_async.yaml` profiles.
 По умолчанию GRPO task batches берут `goal` из CrafText scenario instructions: batch содержит
 и текст задачи, и `instruction_index`, поэтому reset среды выбирает тот же scenario row, который
 видит модель. Если нужно старое поведение с одной ручной целью из profile, используйте

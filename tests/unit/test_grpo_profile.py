@@ -25,7 +25,7 @@ def test_agentic_grpo_profile_loads_static_workload_and_paths() -> None:
     assert profile.run.name == "qwen-agentic-craftext-local-smoke"
     assert profile.environment_config == Path("configs/env/text/qwen_craftext.yaml")
     assert profile.topology_config == Path("configs/tunix/topology/qwen_agentic_grpo_local.yaml")
-    assert profile.generation_config == Path("configs/inference/vllm/qwen25_05b_sync.yaml")
+    assert profile.generation_config == Path("configs/inference/vllm/qwen25_05b_grpo_sync.yaml")
     assert profile.model.model_id == "Qwen/Qwen2.5-0.5B-Instruct"
     assert profile.workload.num_generations == 2
     assert profile.workload.kv_cache_size == 2048
@@ -55,7 +55,9 @@ def test_grpo_evidence_manifest_records_config_hashes_and_dependency_versions() 
 
     assert manifest["schema_version"] == "tunix-craftext.agentic-grpo-evidence/v1"
     assert manifest["profile"]["sha256"] == profile_sha256(PROFILE)
-    assert manifest["inputs"]["generation_config"] == "configs/inference/vllm/qwen25_05b_sync.yaml"
+    assert manifest["inputs"]["generation_config"] == (
+        "configs/inference/vllm/qwen25_05b_grpo_sync.yaml"
+    )
     assert manifest["generation"]["engine"]["backend"] == "vllm-offload"
     assert manifest["inputs"]["vendor_manifest_sha256"] != "missing"
     assert manifest["packages"]["jax"] != "not-installed"
@@ -76,7 +78,9 @@ def test_grpo_evidence_manifest_resolves_relative_paths_from_repo_root(
         packages=("jax",),
     )
 
-    assert manifest["inputs"]["generation_config"] == "configs/inference/vllm/qwen25_05b_sync.yaml"
+    assert manifest["inputs"]["generation_config"] == (
+        "configs/inference/vllm/qwen25_05b_grpo_sync.yaml"
+    )
     assert manifest["generation"]["engine"]["backend"] == "vllm-offload"
     assert manifest["inputs"]["vendor_manifest_sha256"] != "missing"
 
@@ -88,8 +92,8 @@ def test_profile_path_resolver_uses_repo_root_when_cwd_differs(
     monkeypatch.chdir(tmp_path)
 
     assert resolve_profile_path(
-        PROFILE, Path("configs/inference/vllm/qwen25_05b_sync.yaml")
-    ) == (ROOT / "configs/inference/vllm/qwen25_05b_sync.yaml")
+        PROFILE, Path("configs/inference/vllm/qwen25_05b_grpo_sync.yaml")
+    ) == (ROOT / "configs/inference/vllm/qwen25_05b_grpo_sync.yaml")
 
 
 def test_runner_profile_writes_provenance_before_model_allocation(tmp_path: Path) -> None:
@@ -112,7 +116,7 @@ run:
   goal: Use craftext_step.
 environment_config: {ROOT / "configs/env/text/qwen_craftext.yaml"}
 topology_config: {ROOT / "configs/tunix/topology/qwen_agentic_grpo_local.yaml"}
-generation_config: {ROOT / "configs/inference/vllm/qwen25_05b_sync.yaml"}
+generation_config: {ROOT / "configs/inference/vllm/qwen25_05b_grpo_sync.yaml"}
 model:
   model_id: Qwen/Qwen2.5-0.5B-Instruct
   snapshot: {tmp_path / "missing-model"}
@@ -172,7 +176,7 @@ run:
   goal: Use craftext_step.
 environment_config: {ROOT / "configs/env/text/qwen_craftext.yaml"}
 topology_config: {ROOT / "configs/tunix/topology/qwen_agentic_grpo_local.yaml"}
-generation_config: {ROOT / "configs/inference/vllm/qwen25_05b_sync.yaml"}
+generation_config: {ROOT / "configs/inference/vllm/qwen25_05b_grpo_sync.yaml"}
 model:
   model_id: Qwen/Qwen2.5-0.5B-Instruct
   snapshot: {tmp_path / "missing-model"}

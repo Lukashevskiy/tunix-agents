@@ -29,6 +29,27 @@ def test_vllm_engine_fails_cleanly_when_not_initialized() -> None:
         engine.generate(batch)
 
 
+def test_vllm_engine_close_releases_underlying_engine_once() -> None:
+    class FakeLLM:
+        def __init__(self) -> None:
+            self.closed = 0
+
+        def close(self) -> None:
+            self.closed += 1
+
+    llm = FakeLLM()
+    engine = VllmInferenceEngine(
+        EngineProfile("vllm", "vllm-offload", "model"),
+        _llm=llm,
+    )
+
+    engine.close()
+    engine.close()
+
+    assert llm.closed == 1
+    assert engine._llm is None
+
+
 def test_vllm_engine_explains_torchvision_binary_mismatch(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

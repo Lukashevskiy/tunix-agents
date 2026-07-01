@@ -14,6 +14,7 @@ canonical_layout:
   inference:
     vllm:
       qwen25_05b_sync: configs/inference/vllm/qwen25_05b_sync.yaml
+      qwen25_05b_grpo_sync: configs/inference/vllm/qwen25_05b_grpo_sync.yaml
       qwen25_05b_async: configs/inference/vllm/qwen25_05b_async.yaml
   models:
     gemma3_270m_instruction: configs/models/gemma3_270m_instruction.yaml

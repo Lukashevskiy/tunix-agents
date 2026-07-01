@@ -72,7 +72,7 @@ package versions. Только после этого начинается accele
 `artifacts/...`), но runtime обязан резолвить их через `resolve_profile_path()` от корня
 репозитория/profile. Это защищает notebooks, `server_readiness` и `run_agentic_grpo.py`
 от ошибок текущей директории: ячейка может запускаться из `/workspace`, а
-`generation_config: configs/inference/vllm/qwen25_05b_sync.yaml` всё равно должен читаться из
+`generation_config: configs/inference/vllm/qwen25_05b_grpo_sync.yaml` всё равно должен читаться из
 репозитория.
 
 ## Generation pipeline config
@@ -85,7 +85,8 @@ Canonical configs:
 
 | Config | Назначение |
 | --- | --- |
-| `configs/inference/vllm/qwen25_05b_sync.yaml` | один ordered batch за раз; базовый воспроизводимый vLLM rollout smoke |
+| `configs/inference/vllm/qwen25_05b_sync.yaml` | один ordered batch за раз; базовый reproducible vLLM rollout smoke для notebooks `17`/direct inference |
+| `configs/inference/vllm/qwen25_05b_grpo_sync.yaml` | sync vLLM rollout для Agentic GRPO/RLCluster: conservative KV/HBM budget рядом с actor/reference |
 | `configs/inference/vllm/qwen25_05b_async.yaml` | bounded async collection с `max_in_flight` и Tunix vLLM server/async scheduling knobs |
 
 Схема состоит из трёх блоков:
