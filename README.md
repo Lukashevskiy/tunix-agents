@@ -257,6 +257,19 @@ uv run python scripts/estimate_vllm_memory.py --config configs/inference/vllm/qw
 
 Утилита не импортирует vLLM: она читает generation YAML, текущую `torch.cuda.mem_get_info`,
 суммирует локальные weight files и оценивает KV-cache по `config.json`, если snapshot уже скачан.
+
+Для Tunix `RLCluster` + vLLM GRPO отдельно проверьте compatibility layer weight-sync:
+
+```bash
+PYTHONPATH=src uv run python scripts/inspect_vllm_tunix_compat.py --strict
+```
+
+Если direct vLLM notebooks (`17`, `18`) работают, а GRPO падает на
+`collective_rpc("delete_kv_cache")`, это не проблема обычного inference path. Это означает,
+что установленный vLLM worker API не предоставляет cache RPC hooks, которые текущий Tunix
+`VllmSampler.update_params()` вызывает при JAX→vLLM weight sync. Диагностический отчёт покажет,
+есть ли нативные hooks или нужен vLLM worker extension.
+
 Для one-GPU режима, где JAX/Tunix и vLLM живут на одной карте, выставляйте JAX memory knobs
 до старта Python/Jupyter:
 
