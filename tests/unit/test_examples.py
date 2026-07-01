@@ -34,6 +34,7 @@ def test_example_notebooks_are_valid_nbformat_with_runnable_imports() -> None:
         "19_host_prompt_threading_profile.ipynb": "HostBatchPolicy",
         "20_env_device_policy_benchmark.ipynb": "EnvironmentDevicePolicy",
         "21_sync_vllm_grpo_learning.ipynb": "GRPOLearner",
+        "22_external_vllm_sync_grpo_rollout.ipynb": "external_grpo_batch_from_replays",
     }
     for filename, required_symbol in expected.items():
         notebook = json.loads((NOTEBOOKS / filename).read_text(encoding="utf-8"))
@@ -76,6 +77,21 @@ def test_sync_vllm_grpo_notebook_uses_profile_path_and_placement_contracts() -> 
     assert "JAX_PLATFORMS=cpu" in source
     assert "local_vllm_rollout_contract" in source
     assert "sync_vllm_generation.vllm_model_version == str(snapshot_path)" in source
+
+
+def test_external_vllm_grpo_notebook_uses_direct_engine_and_evidence_contract() -> None:
+    """Notebook 22 should keep GRPO startup on the known-working external vLLM path."""
+    notebook = json.loads(
+        (NOTEBOOKS / "22_external_vllm_sync_grpo_rollout.ipynb").read_text(encoding="utf-8")
+    )
+    source = "".join("".join(cell["source"]) for cell in notebook["cells"])
+
+    assert "VllmInferenceEngine.from_profile" in source
+    assert "RequestsLlmBackend(engine)" in source
+    assert "external_grpo_batch_from_replays" in source
+    assert "save_external_grpo_batch" in source
+    assert "cpu_environment_device_policy()" in source
+    assert "GRPOLearner" not in source
 
 
 def test_rollout_notebooks_pin_cpu_env_sidecar_policy() -> None:
