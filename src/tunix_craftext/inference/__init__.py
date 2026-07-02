@@ -24,6 +24,7 @@ from .contracts import (
     SyncToAsyncInferenceEngine,
     as_async_engine,
 )
+from .interfaces import InferenceEngineBackend, LlmBackend
 from .registry import build_async_inference_engine, build_inference_engine
 from .sglang_backend import SglangInferenceEngine
 from .sync_pipeline import (
@@ -33,6 +34,7 @@ from .sync_pipeline import (
     collect_generation_results_sync,
     collect_generation_results_sync_profiled,
 )
+from .tunix_adapter import TunixGenerationTensors, VllmToTunixAdapter
 from .tunix_config import TunixGenerationContract, local_vllm_rollout_contract
 from .vanilla_backend import VanillaInferenceEngine
 from .vllm_backend import VllmInferenceEngine
@@ -50,13 +52,17 @@ __all__ = [
     "GenerationPipelineConfig",
     "InferenceBackendError",
     "InferenceEngine",
+    "InferenceEngineBackend",
+    "LlmBackend",
     "ProfiledGenerationRecord",
     "RequestsLlmBackend",
     "SyncToAsyncInferenceEngine",
     "TunixGenerationContract",
+    "TunixGenerationTensors",
     "SglangInferenceEngine",
     "VanillaInferenceEngine",
     "VllmInferenceEngine",
+    "VllmToTunixAdapter",
     "as_async_engine",
     "build_async_inference_engine",
     "build_inference_engine",

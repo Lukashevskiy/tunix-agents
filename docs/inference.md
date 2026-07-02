@@ -22,6 +22,7 @@ tunix_craftext.inference
 ├── VllmInferenceEngine     # optional vLLM adapter
 ├── AsyncVllmInferenceEngine # native AsyncLLMEngine adapter
 ├── SglangInferenceEngine   # reserved SGLang adapter boundary
+├── VllmToTunixAdapter      # ACL: variable-length vLLM output -> padded tensors
 ├── build_inference_engine  # profile-driven backend registry
 ├── RequestsLlmBackend      # adapter back to existing BatchLlmBackend
 └── collectors              # sync/async collection returning GenerationRecord
@@ -30,6 +31,38 @@ tunix_craftext.inference
 Это повторяет архитектурную идею NVIDIA JAX-Toolbox/JAX↔vLLM offloading: trainer и rollout
 engine разделены, а между ними есть явная data/control boundary. Мы не копируем runtime code
 из внешнего репозитория; мы переносим форму разделения ответственности.
+
+## Memory lifecycle: первая строка процесса
+
+В одном Python-процессе JAX/Tunix и vLLM конкурируют за GPU memory. Поэтому memory policy
+задаётся явно до импорта JAX, Torch или vLLM:
+
+```python
+from tunix_craftext.core.memory import setup_monolith_memory
+
+setup_monolith_memory(jax_fraction=0.3)
+
+# only after this: import jax, torch, vllm, tunix...
+```
+
+Функция выставляет:
+
+- `XLA_PYTHON_CLIENT_PREALLOCATE=false`;
+- `XLA_PYTHON_CLIENT_MEM_FRACTION=<jax_fraction>`;
+- `VLLM_WORKER_MULTIPROC_METHOD=spawn`.
+
+Она не вызывается скрыто из `tunix_craftext.__init__`, потому что импорт пакета может случиться
+слишком поздно. Для notebooks/scripts это должна быть первая исполняемая ячейка/строка.
+Между фазами rollout и train можно сделать best-effort cleanup:
+
+```python
+from tunix_craftext.core.garbage_collector import clean_gpu_cache
+
+report = clean_gpu_cache()
+```
+
+На GPU runner это вызывает `gc.collect()`, `torch.cuda.empty_cache()` и, если доступно,
+`torch.cuda.ipc_collect()`. На CPU/macOS path функция безопасно возвращает отчёт без torch.
 
 ## Sync и async — один payload
 
@@ -93,6 +126,41 @@ Async path не должен оборачивать `vllm.LLM.generate()` чер
 и может ломать internal scheduler/IPC. Для native async vLLM используется отдельный
 `AsyncVllmInferenceEngine`, который создаёт `AsyncLLMEngine`, вызывает его async generator и
 лимитирует per-request fan-out через `engine.metadata.async_request_concurrency`.
+
+Если нужен backend object с обоими методами `generate_sync(...)` и `generate_async(...)`,
+используйте strategy wrapper:
+
+```python
+from tunix_craftext.inference import InferenceEngineBackend
+
+backend = InferenceEngineBackend(sync_engine=engine)
+result = backend.generate_sync(batch)
+async_result = await backend.generate_async(batch)
+```
+
+## Anti-corruption layer: vLLM output -> Tunix tensors
+
+vLLM возвращает variable-length objects: text, token ids, dict-like logprobs. Tunix/Optax update
+ожидает плотные массивы с понятной формой. Эти две формы не должны смешиваться напрямую.
+
+```python
+from tunix_craftext.inference import VllmToTunixAdapter
+
+tensors = VllmToTunixAdapter(pad_token_id=0).convert_generation_result(result)
+
+assert tensors.generation_tokens.shape == tensors.actor_log_probs.shape
+assert tensors.generation_tokens.shape == tensors.generation_mask.shape
+```
+
+Контракт adapter-а:
+
+- `generation_tokens`: `np.int32 [B, T]`;
+- `actor_log_probs`: `np.float32 [B, T]`;
+- `generation_mask`: `np.bool_ [B, T]`;
+- `raw_text`: tuple длины `B`.
+
+По умолчанию adapter требует token logprobs. Если эксперимент осознанно делает smoke/evidence
+без logprobs, надо явно передать `allow_missing_logprobs=True`; silent zero-fill запрещён.
 
 ## Компиляция в Tunix
 

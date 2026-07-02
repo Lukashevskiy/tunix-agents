@@ -55,6 +55,12 @@ from .artifacts.trajectory_gif import (
     write_gif,
 )
 from .core.contracts import RolloutBatch, Transition
+from .core.garbage_collector import GpuCacheCleanupReport, clean_gpu_cache
+from .core.memory import (
+    MonolithMemoryConfig,
+    monolith_memory_environment,
+    setup_monolith_memory,
+)
 from .env.config import ConfigError, MvpRunConfig, load_mvp_config
 from .env.prompts import ActionCatalog, MegaPromptRenderer, PromptContext, RenderedPrompt
 from .env.runtime import CrafTextRuntime, build_craftext_runtime
@@ -67,6 +73,7 @@ from .env.text_policy import (
     decode_action,
     decode_action_outcome,
 )
+from .inference import TunixGenerationTensors, VllmToTunixAdapter
 from .interop import LoraAdapter, ModelTemplate, TensorRule, convert_state_dict, merge_lora_adapters
 from .models.llm import LlmBackend, LlmRequest, LlmResponse, ScriptedLlmBackend
 from .research.llm_ppo import (
@@ -114,6 +121,8 @@ __all__ = [
     "RolloutBatch",
     "TensorRule",
     "Transition",
+    "GpuCacheCleanupReport",
+    "MonolithMemoryConfig",
     "ExperienceBuilder",
     "HybridPpoStep",
     "HybridPpoTrajectory",
@@ -131,7 +140,10 @@ __all__ = [
     "collect_rollout",
     "collect_rollout_scan",
     "convert_state_dict",
+    "clean_gpu_cache",
+    "monolith_memory_environment",
     "merge_lora_adapters",
+    "setup_monolith_memory",
     "ActionCatalog",
     "MegaPromptRenderer",
     "PromptContext",
@@ -154,6 +166,7 @@ __all__ = [
     "role_to_meshes",
     "tunix_role_to_meshes",
     "TextTrajectoryBatch",
+    "TunixGenerationTensors",
     "TextTrajectoryError",
     "text_trajectory_from_replay",
     "frames_from_replay_payload",
@@ -161,6 +174,7 @@ __all__ = [
     "normalize_observation_image",
     "scale_frame",
     "write_gif",
+    "VllmToTunixAdapter",
     "ConfigError",
     "MvpRunConfig",
     "load_mvp_config",
