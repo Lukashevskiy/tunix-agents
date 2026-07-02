@@ -10,6 +10,7 @@ import pytest
 from tunix_craftext.artifacts.metric_pipeline import MetricLoggerFactory, MetricPipelineError
 from tunix_craftext.artifacts.observability import (
     ArtifactSink,
+    CompositeArtifactSink,
     JsonlRunLogger,
     LoggerMethodMapping,
     MappedLoggerSink,
@@ -199,6 +200,25 @@ def test_jsonl_run_logger_implements_artifact_sink_protocol(tmp_path: Path) -> N
     assert (tmp_path / "run" / "artifacts.jsonl").is_file()
 
 
+def test_composite_artifact_sink_fans_out_records(tmp_path: Path) -> None:
+    first = JsonlRunLogger(tmp_path / "first")
+    second = JsonlRunLogger(tmp_path / "second")
+    sink = CompositeArtifactSink(first, second)
+
+    sink.log_metric(MetricRecord("fanout", 1, "train", "update", {"loss": 0.2}))
+    sink.log_metric_snapshot(
+        MetricSnapshotRecord("fanout", 1, "train", "rollout", {"action_counts": {"NOOP": 2}})
+    )
+
+    assert read_jsonl(first.metrics_path) == read_jsonl(second.metrics_path)
+    assert read_jsonl(first.metric_snapshots_path) == read_jsonl(second.metric_snapshots_path)
+
+
+def test_composite_artifact_sink_rejects_empty_sink_list() -> None:
+    with pytest.raises(ValueError, match="at least one sink"):
+        CompositeArtifactSink()
+
+
 def test_run_artifact_rejects_non_scalar_metadata() -> None:
     with pytest.raises(ValueError, match="JSON scalar"):
         RunArtifact(
@@ -345,6 +365,48 @@ def test_metric_logger_factory_composes_transitive_sources(tmp_path: Path) -> No
     assert len(snapshots) == 1
     assert metrics[0]["phase"] == "rollout"
     assert metrics[1]["phase"] == "update"
+
+
+def test_metric_logger_factory_writes_through_generic_artifact_sink(tmp_path: Path) -> None:
+    jsonl = JsonlRunLogger(tmp_path / "jsonl")
+    team = TeamLogger()
+    sink = CompositeArtifactSink(
+        jsonl,
+        MappedLoggerSink(
+            team,
+            mapping=LoggerMethodMapping(
+                log_metrics="scalars_write",
+                log_artifact="file_write",
+                log_text="text_write",
+                log_image="image_write",
+            ),
+        ),
+    )
+    pipeline = (
+        MetricLoggerFactory(sink, run_id="generic")
+        .add_source(
+            name="rollout",
+            phase="rollout",
+            compute=lambda context: {
+                "reward": context.require("reward"),
+                "action_distribution": {"NOOP": 1.0},
+                "top_actions": [{"action": "NOOP", "count": 1}],
+            },
+        )
+        .build()
+    )
+
+    pipeline.log(step=3, inputs={"reward": 1.0}, policy_version=2)
+
+    [metric] = read_jsonl(jsonl.metrics_path)
+    [snapshot] = read_jsonl(jsonl.metric_snapshots_path)
+    assert metric["metrics"]["reward"] == 1.0
+    assert snapshot["policy_version"] == 2
+    assert team.scalars[0][0] == {
+        "train/rollout/reward": 1.0,
+        "train/rollout/action_distribution/NOOP": 1.0,
+    }
+    assert [name for name, _, _ in team.texts] == ["metric", "metric_snapshot"]
 
 
 def test_metric_logger_factory_rejects_missing_external_grpo_input(tmp_path: Path) -> None:

@@ -341,6 +341,41 @@ class ArtifactSink(Protocol):
         """Log or upload one run artifact."""
 
 
+class CompositeArtifactSink:
+    """Fan out observability records to multiple sinks with one contract.
+
+    The first sink is usually :class:`JsonlRunLogger`, keeping local JSONL as
+    the source of truth. Optional external sinks such as Comet or team-local
+    loggers can be added after it without changing training-loop code.
+    """
+
+    def __init__(self, *sinks: ArtifactSink) -> None:
+        """Create a fan-out sink and reject accidental empty routing."""
+        if not sinks:
+            raise ValueError("CompositeArtifactSink requires at least one sink")
+        self.sinks = sinks
+
+    def log_metric(self, record: MetricRecord) -> None:
+        """Log one scalar metric record to every configured sink."""
+        for sink in self.sinks:
+            sink.log_metric(record)
+
+    def log_metric_snapshot(self, record: MetricSnapshotRecord) -> None:
+        """Log one rich live metric snapshot to every configured sink."""
+        for sink in self.sinks:
+            sink.log_metric_snapshot(record)
+
+    def log_validation_trajectory(self, record: ValidationTrajectoryRecord) -> None:
+        """Log one validation trajectory reference to every configured sink."""
+        for sink in self.sinks:
+            sink.log_validation_trajectory(record)
+
+    def log_artifact(self, artifact: RunArtifact) -> None:
+        """Log one artifact reference to every configured sink."""
+        for sink in self.sinks:
+            sink.log_artifact(artifact)
+
+
 @dataclass(frozen=True)
 class LoggerMethodMapping:
     """Names of methods exposed by an arbitrary team/local experiment logger.

@@ -11,7 +11,14 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import cast
 
-from .observability import JsonlRunLogger, JsonValue, RunSplit
+from .observability import (
+    ArtifactSink,
+    JsonValue,
+    MetricRecord,
+    MetricSnapshotRecord,
+    RunSplit,
+    flatten_scalar_metrics,
+)
 
 MetricPayload = Mapping[str, JsonValue]
 MetricCompute = Callable[["MetricComputationContext"], MetricPayload]
@@ -63,9 +70,9 @@ class MetricSource:
 
 @dataclass(frozen=True)
 class LiveMetricPipeline:
-    """Ordered live metric pipeline bound to one logger and run id."""
+    """Ordered live metric pipeline bound to one observability sink and run id."""
 
-    logger: JsonlRunLogger
+    sink: ArtifactSink
     run_id: str
     sources: tuple[MetricSource, ...]
 
@@ -99,26 +106,38 @@ class LiveMetricPipeline:
                 raise MetricPipelineError(f"metric source {source.name!r} returned no metrics")
             computed[source.name] = payload
             working_inputs[source.name] = payload
-            self.logger.log_metrics(
-                run_id=self.run_id,
-                step=step,
-                split=source.split,
-                phase=source.phase,
-                metrics=payload,
-                policy_version=policy_version,
-                write_snapshot=source.write_snapshot,
+            self.sink.log_metric(
+                MetricRecord(
+                    run_id=self.run_id,
+                    step=step,
+                    split=source.split,
+                    phase=source.phase,
+                    metrics=flatten_scalar_metrics(payload),
+                    policy_version=policy_version,
+                )
             )
+            if source.write_snapshot:
+                self.sink.log_metric_snapshot(
+                    MetricSnapshotRecord(
+                        run_id=self.run_id,
+                        step=step,
+                        split=source.split,
+                        phase=source.phase,
+                        metrics=payload,
+                        policy_version=policy_version,
+                    )
+                )
         return computed
 
 
 class MetricLoggerFactory:
-    """Builder for live metric pipelines around a concrete logger."""
+    """Builder for live metric pipelines around a concrete observability sink."""
 
-    def __init__(self, logger: JsonlRunLogger, *, run_id: str) -> None:
+    def __init__(self, sink: ArtifactSink, *, run_id: str) -> None:
         """Create an empty metric pipeline factory."""
         if not run_id:
             raise MetricPipelineError("run_id must be non-empty")
-        self.logger = logger
+        self.sink = sink
         self.run_id = run_id
         self._sources: list[MetricSource] = []
 
@@ -178,7 +197,7 @@ class MetricLoggerFactory:
         if not self._sources:
             raise MetricPipelineError("metric pipeline must contain at least one source")
         return LiveMetricPipeline(
-            logger=self.logger,
+            sink=self.sink,
             run_id=self.run_id,
             sources=tuple(self._sources),
         )

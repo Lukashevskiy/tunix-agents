@@ -98,16 +98,18 @@ logger.write_artifact(
 
 В Jupyter удобнее не размазывать `logger.log_metric(...)` по всем ячейкам, а объявить,
 какие источники метрик нужны, как они считаются и куда пишутся. `MetricLoggerFactory`
-собирает такой pipeline: каждый source видит исходный context и метрики, посчитанные
-предыдущими source-ами.
+собирает такой pipeline поверх общего `ArtifactSink`: каждый source видит исходный
+context и метрики, посчитанные предыдущими source-ами. Поэтому один и тот же pipeline
+может писать локальный JSONL, Comet, командный logger или composite fan-out.
 
 ```python
 from tunix_craftext.artifacts.metric_pipeline import MetricLoggerFactory
-from tunix_craftext.artifacts.observability import JsonlRunLogger
+from tunix_craftext.artifacts.observability import CompositeArtifactSink, JsonlRunLogger
 
 logger = JsonlRunLogger(run_dir)
+sink = CompositeArtifactSink(logger)  # add CometMlSink/team MappedLoggerSink here when needed
 live_metrics = (
-    MetricLoggerFactory(logger, run_id="external-vllm-grpo")
+    MetricLoggerFactory(sink, run_id="external-vllm-grpo")
     .add_external_grpo_summary()  # expects {"external_grpo_batch": batch}
     .add_source(
         name="compact_actor_update",
@@ -255,6 +257,18 @@ comet.log_metric(record)   # mirror to Comet second
 Правило: сначала сохранить локальный artifact (`metrics.jsonl`, replay, validation
 visualization, checkpoint, weights), затем отправить ссылку/файл в Comet через
 `RunArtifact`. Если Comet недоступен, локальные evidence остаются полными.
+
+Для train loop лучше собрать один fan-out sink и передать его в `MetricLoggerFactory`:
+
+```python
+from tunix_craftext.artifacts.observability import CompositeArtifactSink, JsonlRunLogger
+from tunix_craftext.artifacts.comet_adapter import CometMlSink
+
+sink = CompositeArtifactSink(
+    JsonlRunLogger(run_dir),
+    CometMlSink.create_experiment(project_name="tunix-craftext"),
+)
+```
 
 ## Адаптер под любой командный logger
 

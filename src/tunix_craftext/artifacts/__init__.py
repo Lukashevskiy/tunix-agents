@@ -2,6 +2,7 @@
 
 from .checkpoints import *  # noqa: F403
 from .comet_adapter import *  # noqa: F403
+from .metric_pipeline import *  # noqa: F403
 from .observability import *  # noqa: F403
 from .profiling import *  # noqa: F403
 from .provenance import *  # noqa: F403

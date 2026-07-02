@@ -24,6 +24,7 @@ from .artifacts.metric_pipeline import (
 )
 from .artifacts.observability import (
     ArtifactSink,
+    CompositeArtifactSink,
     JsonlRunLogger,
     LoggerMethodMapping,
     MappedLoggerSink,
@@ -173,6 +174,7 @@ __all__ = [
     "LlmResponse",
     "ScriptedLlmBackend",
     "ArtifactSink",
+    "CompositeArtifactSink",
     "JsonlRunLogger",
     "LoggerMethodMapping",
     "MappedLoggerSink",
