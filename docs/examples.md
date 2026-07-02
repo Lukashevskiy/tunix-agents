@@ -118,10 +118,10 @@ Qwen snapshot, CUDA-ready runtime, Tunix и vLLM.
 `RLCluster`: он повторяет direct vLLM path из notebook 17, собирает `B = group_size × group_count`
 CrafText trajectories, сохраняет replay artifacts, затем строит `ExternalGrpoBatch` с
 group-normalized advantages, `ExternalGrpoTokenBatch`, baseline `evaluate_external_llm_actor_grpo()`
-loss/metrics и summary metrics. Этот путь нужен, когда direct vLLM работает, но
-Tunix internal JAX→vLLM weight-sync ещё блокируется несовместимостью worker RPC hooks. Он не
-обновляет actor weights сам; его output — строгий evidence contract для следующего updater
-слоя, LoRA/Qwix и будущего PPO critic.
+loss/metrics, один `external_grpo_update()` для compact actor и summary metrics. Этот путь нужен,
+когда direct vLLM работает, но Tunix internal JAX→vLLM weight-sync ещё блокируется
+несовместимостью worker RPC hooks. Compact actor update доказывает алгоритм; production
+Qwen/Gemma/Qwix actor update подключается следующим слоем через тот же token-score contract.
 
 Placement rule из rollout profiling остаётся важным: для standalone batched rollout рядом с
 vLLM держите environment lane на CPU через `cpu_environment_device_policy()`, а

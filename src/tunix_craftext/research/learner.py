@@ -27,7 +27,14 @@ from ..core.tensor_types import (
     TokenBatchInt,
     TokenBatchLogits,
 )
-from .algorithms import masked_token_ppo_loss, masked_token_returns, ppo_loss
+from ..models.tunix_actor import LlmActorTokenScores
+from ..training.external_grpo import ExternalGrpoTokenBatch
+from .algorithms import (
+    masked_token_grpo_loss,
+    masked_token_ppo_loss,
+    masked_token_returns,
+    ppo_loss,
+)
 
 
 class ActorCritic(nn.Module):
@@ -242,6 +249,81 @@ def token_actor_critic_outputs(
     probabilities = jax.nn.softmax(logits, axis=-1)
     entropy = -jnp.sum(probabilities * log_probs, axis=-1)
     return selected_logprobs, values, entropy
+
+
+def external_grpo_actor_outputs(
+    state: TrainState, batch: ExternalGrpoTokenBatch
+) -> LlmActorTokenScores:
+    """Recompute trainable actor logprobs for an external GRPO token batch.
+
+    This is the compact trainable actor lane for externally collected vLLM
+    rollout evidence. Production Qwen/Gemma/Qwix actors should implement the
+    same ``LlmActorTokenScores`` contract, while this function gives us a real
+    Optax-updateable baseline today.
+
+    :param state: Prompt-conditioned token actor TrainState.
+    :param batch: External GRPO token batch built from replay evidence.
+    :returns: Actor-only token scores shaped like ``batch.token_ids``.
+    """
+    batch.validate_static()
+    logits, _values = state.apply_fn(
+        {"params": state.params},
+        batch.token_ids,
+        batch.prompt_token_ids,
+        batch.prompt_token_mask,
+    )
+    target_buckets = jnp.mod(batch.token_ids, logits.shape[-1])[..., None]
+    log_probs = jax.nn.log_softmax(logits, axis=-1)
+    selected_logprobs = jnp.take_along_axis(log_probs, target_buckets, axis=-1).squeeze(-1)
+    probabilities = jax.nn.softmax(logits, axis=-1)
+    entropy = -jnp.sum(probabilities * log_probs, axis=-1)
+    scores = LlmActorTokenScores(
+        token_logprobs=selected_logprobs,
+        entropy=entropy,
+        token_mask=batch.token_mask,
+    )
+    scores.validate(batch.token_ids)
+    return scores
+
+
+def external_grpo_update(
+    state: TrainState,
+    batch: ExternalGrpoTokenBatch,
+    *,
+    clip_epsilon: float = 0.2,
+    entropy_coefficient: float = 0.0,
+) -> tuple[TrainState, dict[str, ScalarFloat]]:
+    """Apply one critic-free GRPO update to external rollout evidence.
+
+    :param state: Current compact token actor TrainState.
+    :param batch: Tokenized external GRPO evidence with old logprobs and
+        group-normalized advantages.
+    :param clip_epsilon: PPO-style ratio clipping epsilon.
+    :param entropy_coefficient: Entropy bonus scale.
+    :returns: Updated TrainState and scalar metrics.
+    """
+    batch.validate_static()
+
+    def loss_fn(params):
+        candidate = state.replace(params=params)
+        scores = external_grpo_actor_outputs(candidate, batch)
+        return masked_token_grpo_loss(
+            new_log_prob=scores.token_logprobs,
+            old_log_prob=batch.old_logprobs,
+            advantages=batch.advantages,
+            token_mask=batch.token_mask,
+            clip_epsilon=clip_epsilon,
+            entropy=scores.entropy,
+            entropy_coefficient=entropy_coefficient,
+        )
+
+    (loss, metrics), grads = jax.value_and_grad(loss_fn, has_aux=True)(state.params)
+    return state.apply_gradients(grads=grads), {
+        **metrics,
+        "loss": loss,
+        "learned_tokens": jnp.sum(batch.token_mask.astype(jnp.float32)),
+        "mean_sample_reward": jnp.mean(batch.sample_rewards),
+    }
 
 
 def token_ppo_update(
