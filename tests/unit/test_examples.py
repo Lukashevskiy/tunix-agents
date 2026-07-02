@@ -77,6 +77,10 @@ def test_sync_vllm_grpo_notebook_uses_profile_path_and_placement_contracts() -> 
     assert "JAX_PLATFORMS=cpu" in source
     assert "local_vllm_rollout_contract" in source
     assert "sync_vllm_generation.vllm_model_version == str(snapshot_path)" in source
+    assert "MetricLoggerFactory" in source
+    assert "CompositeArtifactSink" in source
+    assert "MetricRecord" not in source
+    assert "logger.log_metric" not in source
 
 
 def test_external_vllm_grpo_notebook_uses_direct_engine_and_evidence_contract() -> None:
@@ -94,11 +98,25 @@ def test_external_vllm_grpo_notebook_uses_direct_engine_and_evidence_contract() 
     assert "external_grpo_update" in source
     assert "mean logprob delta after one update" in source
     assert "MetricLoggerFactory" in source
+    assert "CompositeArtifactSink" in source
     assert "live_metric_pipeline.log" in source
     assert "metric snapshots jsonl" in source
     assert "save_external_grpo_batch" in source
     assert "cpu_environment_device_policy()" in source
     assert "GRPOLearner" not in source
+
+
+def test_server_grpo_notebook_uses_metric_pipeline_not_manual_records() -> None:
+    """Notebook 16 should log training/readiness metrics through the metric factory."""
+    notebook = json.loads(
+        (NOTEBOOKS / "16_server_grpo_object_training.ipynb").read_text(encoding="utf-8")
+    )
+    source = "".join("".join(cell["source"]) for cell in notebook["cells"])
+
+    assert "MetricLoggerFactory" in source
+    assert "CompositeArtifactSink" in source
+    assert "MetricRecord" not in source
+    assert "logger.log_metric" not in source
 
 
 def test_rollout_notebooks_pin_cpu_env_sidecar_policy() -> None:

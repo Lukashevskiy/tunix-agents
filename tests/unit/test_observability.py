@@ -108,23 +108,27 @@ def test_jsonl_run_logger_appends_records_in_order(tmp_path: Path) -> None:
     assert [payload["metrics"]["reward"] for payload in payloads] == [0.0, 1.0]
 
 
-def test_jsonl_run_logger_logs_live_nested_metrics_and_scalar_stream(tmp_path: Path) -> None:
+def test_metric_logger_factory_logs_live_nested_metrics_and_scalar_stream(tmp_path: Path) -> None:
     logger = JsonlRunLogger(tmp_path / "run")
+    pipeline = (
+        MetricLoggerFactory(logger, run_id="live")
+        .add_input_metrics(input_name="rollout_metrics", name="rollout", phase="rollout")
+        .build()
+    )
 
-    metrics_path, snapshot_path = logger.log_metrics(
-        run_id="live",
+    pipeline.log(
         step=7,
-        split="train",
-        phase="rollout",
-        metrics={
-            "loss": 1.5,
-            "action_distribution": {"NOOP": 0.75, "DO": 0.25},
-            "top_actions": [{"action": "NOOP", "count": 3}],
+        inputs={
+            "rollout_metrics": {
+                "loss": 1.5,
+                "action_distribution": {"NOOP": 0.75, "DO": 0.25},
+                "top_actions": [{"action": "NOOP", "count": 3}],
+            }
         },
     )
 
-    [metric] = read_jsonl(metrics_path)
-    [snapshot] = read_jsonl(snapshot_path)
+    [metric] = read_jsonl(logger.metrics_path)
+    [snapshot] = read_jsonl(logger.metric_snapshots_path)
 
     assert metric["metrics"]["loss"] == 1.5
     assert metric["metrics"]["action_distribution/NOOP"] == 0.75
@@ -407,6 +411,17 @@ def test_metric_logger_factory_writes_through_generic_artifact_sink(tmp_path: Pa
         "train/rollout/action_distribution/NOOP": 1.0,
     }
     assert [name for name, _, _ in team.texts] == ["metric", "metric_snapshot"]
+
+
+def test_metric_logger_factory_rejects_non_mapping_input_metrics(tmp_path: Path) -> None:
+    pipeline = (
+        MetricLoggerFactory(JsonlRunLogger(tmp_path / "run"), run_id="generic")
+        .add_input_metrics(input_name="metrics", name="metrics", phase="update")
+        .build()
+    )
+
+    with pytest.raises(MetricPipelineError, match="metric mapping"):
+        pipeline.log(step=0, inputs={"metrics": 1.0})
 
 
 def test_metric_logger_factory_rejects_missing_external_grpo_input(tmp_path: Path) -> None:

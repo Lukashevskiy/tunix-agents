@@ -82,6 +82,8 @@ class LiveMetricPipeline:
         step: int,
         inputs: Mapping[str, object],
         policy_version: int | None = None,
+        checkpoint_path: str | None = None,
+        trajectory_path: str | None = None,
     ) -> dict[str, MetricPayload]:
         """Compute all sources in order and append their metric records.
 
@@ -114,6 +116,8 @@ class LiveMetricPipeline:
                     phase=source.phase,
                     metrics=flatten_scalar_metrics(payload),
                     policy_version=policy_version,
+                    checkpoint_path=checkpoint_path,
+                    trajectory_path=trajectory_path,
                 )
             )
             if source.write_snapshot:
@@ -183,6 +187,37 @@ class MetricLoggerFactory:
             if not isinstance(value, ExternalGrpoBatch):
                 raise MetricPipelineError(f"{input_name} must be ExternalGrpoBatch")
             return cast(MetricPayload, summarize_external_grpo_batch(value))
+
+        return self.add_source(
+            name=name,
+            phase=phase,
+            split=split,
+            compute=compute,
+            write_snapshot=write_snapshot,
+        )
+
+    def add_input_metrics(
+        self,
+        *,
+        input_name: str,
+        name: str,
+        phase: str,
+        split: RunSplit = "train",
+        write_snapshot: bool = True,
+    ) -> MetricLoggerFactory:
+        """Register a source that logs a JSON metric payload from pipeline inputs.
+
+        This is the generic bridge for notebook/train-loop scalar or nested
+        metrics that are already computed by the surrounding code. Prefer this
+        over ad-hoc ``MetricRecord`` construction in notebooks: it keeps all
+        live logging on the same ``MetricLoggerFactory -> ArtifactSink`` path.
+        """
+
+        def compute(context: MetricComputationContext) -> MetricPayload:
+            value = context.require(input_name)
+            if not isinstance(value, Mapping):
+                raise MetricPipelineError(f"{input_name} must be a metric mapping")
+            return cast(MetricPayload, value)
 
         return self.add_source(
             name=name,

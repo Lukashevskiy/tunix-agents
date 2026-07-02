@@ -18,10 +18,11 @@ from typing import Literal
 
 import jax
 
+from ..artifacts.metric_pipeline import MetricLoggerFactory
 from ..artifacts.observability import (
+    CompositeArtifactSink,
     JsonlRunLogger,
     JsonScalar,
-    MetricRecord,
     RunArtifact,
     ValidationTrajectoryRecord,
     checkpoint_artifact,
@@ -137,6 +138,7 @@ def check_server_readiness(
     generation_config = resolve_profile_path(profile_path, profile.generation_config)
     model_snapshot = resolve_profile_path(profile_path, profile.model.snapshot)
     logger = JsonlRunLogger(output_dir)
+    sink = CompositeArtifactSink(logger)
     checks: list[ReadinessCheck] = []
 
     _ensure_evidence_directories(output_dir)
@@ -226,8 +228,8 @@ def check_server_readiness(
         policy_version=0,
         metrics={"mode": mode, "backend": backend},
     )
-    logger.log_validation_trajectory(validation_record)
-    logger.log_artifact(
+    sink.log_validation_trajectory(validation_record)
+    sink.log_artifact(
         validation_trajectory_artifact(
             profile.run.name,
             validation_path,
@@ -254,26 +256,34 @@ def check_server_readiness(
         + "\n",
         encoding="utf-8",
     )
-    logger.log_artifact(
+    sink.log_artifact(
         checkpoint_artifact(profile.run.name, checkpoint_dir, step=0, role="readiness")
     )
     checks.append(
         ReadinessCheck("checkpoint_evidence", "pass", "checkpoint directory probe written")
     )
 
-    logger.log_artifact(RunArtifact(profile.run.name, str(profile_path), "config", step=0))
-    logger.log_artifact(RunArtifact(profile.run.name, str(manifest_path), "profile", step=0))
-    logger.log_metric(
-        MetricRecord(
-            run_id=profile.run.name,
-            step=0,
+    sink.log_artifact(RunArtifact(profile.run.name, str(profile_path), "config", step=0))
+    sink.log_artifact(RunArtifact(profile.run.name, str(manifest_path), "profile", step=0))
+    (
+        MetricLoggerFactory(sink, run_id=profile.run.name)
+        .add_input_metrics(
+            input_name="server_readiness",
+            name="server_readiness",
             split="eval",
             phase="server_readiness",
-            metrics={
-                "ok": all(check.ok for check in checks),
-                "device_count": len(devices),
-                "snapshot_exists": model_snapshot.is_dir(),
-                "python": platform.python_version(),
+            write_snapshot=False,
+        )
+        .build()
+        .log(
+            step=0,
+            inputs={
+                "server_readiness": {
+                    "ok": all(check.ok for check in checks),
+                    "device_count": len(devices),
+                    "snapshot_exists": model_snapshot.is_dir(),
+                    "python": platform.python_version(),
+                }
             },
             policy_version=0,
             checkpoint_path=str(checkpoint_dir),

@@ -526,48 +526,6 @@ class JsonlRunLogger:
         """Append one metric event through the generic ``ArtifactSink`` protocol."""
         self.write_metric(record)
 
-    def log_metrics(
-        self,
-        *,
-        run_id: str,
-        step: int,
-        split: RunSplit,
-        phase: str,
-        metrics: Mapping[str, JsonValue],
-        policy_version: int | None = None,
-        write_snapshot: bool = True,
-    ) -> tuple[Path, Path | None]:
-        """Append live metrics while preserving nested debug payloads.
-
-        Scalar-compatible leaves are flattened into ``metrics.jsonl`` using
-        slash-separated keys. When ``write_snapshot`` is true, the original
-        nested payload is also written to ``metric_snapshots.jsonl``.
-        """
-        flattened = flatten_scalar_metrics(metrics)
-        metric_path = self.write_metric(
-            MetricRecord(
-                run_id=run_id,
-                step=step,
-                split=split,
-                phase=phase,
-                metrics=flattened,
-                policy_version=policy_version,
-            )
-        )
-        snapshot_path = None
-        if write_snapshot:
-            snapshot_path = self.write_metric_snapshot(
-                MetricSnapshotRecord(
-                    run_id=run_id,
-                    step=step,
-                    split=split,
-                    phase=phase,
-                    metrics=dict(metrics),
-                    policy_version=policy_version,
-                )
-            )
-        return metric_path, snapshot_path
-
     def write_metric_snapshot(self, record: MetricSnapshotRecord) -> Path:
         """Append one rich live metrics snapshot and return its JSONL path."""
         _append_jsonl(self.metric_snapshots_path, _record_payload(record))

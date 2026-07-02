@@ -13,7 +13,11 @@
 - `weights/` — экспортированные actor/critic/reference weights или LoRA/Qwix adapters;
 - `profiles/` — phase timings и будущие Nsight/`nsys-jax` traces.
 
-## Python API
+## Низкоуровневый Python API
+
+Этот слой нужен для tests/adapters/readiness probes и ручной записи уже
+сформированных records. В train loop и notebooks предпочтительный путь ниже:
+`MetricLoggerFactory -> ArtifactSink`.
 
 ```python
 from pathlib import Path
@@ -236,22 +240,26 @@ Comet подключается отдельным optional adapter, а не им
 
 ```python
 from tunix_craftext.artifacts.comet_adapter import CometMlSink
+from tunix_craftext.artifacts.metric_pipeline import MetricLoggerFactory
+from tunix_craftext.artifacts.observability import CompositeArtifactSink, JsonlRunLogger
 
-comet = CometMlSink.create_experiment(
-    project_name="tunix-craftext",
-    workspace="my-workspace",
+sink = CompositeArtifactSink(
+    JsonlRunLogger(run_dir),
+    CometMlSink.create_experiment(
+        project_name="tunix-craftext",
+        workspace="my-workspace",
+    ),
 )
 
-record = MetricRecord(
-    run_id="qwen-grpo-smoke",
-    step=1,
-    split="train",
-    phase="update",
-    metrics={"loss": 0.42, "kl": 0.01},
+(
+    MetricLoggerFactory(sink, run_id="qwen-grpo-smoke")
+    .add_input_metrics(input_name="update", name="update", phase="update")
+    .build()
+    .log(
+        step=1,
+        inputs={"update": {"loss": 0.42, "kl": 0.01}},
+    )
 )
-
-logger.log_metric(record)  # local JSONL first
-comet.log_metric(record)   # mirror to Comet second
 ```
 
 Правило: сначала сохранить локальный artifact (`metrics.jsonl`, replay, validation
