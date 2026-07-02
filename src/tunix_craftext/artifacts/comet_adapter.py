@@ -7,11 +7,18 @@ experiment when the user explicitly provides or creates one.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from .observability import MetricRecord, RunArtifact, ValidationTrajectoryRecord
+from .observability import (
+    MetricRecord,
+    MetricSnapshotRecord,
+    RunArtifact,
+    ValidationTrajectoryRecord,
+    flatten_scalar_metrics,
+)
 
 
 class CometMlSink:
@@ -69,6 +76,32 @@ class CometMlSink:
                     for key, value in record.metrics.items()
                     if not isinstance(value, (int, float)) or isinstance(value, bool)
                 },
+            },
+            step=record.step,
+        )
+
+    def log_metric_snapshot(self, record: MetricSnapshotRecord) -> None:
+        """Log scalar leaves and preserve nested metric context in Comet."""
+        prefix = f"{record.split}/{record.phase}"
+        numeric_metrics = {
+            f"{prefix}/{name}": value
+            for name, value in flatten_scalar_metrics(record.metrics).items()
+            if isinstance(value, (int, float)) and not isinstance(value, bool)
+        }
+        if numeric_metrics:
+            _call_with_fallback(
+                getattr(self.experiment, "log_metrics"),
+                numeric_metrics,
+                step=record.step,
+            )
+        self._log_context(
+            {
+                "schema": record.schema,
+                "run_id": record.run_id,
+                "split": record.split,
+                "phase": record.phase,
+                "policy_version": record.policy_version,
+                "metric_snapshot": json.dumps(record.metrics, ensure_ascii=False, sort_keys=True),
             },
             step=record.step,
         )

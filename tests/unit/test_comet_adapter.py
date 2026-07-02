@@ -7,6 +7,7 @@ from pathlib import Path
 from tunix_craftext.artifacts.comet_adapter import CometMlSink
 from tunix_craftext.artifacts.observability import (
     MetricRecord,
+    MetricSnapshotRecord,
     RunArtifact,
     ValidationTrajectoryRecord,
 )
@@ -66,6 +67,35 @@ def test_comet_sink_logs_numeric_metrics_and_scalar_context() -> None:
     assert ("checkpoint_path", "checkpoints/actor/5", 5) in experiment.other
     assert ("metric/quality", "ok", 5) in experiment.other
     assert ("metric/success", True, 5) in experiment.other
+
+
+def test_comet_sink_logs_metric_snapshot_scalars_and_json_context() -> None:
+    experiment = FakeExperiment()
+    sink = CometMlSink(experiment)
+
+    sink.log_metric_snapshot(
+        MetricSnapshotRecord(
+            run_id="run",
+            step=6,
+            split="train",
+            phase="rollout",
+            metrics={
+                "action_distribution": {"NOOP": 0.75, "DO": 0.25},
+                "top_actions": [{"action": "NOOP", "count": 3}],
+            },
+        )
+    )
+
+    assert experiment.metrics == [
+        (
+            {
+                "train/rollout/action_distribution/DO": 0.25,
+                "train/rollout/action_distribution/NOOP": 0.75,
+            },
+            6,
+        )
+    ]
+    assert any(name == "metric_snapshot" for name, _, _ in experiment.other)
 
 
 def test_comet_sink_logs_validation_trajectory_summary_and_full_artifact() -> None:

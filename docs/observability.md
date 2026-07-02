@@ -4,6 +4,8 @@
 первичным источником правды становится append-only evidence layer:
 
 - `metrics.jsonl` — train/val/eval/benchmark scalar events;
+- `metric_snapshots.jsonl` — rich nested live snapshots: action histograms, top actions,
+  per-action reward means and rollout/update debug payloads;
 - `validation_trajectories.jsonl` — ссылки на полные validation trajectories;
 - `trajectory/` — полный replay/trajectory artifact с prompt, raw completion, action,
   reward, masks, token ids/logprobs и fallback provenance;
@@ -92,6 +94,45 @@ logger.write_artifact(
 )
 ```
 
+## Live metrics factory для notebooks/train loop
+
+В Jupyter удобнее не размазывать `logger.log_metric(...)` по всем ячейкам, а объявить,
+какие источники метрик нужны, как они считаются и куда пишутся. `MetricLoggerFactory`
+собирает такой pipeline: каждый source видит исходный context и метрики, посчитанные
+предыдущими source-ами.
+
+```python
+from tunix_craftext.artifacts.metric_pipeline import MetricLoggerFactory
+from tunix_craftext.artifacts.observability import JsonlRunLogger
+
+logger = JsonlRunLogger(run_dir)
+live_metrics = (
+    MetricLoggerFactory(logger, run_id="external-vllm-grpo")
+    .add_external_grpo_summary()  # expects {"external_grpo_batch": batch}
+    .add_source(
+        name="compact_actor_update",
+        phase="update",
+        compute=lambda context: context.require("update_metrics"),
+    )
+    .build()
+)
+
+live_metrics.log(
+    step=update_step,
+    inputs={
+        "external_grpo_batch": external_grpo_batch,
+        "update_metrics": {"loss": 0.3, "entropy": 1.2},
+    },
+)
+```
+
+Результат:
+
+- scalar leaves пишутся в `metrics.jsonl` (`action_distribution/NOOP`, `loss`, `entropy`);
+- полный nested payload пишется в `metric_snapshots.jsonl`;
+- `MappedLoggerSink` и `CometMlSink` умеют зеркалить snapshot: scalar leaves уходят как charts,
+  nested snapshot — как JSON context.
+
 ## Что логировать во время train
 
 Минимальный набор для каждого update:
@@ -105,6 +146,14 @@ logger.write_artifact(
 - `tokens_per_second`, `env_steps_per_second`, `update_seconds`;
 - `policy_version`, `checkpoint_path`.
 - artifact manifest для checkpoint/weights/optimizer state.
+
+Для actor behavior дополнительно:
+
+- `action_counts`, `action_distribution`, `action_entropy_nats`;
+- `top_actions` — какие действия policy использует чаще всего;
+- `action_reward_mean` — средний reward по каждому действию;
+- `fallback_rate`, `invalid_action_rate`, `masked_action_rate`;
+- `mean_generated_tokens_per_step`, `mean_prompt_tokens_per_step`.
 
 Для PPO дополнительно:
 

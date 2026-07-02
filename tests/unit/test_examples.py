@@ -93,6 +93,9 @@ def test_external_vllm_grpo_notebook_uses_direct_engine_and_evidence_contract() 
     assert "token_batch_from_external_grpo" in source
     assert "external_grpo_update" in source
     assert "mean logprob delta after one update" in source
+    assert "MetricLoggerFactory" in source
+    assert "live_metric_pipeline.log" in source
+    assert "metric snapshots jsonl" in source
     assert "save_external_grpo_batch" in source
     assert "cpu_environment_device_policy()" in source
     assert "GRPOLearner" not in source

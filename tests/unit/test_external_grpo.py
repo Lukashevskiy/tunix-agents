@@ -87,6 +87,36 @@ def _replay(total_reward: float, *, token_evidence: bool = True) -> ReplayArtifa
     )
 
 
+def _behavior_replay(
+    steps: tuple[tuple[str, float, bool, int, int, int], ...]
+) -> ReplayArtifact:
+    return ReplayArtifact(
+        config_path="configs/env/text/qwen_craftext.yaml",
+        commit="abc123",
+        backend="vllm-offload",
+        steps=tuple(
+            ReplayStep(
+                index=index,
+                prompt="goal",
+                raw_completion=f"<action>{action}</action>",
+                action_id=index,
+                action_label=action,
+                reward=reward,
+                terminated=index == len(steps) - 1,
+                fallback_used=fallback,
+                invalid_format=invalid_format,
+                unknown_action=unknown_action,
+                masked_action=masked_action,
+                token_ids=(index + 10,),
+                token_logprobs=(-0.1,),
+                prompt_token_ids=(1, 2),
+            )
+            for index, (action, reward, fallback, invalid_format, unknown_action, masked_action)
+            in enumerate(steps)
+        ),
+    )
+
+
 def test_group_normalized_advantages_are_zero_mean_and_stable_for_ties() -> None:
     """External GRPO uses per-task reward normalization and handles no-signal groups."""
     advantages = group_normalized_advantages((1.0, 2.0, 3.0))
@@ -130,6 +160,47 @@ def test_external_grpo_batch_chunks_replays_and_summarizes_metrics() -> None:
     )
     assert [sample.advantage for sample in batch.groups[1].samples] == [0.0, 0.0]
     assert summarize_external_grpo_batch(batch)["group_count"] == 2
+
+
+def test_external_grpo_summary_reports_actor_behavior_distribution() -> None:
+    """Rollout summary should expose action collapse, invalid and fallback signals."""
+    batch = external_grpo_batch_from_replays(
+        goal="collect wood",
+        group_prefix="wood",
+        group_size=2,
+        replays=(
+            _behavior_replay(
+                (
+                    ("NOOP", 0.0, False, 0, 0, 0),
+                    ("DO", 1.0, False, 0, 0, 0),
+                )
+            ),
+            _behavior_replay(
+                (
+                    ("NOOP", -0.2, True, 1, 0, 0),
+                    ("LEFT", 0.0, False, 0, 0, 1),
+                )
+            ),
+        ),
+    )
+
+    summary = summarize_external_grpo_batch(batch)
+
+    assert summary["step_count"] == 4
+    assert summary["action_counts"] == {"DO": 1, "LEFT": 1, "NOOP": 2}
+    assert summary["action_distribution"] == {"DO": 0.25, "LEFT": 0.25, "NOOP": 0.5}
+    assert summary["top_actions"][0] == {
+        "action": "NOOP",
+        "count": 2,
+        "probability": 0.5,
+    }
+    assert summary["fallback_rate"] == 0.25
+    assert summary["invalid_action_rate"] == 0.5
+    assert summary["invalid_format_rate"] == 0.25
+    assert summary["masked_action_rate"] == 0.25
+    assert summary["action_reward_mean"] == {"DO": 1.0, "LEFT": 0.0, "NOOP": -0.1}
+    assert summary["unique_action_count"] == 3
+    assert float(summary["action_entropy_nats"]) > 0.0
 
 
 def test_external_grpo_batch_from_batched_rollout_preserves_replay_evidence() -> None:

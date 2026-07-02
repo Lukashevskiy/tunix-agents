@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import math
+from collections import Counter, defaultdict
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -363,14 +364,64 @@ def summarize_external_grpo_batch(batch: ExternalGrpoBatch) -> dict[str, object]
     rewards = [
         sample.total_reward for group in batch.groups for sample in group.samples
     ]
+    steps = [
+        step
+        for group in batch.groups
+        for sample in group.samples
+        for step in sample.replay.steps
+    ]
+    action_counts = Counter(step.action_label for step in steps)
+    action_rewards: dict[str, list[float]] = defaultdict(list)
+    for step in steps:
+        action_rewards[step.action_label].append(float(step.reward))
+    action_reward_mean = {
+        action: sum(values) / len(values)
+        for action, values in sorted(action_rewards.items())
+    }
+    step_count = len(steps)
+    invalid_count = sum(
+        int(bool(step.invalid_format or step.unknown_action or step.masked_action))
+        for step in steps
+    )
+    token_lengths = [
+        len(step.token_ids)
+        for step in steps
+        if step.token_ids is not None
+    ]
+    prompt_lengths = [
+        len(step.prompt_token_ids)
+        for step in steps
+        if step.prompt_token_ids is not None
+    ]
+    completion_lengths = [len(step.raw_completion) for step in steps]
     return {
         "schema": batch.schema,
         "group_count": len(batch.groups),
         "sample_count": batch.sample_count,
+        "step_count": step_count,
         "mean_reward": batch.mean_reward,
         "min_reward": min(rewards),
         "max_reward": max(rewards),
+        "reward_std": _population_std(rewards),
+        "advantage_std": _population_std(advantages),
         "mean_abs_advantage": sum(abs(value) for value in advantages) / len(advantages),
+        "action_counts": dict(sorted(action_counts.items())),
+        "action_distribution": _distribution(action_counts),
+        "action_entropy_nats": _entropy_nats(action_counts),
+        "unique_action_count": len(action_counts),
+        "top_actions": _top_actions(action_counts),
+        "action_reward_mean": action_reward_mean,
+        "fallback_rate": _rate(sum(int(step.fallback_used) for step in steps), step_count),
+        "invalid_action_rate": _rate(invalid_count, step_count),
+        "invalid_format_rate": _rate(sum(step.invalid_format for step in steps), step_count),
+        "unknown_action_rate": _rate(sum(step.unknown_action for step in steps), step_count),
+        "masked_action_rate": _rate(sum(step.masked_action for step in steps), step_count),
+        "terminated_rate": _rate(sum(int(step.terminated) for step in steps), step_count),
+        "truncated_rate": _rate(sum(int(step.truncated) for step in steps), step_count),
+        "mean_episode_length": step_count / batch.sample_count,
+        "mean_generated_tokens_per_step": _mean(token_lengths),
+        "mean_prompt_tokens_per_step": _mean(prompt_lengths),
+        "mean_completion_chars_per_step": _mean(completion_lengths),
     }
 
 
@@ -409,6 +460,58 @@ def _validate_token_provenance(replay: ReplayArtifact, *, sample_id: int) -> Non
             raise ExternalGrpoError(
                 f"sample {sample_id} step {step_index} token/logprob lengths differ"
             )
+
+
+def _mean(values: Sequence[float | int]) -> float:
+    """Return a JSON-safe mean for optional metric collections."""
+    if not values:
+        return 0.0
+    return float(sum(float(value) for value in values) / len(values))
+
+
+def _population_std(values: Sequence[float]) -> float:
+    """Return population standard deviation for compact batch diagnostics."""
+    if not values:
+        return 0.0
+    mean = sum(values) / len(values)
+    return math.sqrt(sum((value - mean) ** 2 for value in values) / len(values))
+
+
+def _rate(count: int, total: int) -> float:
+    """Return a stable zero-safe rate."""
+    return 0.0 if total == 0 else float(count / total)
+
+
+def _distribution(counts: Counter[str]) -> dict[str, float]:
+    """Return action probabilities sorted by label."""
+    total = sum(counts.values())
+    if total == 0:
+        return {}
+    return {
+        action: float(count / total)
+        for action, count in sorted(counts.items())
+    }
+
+
+def _entropy_nats(counts: Counter[str]) -> float:
+    """Return categorical entropy over selected action labels."""
+    probabilities = _distribution(counts).values()
+    return float(-sum(probability * math.log(probability) for probability in probabilities))
+
+
+def _top_actions(counts: Counter[str], *, limit: int = 5) -> list[dict[str, object]]:
+    """Return most frequently selected actions with count and probability."""
+    total = sum(counts.values())
+    if total == 0:
+        return []
+    return [
+        {
+            "action": action,
+            "count": count,
+            "probability": float(count / total),
+        }
+        for action, count in counts.most_common(limit)
+    ]
 
 
 jax.tree_util.register_dataclass(

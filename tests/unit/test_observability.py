@@ -7,15 +7,18 @@ from pathlib import Path
 
 import pytest
 
+from tunix_craftext.artifacts.metric_pipeline import MetricLoggerFactory, MetricPipelineError
 from tunix_craftext.artifacts.observability import (
     ArtifactSink,
     JsonlRunLogger,
     LoggerMethodMapping,
     MappedLoggerSink,
     MetricRecord,
+    MetricSnapshotRecord,
     RunArtifact,
     ValidationTrajectoryRecord,
     checkpoint_artifact,
+    flatten_scalar_metrics,
     optimizer_state_artifact,
     read_jsonl,
     training_trajectory_artifact,
@@ -23,6 +26,8 @@ from tunix_craftext.artifacts.observability import (
     validation_visualization_artifact,
     weights_artifact,
 )
+from tunix_craftext.artifacts.replay import ReplayArtifact, ReplayStep
+from tunix_craftext.training.external_grpo import external_grpo_batch_from_replays
 
 
 def test_jsonl_run_logger_writes_train_metrics_and_validation_trajectory(
@@ -102,6 +107,36 @@ def test_jsonl_run_logger_appends_records_in_order(tmp_path: Path) -> None:
     assert [payload["metrics"]["reward"] for payload in payloads] == [0.0, 1.0]
 
 
+def test_jsonl_run_logger_logs_live_nested_metrics_and_scalar_stream(tmp_path: Path) -> None:
+    logger = JsonlRunLogger(tmp_path / "run")
+
+    metrics_path, snapshot_path = logger.log_metrics(
+        run_id="live",
+        step=7,
+        split="train",
+        phase="rollout",
+        metrics={
+            "loss": 1.5,
+            "action_distribution": {"NOOP": 0.75, "DO": 0.25},
+            "top_actions": [{"action": "NOOP", "count": 3}],
+        },
+    )
+
+    [metric] = read_jsonl(metrics_path)
+    [snapshot] = read_jsonl(snapshot_path)
+
+    assert metric["metrics"]["loss"] == 1.5
+    assert metric["metrics"]["action_distribution/NOOP"] == 0.75
+    assert "top_actions" not in metric["metrics"]
+    assert snapshot["schema"] == "tunix-craftext.metric-snapshot/v1"
+    assert snapshot["metrics"]["top_actions"][0]["action"] == "NOOP"
+
+
+def test_flatten_scalar_metrics_rejects_payload_without_scalar_leaf() -> None:
+    with pytest.raises(ValueError, match="at least one scalar"):
+        flatten_scalar_metrics({"top_actions": [{"action": "NOOP"}]})
+
+
 def test_metric_record_rejects_non_scalar_metrics() -> None:
     with pytest.raises(ValueError, match="JSON scalar"):
         MetricRecord(
@@ -111,6 +146,18 @@ def test_metric_record_rejects_non_scalar_metrics() -> None:
             phase="update",
             metrics={"loss_curve": [1.0, 0.5]},  # type: ignore[dict-item]
         )
+
+
+def test_metric_snapshot_record_accepts_nested_json_metrics() -> None:
+    record = MetricSnapshotRecord(
+        run_id="snapshot",
+        step=1,
+        split="train",
+        phase="rollout",
+        metrics={"action_counts": {"NOOP": 2}, "top_actions": [{"action": "NOOP"}]},
+    )
+
+    assert record.schema == "tunix-craftext.metric-snapshot/v1"
 
 
 def test_validation_trajectory_requires_full_artifact_reference() -> None:
@@ -131,6 +178,9 @@ def test_jsonl_run_logger_implements_artifact_sink_protocol(tmp_path: Path) -> N
     sink.log_metric(
         MetricRecord("protocol", 0, "train", "update", {"loss": 0.0})
     )
+    sink.log_metric_snapshot(
+        MetricSnapshotRecord("protocol", 0, "train", "rollout", {"action_counts": {"NOOP": 1}})
+    )
     sink.log_validation_trajectory(
         ValidationTrajectoryRecord(
             "protocol",
@@ -144,6 +194,7 @@ def test_jsonl_run_logger_implements_artifact_sink_protocol(tmp_path: Path) -> N
     sink.log_artifact(RunArtifact("protocol", "trajectory/task.json", "validation_trajectory"))
 
     assert (tmp_path / "run" / "metrics.jsonl").is_file()
+    assert (tmp_path / "run" / "metric_snapshots.jsonl").is_file()
     assert (tmp_path / "run" / "validation_trajectories.jsonl").is_file()
     assert (tmp_path / "run" / "artifacts.jsonl").is_file()
 
@@ -200,6 +251,15 @@ def test_mapped_logger_sink_adapts_team_logger_method_names() -> None:
     sink.log_metric(
         MetricRecord("mapped", 2, "train", "update", {"loss": 0.5, "quality": "ok"})
     )
+    sink.log_metric_snapshot(
+        MetricSnapshotRecord(
+            "mapped",
+            2,
+            "train",
+            "rollout",
+            {"action_distribution": {"NOOP": 1.0}, "top_actions": [{"action": "NOOP"}]},
+        )
+    )
     sink.log_artifact(
         RunArtifact(
             "mapped",
@@ -221,10 +281,12 @@ def test_mapped_logger_sink_adapts_team_logger_method_names() -> None:
     )
 
     assert logger.scalars[0] == ({"train/update/loss": 0.5}, 2)
+    assert logger.scalars[1] == ({"train/rollout/action_distribution/NOOP": 1.0}, 2)
     assert logger.images == [("trajectory/val/frame.png", "val-frame", 2)]
     assert logger.files == [("trajectory/val/task.json", "task-step-2", "trajectory", 2)]
     assert [name for name, _, _ in logger.texts] == [
         "metric",
+        "metric_snapshot",
         "artifact",
         "validation_trajectory",
         "artifact",
@@ -247,6 +309,52 @@ def test_mapped_logger_sink_accepts_direct_callables() -> None:
     assert events[0] == ("metrics", {"train/update/loss": 1.0})
     assert events[1][0] == "text"
     assert events[2] == ("artifact", "checkpoint/actor")
+
+
+def test_metric_logger_factory_composes_transitive_sources(tmp_path: Path) -> None:
+    logger = JsonlRunLogger(tmp_path / "run")
+    batch = external_grpo_batch_from_replays(
+        goal="collect wood",
+        group_prefix="wood",
+        group_size=2,
+        replays=(_replay_for_metrics("NOOP", 0.0), _replay_for_metrics("DO", 1.0)),
+    )
+    pipeline = (
+        MetricLoggerFactory(logger, run_id="factory")
+        .add_external_grpo_summary()
+        .add_source(
+            name="derived",
+            phase="update",
+            compute=lambda context: {
+                "sample_count_seen": context.require_computed("external_grpo_summary")[
+                    "sample_count"
+                ],
+            },
+            write_snapshot=False,
+        )
+        .build()
+    )
+
+    computed = pipeline.log(step=4, inputs={"external_grpo_batch": batch})
+    metrics = read_jsonl(logger.metrics_path)
+    snapshots = read_jsonl(logger.metric_snapshots_path)
+
+    assert computed["external_grpo_summary"]["action_counts"] == {"DO": 1, "NOOP": 1}
+    assert computed["derived"]["sample_count_seen"] == 2
+    assert len(metrics) == 2
+    assert len(snapshots) == 1
+    assert metrics[0]["phase"] == "rollout"
+    assert metrics[1]["phase"] == "update"
+
+
+def test_metric_logger_factory_rejects_missing_external_grpo_input(tmp_path: Path) -> None:
+    pipeline = MetricLoggerFactory(
+        JsonlRunLogger(tmp_path / "run"),
+        run_id="factory",
+    ).add_external_grpo_summary().build()
+
+    with pytest.raises(MetricPipelineError, match="missing metric input"):
+        pipeline.log(step=0, inputs={})
 
 
 def test_standard_training_artifact_factories_attach_expected_metadata() -> None:
@@ -279,3 +387,25 @@ def test_standard_training_artifact_factories_attach_expected_metadata() -> None
     assert artifacts[0].metadata == {"role": "actor"}
     assert artifacts[1].metadata == {"role": "actor", "quantization": "bf16"}
     assert artifacts[-1].display_name == "val-task-visualization-step-10"
+
+
+def _replay_for_metrics(action: str, reward: float) -> ReplayArtifact:
+    return ReplayArtifact(
+        config_path="configs/env/text/qwen_craftext.yaml",
+        commit="abc123",
+        backend="vllm-offload",
+        steps=(
+            ReplayStep(
+                index=0,
+                prompt="goal",
+                raw_completion=f"<action>{action}</action>",
+                action_id=0,
+                action_label=action,
+                reward=reward,
+                terminated=True,
+                token_ids=(1,),
+                token_logprobs=(-0.1,),
+                prompt_token_ids=(1, 2),
+            ),
+        ),
+    )

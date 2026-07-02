@@ -10,12 +10,13 @@ primary source of truth.
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Literal, Protocol, TypeAlias
 
 JsonScalar: TypeAlias = None | bool | int | float | str
+JsonValue: TypeAlias = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
 RunSplit: TypeAlias = Literal["train", "val", "eval", "benchmark"]
 ArtifactKind: TypeAlias = Literal[
     "trajectory",
@@ -72,6 +73,39 @@ class MetricRecord:
         for name, value in self.metrics.items():
             _validate_non_empty(name, "metric name")
             _validate_scalar(value, f"metric {name!r}")
+
+
+@dataclass(frozen=True)
+class MetricSnapshotRecord:
+    """One rich live metrics snapshot emitted during rollout/update/validation.
+
+    Unlike :class:`MetricRecord`, snapshots may contain nested JSON such as
+    action histograms, top actions or per-action reward means. Dashboards and
+    notebooks should use scalar ``MetricRecord`` values for charts and snapshots
+    for drill-down/debug panels.
+    """
+
+    run_id: str
+    step: int
+    split: RunSplit
+    phase: str
+    metrics: dict[str, JsonValue]
+    policy_version: int | None = None
+    schema: str = "tunix-craftext.metric-snapshot/v1"
+
+    def __post_init__(self) -> None:
+        """Validate live snapshot identifiers and JSON-safe payload."""
+        _validate_non_empty(self.run_id, "run_id")
+        _validate_non_empty(self.phase, "phase")
+        if self.step < 0:
+            raise ValueError("step must be non-negative")
+        if self.policy_version is not None and self.policy_version < 0:
+            raise ValueError("policy_version must be non-negative")
+        if not self.metrics:
+            raise ValueError("metrics must not be empty")
+        for name, value in self.metrics.items():
+            _validate_non_empty(name, "metric name")
+            _validate_json_value(value, f"metric {name!r}")
 
 
 @dataclass(frozen=True)
@@ -297,6 +331,9 @@ class ArtifactSink(Protocol):
     def log_metric(self, record: MetricRecord) -> None:
         """Log one scalar metric record."""
 
+    def log_metric_snapshot(self, record: MetricSnapshotRecord) -> None:
+        """Log one rich live metrics snapshot."""
+
     def log_validation_trajectory(self, record: ValidationTrajectoryRecord) -> None:
         """Log a validation trajectory summary and its full artifact reference."""
 
@@ -357,6 +394,18 @@ class MappedLoggerSink:
         if numeric and metrics is not None:
             _call_logger(metrics, numeric, step=record.step)
         self._log_json_text("metric", _record_payload(record), step=record.step)
+
+    def log_metric_snapshot(self, record: MetricSnapshotRecord) -> None:
+        """Log flattened scalar metrics and full nested snapshot JSON."""
+        numeric = {
+            f"{record.split}/{record.phase}/{name}": value
+            for name, value in flatten_scalar_metrics(record.metrics).items()
+            if isinstance(value, (int, float)) and not isinstance(value, bool)
+        }
+        metrics = self._method(self._log_metrics, self.mapping.log_metrics)
+        if numeric and metrics is not None:
+            _call_logger(metrics, numeric, step=record.step)
+        self._log_json_text("metric_snapshot", _record_payload(record), step=record.step)
 
     def log_validation_trajectory(self, record: ValidationTrajectoryRecord) -> None:
         """Log validation summary and route the full trajectory as an artifact."""
@@ -429,6 +478,7 @@ class JsonlRunLogger:
         """Create a logger rooted at ``artifacts/runs/<run-id>`` style directory."""
         self.run_dir = run_dir
         self.metrics_path = run_dir / "metrics.jsonl"
+        self.metric_snapshots_path = run_dir / "metric_snapshots.jsonl"
         self.validation_trajectories_path = run_dir / "validation_trajectories.jsonl"
         self.artifacts_path = run_dir / "artifacts.jsonl"
 
@@ -440,6 +490,57 @@ class JsonlRunLogger:
     def log_metric(self, record: MetricRecord) -> None:
         """Append one metric event through the generic ``ArtifactSink`` protocol."""
         self.write_metric(record)
+
+    def log_metrics(
+        self,
+        *,
+        run_id: str,
+        step: int,
+        split: RunSplit,
+        phase: str,
+        metrics: Mapping[str, JsonValue],
+        policy_version: int | None = None,
+        write_snapshot: bool = True,
+    ) -> tuple[Path, Path | None]:
+        """Append live metrics while preserving nested debug payloads.
+
+        Scalar-compatible leaves are flattened into ``metrics.jsonl`` using
+        slash-separated keys. When ``write_snapshot`` is true, the original
+        nested payload is also written to ``metric_snapshots.jsonl``.
+        """
+        flattened = flatten_scalar_metrics(metrics)
+        metric_path = self.write_metric(
+            MetricRecord(
+                run_id=run_id,
+                step=step,
+                split=split,
+                phase=phase,
+                metrics=flattened,
+                policy_version=policy_version,
+            )
+        )
+        snapshot_path = None
+        if write_snapshot:
+            snapshot_path = self.write_metric_snapshot(
+                MetricSnapshotRecord(
+                    run_id=run_id,
+                    step=step,
+                    split=split,
+                    phase=phase,
+                    metrics=dict(metrics),
+                    policy_version=policy_version,
+                )
+            )
+        return metric_path, snapshot_path
+
+    def write_metric_snapshot(self, record: MetricSnapshotRecord) -> Path:
+        """Append one rich live metrics snapshot and return its JSONL path."""
+        _append_jsonl(self.metric_snapshots_path, _record_payload(record))
+        return self.metric_snapshots_path
+
+    def log_metric_snapshot(self, record: MetricSnapshotRecord) -> None:
+        """Append one rich metrics snapshot through the sink protocol."""
+        self.write_metric_snapshot(record)
 
     def write_validation_trajectory(self, record: ValidationTrajectoryRecord) -> Path:
         """Append one validation trajectory reference and return its JSONL path."""
@@ -460,7 +561,7 @@ class JsonlRunLogger:
         self.write_artifact(artifact)
 
 
-def read_jsonl(path: Path) -> tuple[dict[str, JsonScalar | dict[str, JsonScalar]], ...]:
+def read_jsonl(path: Path) -> tuple[dict[str, JsonValue], ...]:
     """Read a JSONL observability file into immutable dictionaries for tests/tools."""
     if not path.exists():
         return ()
@@ -468,9 +569,35 @@ def read_jsonl(path: Path) -> tuple[dict[str, JsonScalar | dict[str, JsonScalar]
 
 
 def _record_payload(
-    record: MetricRecord | ValidationTrajectoryRecord | RunArtifact,
+    record: MetricRecord | MetricSnapshotRecord | ValidationTrajectoryRecord | RunArtifact,
 ) -> dict[str, object]:
     return asdict(record)
+
+
+def flatten_scalar_metrics(
+    metrics: Mapping[str, JsonValue], *, prefix: str = ""
+) -> dict[str, JsonScalar]:
+    """Flatten nested JSON metrics to scalar chart-friendly keys.
+
+    Lists are retained only when they contain scalar values; each element gets
+    an index suffix. Lists of objects, such as ``top_actions``, remain available
+    in ``MetricSnapshotRecord`` and are intentionally skipped from scalar charts.
+    """
+    flattened: dict[str, JsonScalar] = {}
+    for name, value in metrics.items():
+        key = f"{prefix}/{name}" if prefix else name
+        if isinstance(value, dict):
+            flattened.update(flatten_scalar_metrics(value, prefix=key))
+        elif isinstance(value, list):
+            for index, item in enumerate(value):
+                if isinstance(item, (str, int, float, bool)) or item is None:
+                    flattened[f"{key}/{index}"] = item
+        else:
+            _validate_scalar(value, key)
+            flattened[key] = value
+    if not flattened:
+        raise ValueError("metrics must contain at least one scalar leaf")
+    return flattened
 
 
 def _append_jsonl(path: Path, payload: dict[str, object]) -> None:
@@ -496,3 +623,16 @@ def _validate_non_empty(value: str, field: str) -> None:
 def _validate_scalar(value: JsonScalar, field: str) -> None:
     if not isinstance(value, (str, int, float, bool)) and value is not None:
         raise ValueError(f"{field} must be a JSON scalar")
+
+
+def _validate_json_value(value: JsonValue, field: str) -> None:
+    if isinstance(value, dict):
+        for key, item in value.items():
+            _validate_non_empty(key, f"{field} key")
+            _validate_json_value(item, f"{field}.{key}")
+        return
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            _validate_json_value(item, f"{field}[{index}]")
+        return
+    _validate_scalar(value, field)
